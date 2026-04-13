@@ -1076,7 +1076,7 @@ function buildMeritReportHtml(report) {
 }
 
 function loadChapter1MeritLeaderboard() {
-  seedChapter1MeritLeaderboardBotsIfNeeded();
+  // 机器人数据已移除，改用在线排行榜
   try {
     const raw = localStorage.getItem(CH1_MERIT_LEADERBOARD_KEY);
     const arr = raw ? JSON.parse(raw) : [];
@@ -5394,57 +5394,6 @@ function meritGradeSpanHtml(grade) {
   return `<span class="merit-grade ${mod}">${safe}</span>`;
 }
 
-/** 本地榜机器人昵称（不入战功逻辑，仅展示） */
-const CH1_MERIT_LEADERBOARD_BOT_NAMES = [
-  "颍川义士",
-  "沛国弓手",
-  "南阳步卒",
-  "河内斥候",
-  "河北甲士",
-  "徐州弩手",
-  "青州步弓",
-  "司隶都试",
-  "关西戍卒",
-  "淮泗游骑",
-  "荆襄刀牌",
-  "巴蜀劲卒",
-];
-
-/**
- * 首次读取排行榜时注入 12 条机器人：总战功均匀随机于 [0, 850×S)，仅含丁功/丙功两档。
- * 与用户记录合并后按战功排序，仍受 30 条上限截断。
- */
-function seedChapter1MeritLeaderboardBotsIfNeeded() {
-  if (typeof localStorage === "undefined") return;
-  try {
-    if (localStorage.getItem(CH1_MERIT_LEADERBOARD_BOT_SEED_KEY)) return;
-    const raw = localStorage.getItem(CH1_MERIT_LEADERBOARD_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    const base = Array.isArray(parsed) ? parsed : [];
-    const S = MERIT_SCORE_SCALE;
-    const maxDingBingExclusive = 850 * S;
-    const now = Date.now();
-    const botRows = CH1_MERIT_LEADERBOARD_BOT_NAMES.map((name, i) => {
-      const finalMerit = Math.floor(Math.random() * maxDingBingExclusive);
-      const runJitter = Math.floor((Math.random() - 0.5) * 400);
-      return {
-        name,
-        at: now - (12 - i) * 43_200_000 - Math.floor(Math.random() * 3_600_000),
-        finalMerit,
-        grade: meritGradeLabelFromFinalScore(finalMerit),
-        runSum: Math.max(0, finalMerit + runJitter),
-        retries: Math.floor(Math.random() * 5),
-        _bot: true,
-      };
-    });
-    const merged = [...base, ...botRows];
-    merged.sort((a, b) => (b.finalMerit || 0) - (a.finalMerit || 0));
-    localStorage.setItem(CH1_MERIT_LEADERBOARD_KEY, JSON.stringify(merged.slice(0, 30)));
-    localStorage.setItem(CH1_MERIT_LEADERBOARD_BOT_SEED_KEY, "1");
-  } catch {
-    /* 禁存或解析失败则跳过 */
-  }
-}
 const RUN_MERIT_ANIM_MS = 780;
 
 /** 是否存在可能打断重击的敌方快攻（存活且未破绽）。 */
