@@ -75,40 +75,95 @@ const INTERRUPT_QUICK_VS_HEAVY = 0.5;
 const REST_COOLDOWN_TURNS = 3;
 
 /**
- * 第一章：10 张技法卡（按《第一章卡片池完整设计表》v0.1）
+ * 第一章技法卡池
+ * - primary：主分类（用于卡面主色与仓库归类）
+ * - extraTags：可附加标签（展示用，不参与 perk 战斗结算逻辑）
  * 叠加规则：全部加法叠加（不做乘法联动）
- * @type {{ id:string, perk:string, title:string, desc:string, tags:("offense"|"defense")[] }[]}
+ * @type {{ id:string, perk:string, title:string, desc:string, primary:"offense"|"defense"|"sustain"|"tempo", extraTags:string[] }[]}
  */
 const SKILL_CARDS = [
-  { id: "T01", perk: "perk_armorbreak", title: "破甲发力", desc: "重击额外 +1 失衡。", tags: ["offense"] },
-  { id: "T02", perk: "perk_guardshock", title: "稳守反震", desc: "盾反成功后，敌人额外 +1 失衡。", tags: ["defense"] },
-  { id: "T03", perk: "perk_executeheal", title: "血战余生", desc: "处决后恢复 2 点生命。", tags: ["defense"] },
-  { id: "T04", perk: "perk_heavybreakdef", title: "断势重斩", desc: `对防御中的敌人使用重击时，额外 +${ns(1)} 伤害。`, tags: ["offense"] },
-  { id: "T05", perk: "perk_blockrelief", title: "借力反震", desc: "盾反成功几次，自己失衡减几次（对重击成功可叠加）。", tags: ["defense"] },
+  { id: "T01", perk: "perk_armorbreak", title: "破甲发力", desc: "重击额外 +1 失衡。", primary: "offense", extraTags: ["重击", "失衡"] },
+  { id: "T02", perk: "perk_guardshock", title: "稳守反震", desc: "盾反成功后，敌人额外 +1 失衡。", primary: "defense", extraTags: ["盾反", "失衡"] },
+  { id: "T03", perk: "perk_executeheal", title: "血战余生", desc: "处决后恢复 2 点生命。", primary: "sustain", extraTags: ["处决", "回复"] },
+  { id: "T04", perk: "perk_heavybreakdef", title: "断势重斩", desc: `对防御中的敌人使用重击时，额外 +${ns(1)} 伤害。`, primary: "offense", extraTags: ["重击", "破防"] },
+  { id: "T05", perk: "perk_blockrelief", title: "借力反震", desc: "盾反成功几次，自己失衡减几次（对重击成功可叠加）。", primary: "defense", extraTags: ["盾反", "卸势"] },
   {
     id: "T06",
     perk: "perk_staggerstrike",
     title: "夺命追击",
     desc: `快攻命中失衡值不为 0 的目标时，额外 +${ns(1)} 伤害。`,
-    tags: ["offense"],
+    primary: "offense",
+    extraTags: ["快攻", "失衡收割"],
   },
-  { id: "T07", perk: "perk_brokenfirstshield", title: "硬撑架势", desc: `进入破绽后，首次受到的伤害 -${ns(1)}。`, tags: ["defense"] },
-  { id: "T08", perk: "perk_attackvsadjust", title: "乘势压攻", desc: "敌人本回合处于调整状态时，你的攻击额外 +1 失衡。", tags: ["offense"] },
+  { id: "T07", perk: "perk_brokenfirstshield", title: "硬撑架势", desc: `进入破绽后，首次受到的伤害 -${ns(1)}。`, primary: "defense", extraTags: ["破绽", "减伤"] },
+  { id: "T08", perk: "perk_attackvsadjust", title: "乘势压攻", desc: "敌人本回合处于调整状态时，你的攻击额外 +1 失衡。", primary: "offense", extraTags: ["调整状态", "失衡"] },
   {
     id: "T09",
     perk: "perk_kill_next_attack",
     title: "夺势突进",
     desc: "战斗开始后，首次快攻伤害 +10。",
-    tags: ["offense"],
+    primary: "offense",
+    extraTags: ["快攻", "首击"],
   },
   {
     id: "T10",
     perk: "perk_rest_evade",
     title: "听风卸势",
     desc: "调息时有 70% 概率：本回合受敌方快攻或重击时完全闪避（免伤、免失衡）。",
-    tags: ["defense"],
+    primary: "defense",
+    extraTags: ["调息", "闪避"],
   },
+  { id: "T11", perk: "perk_follow_attack", title: "追身快斩", desc: "快攻命中未处于防御意图的目标时，额外 +1 失衡。", primary: "offense", extraTags: ["快攻", "压制"] },
+  { id: "T12", perk: "perk_heavy_vs_staggered", title: "断脉沉击", desc: `重击命中失衡值不为 0 的目标时，额外 +${ns(1)} 伤害。`, primary: "offense", extraTags: ["重击", "失衡收割"] },
+  { id: "T13", perk: "perk_attack_vs_broken", title: "乘隙追命", desc: `对破绽目标使用快攻或重击时，额外 +${ns(1)} 伤害。`, primary: "offense", extraTags: ["破绽", "收割"] },
+  { id: "T14", perk: "perk_kill_reduce_stagger", title: "斩阵夺势", desc: "击杀敌人后，自己失衡 -1。", primary: "tempo", extraTags: ["击杀", "失衡回复"] },
+  { id: "T15", perk: "perk_interrupt_bonus", title: "截锋断势", desc: "快攻成功打断重击时，额外 +1 失衡。", primary: "offense", extraTags: ["快攻", "打断", "失衡"] },
+  { id: "T16", perk: "perk_break_defense_followup", title: "逼守抢口", desc: `本回合用重击命中防御中的敌人后，下回合第一次快攻额外 +${ns(1)} 伤害。`, primary: "tempo", extraTags: ["重击", "快攻连段"] },
+  { id: "T17", perk: "perk_defend_relief", title: "定步卸力", desc: "防御成功承受攻击后，自己失衡 -1。", primary: "defense", extraTags: ["防御", "卸势"] },
+  { id: "T18", perk: "perk_block_heal", title: "盾后回气", desc: `盾反成功后，恢复 ${ns(1)} 点生命。`, primary: "sustain", extraTags: ["盾反", "回复"] },
+  { id: "T19", perk: "perk_rest_extra_stagger_down", title: "静息归元", desc: "调息成功时，额外失衡 -1。", primary: "defense", extraTags: ["调息", "卸势"] },
+  { id: "T20", perk: "perk_lowhp_defend_heal", title: "危桥守命", desc: `自身 HP 低于 30% 时，防御成功后恢复 ${ns(1)} 点生命。`, primary: "sustain", extraTags: ["低血", "防御", "回复"] },
+  { id: "T21", perk: "perk_broken_defend_bonus", title: "破绽强守", desc: `破绽状态下使用防御时，额外减伤 +${ns(1)}。`, primary: "defense", extraTags: ["破绽", "防御", "减伤"] },
+  { id: "T22", perk: "perk_no_damage_next_attack", title: "以守待变", desc: `本回合未受伤，则下回合第一次快攻额外 +${ns(1)} 伤害。`, primary: "tempo", extraTags: ["无伤", "快攻连段"] },
 ];
+
+function techPrimaryLabel(primary) {
+  if (primary === "offense") return "进攻";
+  if (primary === "defense") return "防守";
+  if (primary === "sustain") return "续航";
+  if (primary === "tempo") return "节奏";
+  return "技法";
+}
+
+function techExtraTagsLine(c) {
+  const xs = Array.isArray(c?.extraTags) ? c.extraTags.filter(Boolean) : [];
+  if (!xs.length) return "";
+  return xs.join(" / ");
+}
+
+function techTagKickerForPerk(perk) {
+  const c = perkCardById(perk);
+  return techPrimaryLabel(c?.primary);
+}
+
+function techTagCssForPerk(perk) {
+  const c = perkCardById(perk);
+  const p = c?.primary;
+  if (p === "offense") return "offense";
+  if (p === "defense") return "defense";
+  if (p === "sustain") return "sustain";
+  if (p === "tempo") return "tempo";
+  return "tech";
+}
+
+function cardIsOffenseLeanTech(c) {
+  return !!c && c.primary === "offense";
+}
+
+/** R1：与“进攻/防守侧”对应的非进攻牌（防守/续航/节奏都算另一侧） */
+function cardIsNonOffenseLeanTech(c) {
+  return !!c && c.primary !== "offense";
+}
 
 /** 第一章：4 张属性卡（R2 三选一；R4 混入 1 张） */
 const ATTR_CARDS = [
@@ -159,9 +214,9 @@ function ensureR1TechOffer(state) {
   for (let t = 0; t < maxTry; t++) {
     const pick = pickRandomDistinct(pool, 3);
     const cards = pick.map((perk) => SKILL_CARDS.find((c) => c.perk === perk)).filter(Boolean);
-    const hasOff = cards.some((c) => c.tags?.includes("offense"));
-    const hasDef = cards.some((c) => c.tags?.includes("defense"));
-    if (pick.length === 3 && hasOff && hasDef) {
+    const hasOff = cards.some(cardIsOffenseLeanTech);
+    const hasOther = cards.some(cardIsNonOffenseLeanTech);
+    if (pick.length === 3 && hasOff && hasOther) {
       state.draftOffers[nodeId] = pick;
       return pick;
     }
@@ -1200,46 +1255,48 @@ function loadChapter1MeritLeaderboard() {
   }
 }
 
-function buildIntroTop3Html() {
-  const top = loadChapter1MeritLeaderboard().slice(0, 3);
-  if (!top.length) {
-    return `<div class="intro-top3-empty">暂无记录。通关第一章后将写入排行榜。</div>`;
-  }
-  return top
-    .map((e, i) => {
-      const rank = i + 1;
-      const name = escapeHtml(e.name || "—");
-      const score = escapeHtml(String(e.finalMerit ?? "—"));
-      const medal = rank === 1 ? "medal--gold" : rank === 2 ? "medal--silver" : "medal--bronze";
-      return `
+function buildIntroTop10HtmlFromList(list) {
+  const arr = Array.isArray(list) ? list : [];
+  const rows = [];
+  for (let i = 0; i < 10; i++) {
+    const e = arr[i] || null;
+    const rank = i + 1;
+    const name = escapeHtml(e?.name || "虚位以待");
+    const score = escapeHtml(String(e?.finalMerit ?? "—"));
+    const fk = normalizeFactionKey(e?.faction || "qun");
+    const icon =
+      rank === 1
+        ? `<span class="medal medal--gold" aria-hidden="true"></span>`
+        : rank === 2
+          ? `<span class="medal medal--silver" aria-hidden="true"></span>`
+          : rank === 3
+            ? `<span class="medal medal--bronze" aria-hidden="true"></span>`
+            : e
+              ? `<span class="intro-faction-flag intro-faction-flag--${escapeHtml(fk)}" aria-hidden="true"></span>`
+              : `<span class="intro-faction-flag intro-faction-flag--unknown" aria-hidden="true"></span>`;
+    const faction = escapeHtml(e ? factionLabel(fk) : "未知");
+    const prov = escapeHtml(String(e?.province || "").trim() || (e ? "中国" : "未知"));
+    rows.push(
+      `
 <div class="intro-top3-row">
-  <span class="intro-top3-left"><span class="medal ${medal}" aria-hidden="true"></span><span class="intro-top3-rank">${rank}</span></span>
+  <span class="intro-top3-left">${icon}<span class="intro-top3-rank">${rank}</span></span>
   <span class="intro-top3-name">${name}</span>
+  <span class="intro-top3-meta"><span class="intro-meta-pill faction-pill--${escapeHtml(fk)}"><span class="faction--${escapeHtml(fk)}">${faction}</span></span><span class="intro-meta-province">${prov}</span></span>
   <span class="intro-top3-score">${score}</span>
-  <span class="intro-top3-grade">${meritGradeSpanHtml(e.grade)}</span>
-</div>`;
-    })
-    .join("");
+  <span class="intro-top3-grade">${meritGradeSpanHtml(e?.grade)}</span>
+</div>`,
+    );
+  }
+  return rows.join("");
+}
+
+function buildIntroTop3Html() {
+  return buildIntroTop10HtmlFromList(loadChapter1MeritLeaderboard());
 }
 
 /** 从在线数据列表构建首页前三 HTML */
 function _buildIntroTop3HtmlFromList(list) {
-  if (!list || !list.length) return "";
-  return list.slice(0, 3).map((e, i) => {
-    const rank = i + 1;
-    const name = escapeHtml(e.name || "—");
-    const score = escapeHtml(String(e.finalMerit ?? "—"));
-    const medal = rank === 1 ? "medal--gold" : rank === 2 ? "medal--silver" : "medal--bronze";
-    const region = e.province ? escapeHtml(e.province + (e.city && e.city !== e.province ? "·" + e.city : "")) : "";
-    const regionHtml = region ? `<span class="intro-top3-region" style="opacity:0.6;font-size:0.85em;margin-left:4px">${region}</span>` : "";
-    return `
-<div class="intro-top3-row">
-  <span class="intro-top3-left"><span class="medal ${medal}" aria-hidden="true"></span><span class="intro-top3-rank">${rank}</span></span>
-  <span class="intro-top3-name">${name}${regionHtml}</span>
-  <span class="intro-top3-score">${score}</span>
-  <span class="intro-top3-grade">${meritGradeSpanHtml(e.grade)}</span>
-</div>`;
-  }).join("");
+  return buildIntroTop10HtmlFromList(list);
 }
 
 /** 异步构建在线排行榜 HTML，失败时降级到本地 */
@@ -1368,6 +1425,10 @@ function ensureChapter1LeaderboardRecord(state) {
     grade: report.grade,
     runSum: state.runMeritScore ?? 0,
     retries: report.total_death_retry,
+    faction: normalizeFactionKey(state._playerFaction || "qun"),
+    province: String(state._playerProvince || "").trim() || "",
+    city: String(state._playerCity || "").trim() || "",
+    country: String(state._playerCountry || "").trim() || "",
   });
   list.sort((a, b) => (b.finalMerit || 0) - (a.finalMerit || 0));
   try {
@@ -1383,6 +1444,10 @@ function ensureChapter1LeaderboardRecord(state) {
       grade: report.grade,
       runSum: state.runMeritScore ?? 0,
       retries: report.total_death_retry,
+      faction: normalizeFactionKey(state._playerFaction || "qun"),
+      province: String(state._playerProvince || "").trim() || "",
+      city: String(state._playerCity || "").trim() || "",
+      country: String(state._playerCountry || "").trim() || "",
     }).catch(() => {});
   }
 }
@@ -1456,20 +1521,19 @@ function buildHeroRankRowHtml(e, rank) {
           ? `<span class="medal medal--bronze" aria-hidden="true"></span>`
           : "";
   const score = e.finalMerit ?? 0;
-  const region = e.province ? escapeHtml(e.province + (e.city && e.city !== e.province ? "·" + e.city : "")) : "";
-  const regionTag = region && e.kind !== "live" ? `<span class="rank-region" style="opacity:0.5;font-size:0.8em;margin-left:3px">${region}</span>` : "";
-  const name =
+  const nameText =
     e.kind === "live"
       ? `${escapeHtml(e.name || "你")}<span class="rank-live-badge">本局</span>`
-      : escapeHtml(e.name || "—") + regionTag;
+      : escapeHtml(e.name || "—");
+  const name = `<span class="rank-name-text">${nameText}</span>`;
   const gradeHtml =
     e.kind === "live"
-      ? `<span class="rank-live-pill" title="按当前累计战功与历史「总战功」对比，非通关结算评级">本局预览</span>`
+      ? `<span class="rank-live-pill" title="按当前累计战功与历史「总战功」对比，非通关结算评级">预览</span>`
       : meritGradeSpanHtml(e.grade);
   const rowCls = e.kind === "live" ? "rank-row rank-row--live-preview" : "rank-row";
   const liveAttrs =
     e.kind === "live"
-      ? ` data-live-preview="1" role="status" aria-label="本局预览名次 ${rank}，战功 ${score}"`
+      ? ` data-live-preview="1" role="status" aria-label="预览名次 ${rank}，战功 ${score}"`
       : "";
   return `<div class="${rowCls}"${liveAttrs}><span class="rank-left">${medal}<span class="rank-num${e.kind === "live" ? " rank-num--live" : ""}">${rank}</span></span><span class="rank-name">${name}</span><span class="rank-score">${escapeHtml(String(score))}</span><span class="rank-grade">${gradeHtml}</span></div>`;
 }
@@ -1477,6 +1541,10 @@ function buildHeroRankRowHtml(e, rank) {
 /** 缓存在线排行榜数据，避免每帧重复请求 */
 let _onlineLeaderboardCache = null;
 let _onlineLeaderboardFetching = false;
+function resetOnlineLeaderboardCache() {
+  _onlineLeaderboardCache = null;
+  _onlineLeaderboardFetching = false;
+}
 function ensureOnlineLeaderboardCache(callback) {
   if (_onlineLeaderboardCache) { callback(_onlineLeaderboardCache); return; }
   if (_onlineLeaderboardFetching) return;
@@ -1491,11 +1559,64 @@ function ensureOnlineLeaderboardCache(callback) {
   }).catch(() => { _onlineLeaderboardFetching = false; });
 }
 
-/** 左侧英雄榜：前三名固定展示，其余可滚动；混排逻辑不变 */
+function buildTitleFactionRankHtml(state) {
+  const saved = loadChapter1MeritLeaderboard().slice(0, 30);
+  const sums = { wei: 0, shu: 0, wu: 0, qun: 0 };
+  for (const e of saved) {
+    const k = normalizeFactionKey(e.faction);
+    sums[k] += e.finalMerit ?? 0;
+  }
+  const rows = [
+    { k: "wei", label: "魏", score: sums.wei },
+    { k: "shu", label: "蜀", score: sums.shu },
+    { k: "wu", label: "吴", score: sums.wu },
+    { k: "qun", label: "群雄", score: sums.qun },
+  ].sort((a, b) => b.score - a.score);
+  const body = rows
+    .map((r) => {
+      const key = normalizeFactionKey(r.k);
+      return `<div class="title-rank-row"><span class="title-rank-left"><span class="title-rank-badge faction-pill--${escapeHtml(key)}"><span class="faction--${escapeHtml(key)}">${escapeHtml(r.label)}</span></span><span class="title-rank-name faction--${escapeHtml(key)}">${escapeHtml(r.label)}阵营</span></span><span class="title-rank-score">${escapeHtml(String(Math.round(r.score)))}</span></div>`;
+    })
+    .join("");
+  const myKey = normalizeFactionKey(state?._playerFaction);
+  const my = factionLabel(myKey);
+  return `<div class="title-rank"><div class="title-rank-head"><div class="title-rank-kicker">阵营得分排行</div><div class="title-rank-sub">你的阵营：${escapeHtml(my)}</div></div>${body || ""}</div>`;
+}
+
+function buildTitleProvinceRankHtml(state) {
+  const saved = loadChapter1MeritLeaderboard().slice(0, 30);
+  /** @type {Record<string, number>} */
+  const sumBy = {};
+  for (const e of saved) {
+    const p = String(e.province || "").trim();
+    const c = String(e.country || "").trim();
+    const key = p || c || "中国";
+    sumBy[key] = (sumBy[key] || 0) + (e.finalMerit ?? 0);
+  }
+  const rows = Object.keys(sumBy)
+    .map((k) => ({ k, score: sumBy[k] || 0 }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
+  const body = rows
+    .map((r, i) => {
+      return `<div class="title-rank-row"><span class="title-rank-left"><span class="title-rank-badge">#${i + 1}</span><span class="title-rank-name">${escapeHtml(r.k)}</span></span><span class="title-rank-score">${escapeHtml(String(Math.round(r.score)))}</span></div>`;
+    })
+    .join("");
+  const my = geoLabelFromState(state);
+  return `<div class="title-rank"><div class="title-rank-head"><div class="title-rank-kicker">省份得分排名</div><div class="title-rank-sub">你的省份：${escapeHtml(my)}</div></div>${body || ""}</div>`;
+}
+
+/** 左侧英雄榜：单列表滚动；混排逻辑不变 */
 function renderLocalLeaderboardToSettlePanel(ui, state) {
   const box = ui.settleRank;
-  const top3box = ui.settleRankTop3;
-  if (!box || !top3box) return;
+  if (!box) return;
+  // 重开/回主界面后：避免先展示上一轮榜单 DOM（闪屏），首帧先清空，等数据可用再首次渲染
+  if (state && !state._leaderboardPrimed) {
+    box.innerHTML = "";
+    box.scrollTop = 0;
+    // 本地数据已就绪：允许本帧继续渲染本地榜，避免空白停留
+    state._leaderboardPrimed = true;
+  }
   const meritDisp = getLiveMeritScoreForRankDisplay(ui, state);
   const localSaved = loadChapter1MeritLeaderboard().slice(0, 30);
   // 优先使用在线数据，否则用本地数据
@@ -1513,7 +1634,11 @@ function renderLocalLeaderboardToSettlePanel(ui, state) {
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const items = saved.map((e) => ({ kind: /** @type {"saved"} */ ("saved"), ...e }));
-  items.push({ kind: "live", name: nick, finalMerit: meritDisp });
+  items.push({
+    kind: "live",
+    name: nick,
+    finalMerit: meritDisp,
+  });
   items.sort((a, b) => {
     const sa = a.finalMerit ?? 0;
     const sb = b.finalMerit ?? 0;
@@ -1527,8 +1652,7 @@ function renderLocalLeaderboardToSettlePanel(ui, state) {
     if (e.kind === "live") liveRank = rank;
     return buildHeroRankRowHtml(e, rank);
   });
-  const top3html = rowParts.slice(0, 3).join("");
-  const restHtml = rowParts.slice(3).join("");
+  const html = rowParts.join("");
 
   const prev = state?._liveMeritRankPrev;
   const improved = !!(state && prev != null && liveRank > 0 && liveRank < prev);
@@ -1542,8 +1666,8 @@ function renderLocalLeaderboardToSettlePanel(ui, state) {
     !firstListPaint && !reduced && (meritMoved || rankMoved || improved);
 
   const prevScrollTop = box.scrollTop;
-  top3box.innerHTML = top3html;
-  box.innerHTML = restHtml;
+  box.innerHTML = html;
+  if (state) state._leaderboardPrimed = true;
 
   if (state) {
     state._liveMeritRankPrev = liveRank;
@@ -1551,9 +1675,7 @@ function renderLocalLeaderboardToSettlePanel(ui, state) {
     state._settleLbLastRank = liveRank;
 
     if (improved && !reduced) {
-      const numEl =
-        top3box.querySelector(".rank-row--live-preview .rank-num--live") ||
-        box.querySelector(".rank-row--live-preview .rank-num--live");
+      const numEl = box.querySelector(".rank-row--live-preview .rank-num--live");
       if (numEl) {
         numEl.classList.remove("is-rising");
         void numEl.offsetWidth;
@@ -1569,16 +1691,11 @@ function renderLocalLeaderboardToSettlePanel(ui, state) {
     if (liveRank > 0) {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          const liveInScroll = box.querySelector("[data-live-preview='1']");
-          if (liveInScroll) {
-            if (needsFollow) {
-              scrollSettleRankListToLiveRow(box, followSmooth);
-            } else {
-              const max = Math.max(0, box.scrollHeight - box.clientHeight);
-              box.scrollTop = Math.min(max, prevScrollTop);
-            }
+          if (needsFollow) {
+            scrollSettleRankListToLiveRow(box, followSmooth);
           } else {
-            box.scrollTop = 0;
+            const max = Math.max(0, box.scrollHeight - box.clientHeight);
+            box.scrollTop = Math.min(max, prevScrollTop);
           }
         });
       });
@@ -1621,6 +1738,8 @@ function resetChapter1NewGame(state) {
   state._liveMeritRankPrev = null;
   state._settleLbLastMerit = null;
   state._settleLbLastRank = null;
+  state._leaderboardPrimed = false;
+  resetOnlineLeaderboardCache();
   if (state._liveRankRiseTimer) {
     window.clearTimeout(state._liveRankRiseTimer);
     state._liveRankRiseTimer = null;
@@ -2149,6 +2268,7 @@ function applyPlayerToEnemy(state, enemyObj, playerAction, targetId) {
   if (enemyObj.waitingToEnter) return out;
   if (e.hp <= 0) return out;
   if (targetId !== enemyObj.id) return out;
+  const hpBefore = e.hp;
 
   // 无敌秒杀：测试模式
   if (window._godMode && (playerAction === "attack" || playerAction === "heavy")) {
@@ -2164,10 +2284,20 @@ function applyPlayerToEnemy(state, enemyObj, playerAction, targetId) {
   if (playerAction === "attack") {
     let dmg = ns(2) + (state.player.atkBonus || 0);
     let stg = 1;
+    // T13：对破绽目标快攻额外 +1 伤害
+    if (state.perks?.includes("perk_attack_vs_broken") && e.broken) {
+      dmg += ns(1);
+      out.notes.push(`乘隙追命：对破绽目标快攻伤害 +${ns(1)}。`);
+    }
     // T06：快攻命中失衡值不为 0 的目标时，额外 +1 伤害
     if (state.perks?.includes("perk_staggerstrike") && (e.broken || e.stagger > 0)) {
       dmg += ns(1);
       out.notes.push(`夺命追击：快攻命中失衡值不为 0 的目标，伤害 +${ns(1)}。`);
+    }
+    // T11：快攻命中未处于防御意图的目标时，额外 +1 失衡
+    if (state.perks?.includes("perk_follow_attack") && intent !== "defend") {
+      stg += 1;
+      out.notes.push("追身快斩：快攻命中非防御意图目标，失衡 +1。");
     }
     if (intent === "defend") {
       // v0.3：敌方防御意图固定效果：本回合受到伤害 -1、受到失衡 -1
@@ -2182,16 +2312,41 @@ function applyPlayerToEnemy(state, enemyObj, playerAction, targetId) {
       stg += 1;
       out.notes.push("乘势压攻：敌人调整，本次攻击额外失衡 +1。");
     }
+    // T15：快攻成功打断重击时，额外 +1 失衡（由 resolveEnemyAgainstPlayer 标记本回合被打断的目标）
+    if (state.perks?.includes("perk_interrupt_bonus") && state._attackInterruptedHeavyTargetId === enemyObj.id) {
+      stg += 1;
+      out.notes.push("截锋断势：打断重击，本次额外失衡 +1。");
+    }
     // T09：本场战斗首次快攻 +1 伤害基数（仅消费一次；见 startBattleFromNode 初始化）
     if (state.firstQuickAttackBonusPending) {
       dmg += ns(1);
       state.firstQuickAttackBonusPending = false;
       out.notes.push(`夺势突进：战斗开始后首次快攻伤害 +${ns(1)}。`);
     }
+    // T16：重击命中防御目标后，下回合第一次快攻额外 +1 伤害
+    if (state._breakDefenseFollowupPending) {
+      dmg += ns(1);
+      state._breakDefenseFollowupPending = false;
+      out.notes.push(`逼守抢口：下回合首次快攻伤害 +${ns(1)}。`);
+    }
+    // T22：本回合未受伤，则下回合第一次快攻额外 +1 伤害
+    if (state._noDamageNextAttackPending) {
+      dmg += ns(1);
+      state._noDamageNextAttackPending = false;
+      out.notes.push(`以守待变：下回合首次快攻伤害 +${ns(1)}。`);
+    }
     out.eDmg = applyDamage(e, dmg);
     out.eStg = addStagger(e, stg);
     out.hit = out.eDmg > 0 || out.eStg > 0;
     if (out.hit && intent === "adjust") out.flags.punish_adjust = true;
+
+    // T14：击杀敌人后自己失衡 -1
+    if (state.perks?.includes("perk_kill_reduce_stagger") && hpBefore > 0 && e.hp <= 0) {
+      const before = state.player.stagger;
+      changeStagger(state.player, -1);
+      const reduced = before - state.player.stagger;
+      if (reduced > 0) out.notes.push("斩阵夺势：击杀敌人，你的失衡 -1。");
+    }
   } else if (playerAction === "heavy") {
     if (intent === "block") {
       out.notes.push(`${e.name}成功盾反你的重击：你失衡 +2。`);
@@ -2203,6 +2358,16 @@ function applyPlayerToEnemy(state, enemyObj, playerAction, targetId) {
     }
     let dmg = ns(3) + (state.player.atkBonus || 0);
     let stg = 2;
+    // T13：对破绽目标重击额外 +1 伤害
+    if (state.perks?.includes("perk_attack_vs_broken") && e.broken) {
+      dmg += ns(1);
+      out.notes.push(`乘隙追命：对破绽目标重击伤害 +${ns(1)}。`);
+    }
+    // T12：重击命中失衡值不为 0 的目标时，额外 +1 伤害
+    if (state.perks?.includes("perk_heavy_vs_staggered") && (e.broken || e.stagger > 0)) {
+      dmg += ns(1);
+      out.notes.push(`断脉沉击：重击命中失衡值不为 0 的目标，伤害 +${ns(1)}。`);
+    }
     // T01：重击额外 +1 失衡（可叠加）
     if (state.perks?.includes("perk_armorbreak")) stg += 1;
     // 装备 / 橙卡：重击额外失衡（可叠加）
@@ -2231,6 +2396,19 @@ function applyPlayerToEnemy(state, enemyObj, playerAction, targetId) {
     out.hit = out.eDmg > 0 || out.eStg > 0;
     if (out.hit && intent === "defend") out.flags.break_defense = true;
     if (out.hit && intent === "adjust") out.flags.punish_adjust = true;
+
+    // T16：本回合用重击命中防御中的敌人后，下回合首次快攻额外 +1 伤害
+    if (state.perks?.includes("perk_break_defense_followup") && out.hit && intent === "defend") {
+      state._breakDefenseFollowupPending = true;
+      out.notes.push(`逼守抢口：下回合首次快攻伤害 +${ns(1)}。`);
+    }
+    // T14：击杀敌人后自己失衡 -1
+    if (state.perks?.includes("perk_kill_reduce_stagger") && hpBefore > 0 && e.hp <= 0) {
+      const before = state.player.stagger;
+      changeStagger(state.player, -1);
+      const reduced = before - state.player.stagger;
+      if (reduced > 0) out.notes.push("斩阵夺势：击杀敌人，你的失衡 -1。");
+    }
   }
   return out;
 }
@@ -2297,6 +2475,7 @@ function resolveEnemyAgainstPlayer(
         : Math.random() < INTERRUPT_QUICK_VS_HEAVY;
     if (interrupt) {
       effectiveIntent = "quick";
+      state._attackInterruptedHeavyTargetId = enemyObj.id;
       out.notes.push(`你的快攻打断了${e.name}的重击：其本回合按快攻结算。`);
     }
   }
@@ -2358,7 +2537,12 @@ function resolveEnemyAgainstPlayer(
       if (defending) {
         const beforeStg = stg;
         const extraMit = state.player?.defendMitigationBonus || 0;
-        dmg = Math.max(0, dmg - ns(1 + extraMit));
+    dmg = Math.max(0, dmg - ns(1 + extraMit));
+    // T21：破绽状态下使用防御时，额外减伤 +1（仅减伤害，不减失衡）
+    if (state.perks?.includes("perk_broken_defend_bonus") && p.broken && dmg > 0) {
+      dmg = Math.max(0, dmg - ns(1));
+      out.notes.push(`破绽强守：破绽中防御额外减伤 -${ns(1)}。`);
+    }
         stg = Math.max(0, stg - 1);
         defendStaggerReduced = beforeStg - stg;
         out.notes.push(`防御：本回合受到伤害 -${ns(1 + extraMit)}，受到失衡 -1。`);
@@ -4739,6 +4923,8 @@ function applyBattleTurnResolutionSegment(state, ui, turnCtx, bundle, segments, 
   const action = bundle.playerAction;
   const rolled = turnCtx.rolled;
   const { meritTurn, details, targetId } = turnCtx;
+  // 每回合重置“快攻打断重击”标记（T15）
+  if (segmentIndex === 0) state._attackInterruptedHeavyTargetId = null;
   const seg = segments[segmentIndex];
   const enemyRow = seg?.enemyRow;
   if (!enemyRow?.id) return;
@@ -4893,6 +5079,49 @@ function finalizeBattleTurnAfterResolutionSegments(state, ui, bundle, turnCtx, o
       }
     }
     applyBlockReliefPerkAfterEnemyPhase(state, details, blockSuccessCount, ui, turnCtx.meterFloatSnap);
+
+    // ===== 第二批技法卡：敌方阶段后触发（T17-T22） =====
+    // T17：防御成功承受攻击后，自己失衡 -1
+    if (state.perks?.includes("perk_defend_relief")) {
+      if (action === "defend" && !meritTurn.defendFailedThisTurn && damageTakenThisTurn > 0) {
+        const before = state.player.stagger;
+        changeStagger(state.player, -1);
+        const reduced = before - state.player.stagger;
+        if (reduced > 0) details.push("→ 定步卸力：防御成功承受攻击后，你的失衡 -1。");
+      }
+    }
+    // T18：盾反成功后恢复生命
+    if (state.perks?.includes("perk_block_heal")) {
+      if (action === "block" && anyBlockSuccess) {
+        const healed = applyHeal(state.player, ns(1));
+        if (healed > 0) details.push(`→ 盾后回气：盾反成功，{g}HP+${healed}{/g}。`);
+      }
+    }
+    // T19：调息成功（未受伤）额外失衡 -1
+    if (state.perks?.includes("perk_rest_extra_stagger_down")) {
+      if (action === "rest" && damageTakenThisTurn === 0) {
+        const before = state.player.stagger;
+        changeStagger(state.player, -1);
+        const reduced = before - state.player.stagger;
+        if (reduced > 0) details.push("→ 静息归元：调息成功，额外失衡 -1。");
+      }
+    }
+    // T20：HP<30% 且防御成功后恢复生命
+    if (state.perks?.includes("perk_lowhp_defend_heal")) {
+      const hpAtEnemyPhaseStart = turnCtx.playerHpAtEnemyPhaseStart ?? state.player.hp;
+      const lowHp = hpAtEnemyPhaseStart > 0 && state.player.hpMax > 0 && hpAtEnemyPhaseStart / state.player.hpMax < 0.3;
+      if (lowHp && action === "defend" && damageTakenThisTurn === 0 && !meritTurn.defendFailedThisTurn) {
+        const healed = applyHeal(state.player, ns(1));
+        if (healed > 0) details.push(`→ 危桥守命：低血防御成功，{g}HP+${healed}{/g}。`);
+      }
+    }
+    // T22：本回合未受伤 → 下回合第一次快攻额外伤害
+    if (state.perks?.includes("perk_no_damage_next_attack")) {
+      if (damageTakenThisTurn === 0) {
+        state._noDamageNextAttackPending = true;
+      }
+    }
+
     const execBoss = findBossExecutePlayerExecutor(state);
     if (state.player.broken && state.player.hp > 0 && execBoss) {
       runBossExecutePlayerDrama(state, ui, {
@@ -4945,6 +5174,8 @@ function finalizeBattleTurnAfterResolutionSegments(state, ui, bundle, turnCtx, o
   meritTurn.anyBlockSuccess = anyBlockSuccess;
   meritTurn.selfBrokenThisTurn = !playerBrokenAtActionStart && !!state.player.broken;
   meritTurn.justRecoveredFromBrokenNext = playerBrokenAtActionStart && !state.player.broken;
+  // 清理本回合“快攻打断重击”的标记（用于 T15）
+  state._attackInterruptedHeavyTargetId = null;
 
   if (state.battle && Array.isArray(state.battle.reserve) && state.battle.reserve.length) {
     const slotReserveLabel = { A: "甲位", B: "乙位", C: "丙位" };
@@ -5297,6 +5528,116 @@ function initBattleTurnContextForResolving(state, ui, action, bundle = null) {
   };
 }
 
+function previewActionDescText(state, action) {
+  const tgtObj = state.enemies.find((x) => x.id === state.targetId);
+  const fallbackEnemyName = { A: "敌人甲", B: "敌人乙", C: "敌人丙" };
+  const targetName = tgtObj?.fighter?.name || fallbackEnemyName[state.targetId] || "敌人";
+  const actionFlavor = {
+    attack: `你踏前半步，刀光一闪，直取${targetName}的破绽。`,
+    heavy: `你沉肩蓄力，横刀猛压，试图击溃${targetName}的架势。`,
+    defend: "你收刀护身，稳住下盘，准备接下对方的来势。",
+    block: "你抬刀立势，试图用盾反打乱对方重击的节奏。",
+    execute: `你逼近一步，寻找能一刀了结${targetName}的机会。`,
+    rest: "你深吸一口气，调匀呼吸与步伐，重新稳住架势。",
+  };
+  return actionFlavor[action] || "—";
+}
+
+const SKILL_HOVER_TOOLTIP_DELAY_MS = 500;
+/** @type {ReturnType<typeof setTimeout>|null} */
+let skillHoverTooltipTimer = null;
+/** @type {HTMLElement|null} */
+let skillHoverTooltipEl = null;
+/** @type {HTMLElement|null} */
+let skillHoverTooltipAnchor = null;
+/** @type {string|null} */
+let lastSkillTipUiPhase = null;
+
+function ensureSkillHoverTooltipEl() {
+  if (skillHoverTooltipEl && document.body.contains(skillHoverTooltipEl)) return skillHoverTooltipEl;
+  const el = document.createElement("div");
+  el.className = "skill-hover-tooltip";
+  el.setAttribute("role", "tooltip");
+  el.hidden = true;
+  document.body.appendChild(el);
+  skillHoverTooltipEl = el;
+  return el;
+}
+
+function hideSkillHoverTooltip() {
+  if (skillHoverTooltipTimer) {
+    window.clearTimeout(skillHoverTooltipTimer);
+    skillHoverTooltipTimer = null;
+  }
+  if (!skillHoverTooltipEl) return;
+  skillHoverTooltipEl.classList.remove("is-visible");
+  skillHoverTooltipEl.hidden = true;
+  skillHoverTooltipAnchor = null;
+}
+
+function positionSkillHoverTooltip(anchor, tip) {
+  const pad = 10;
+  const gap = 10;
+  const rect = anchor.getBoundingClientRect();
+  tip.style.left = "0px";
+  tip.style.top = "0px";
+  tip.hidden = false;
+  const tw = tip.offsetWidth;
+  const th = tip.offsetHeight;
+
+  let x = rect.left + rect.width / 2 - tw / 2;
+  let y = rect.top - th - gap;
+
+  // flip below if not enough room above
+  if (y < pad) y = rect.bottom + gap;
+
+  x = Math.max(pad, Math.min(x, window.innerWidth - tw - pad));
+  y = Math.max(pad, Math.min(y, window.innerHeight - th - pad));
+
+  tip.style.left = `${Math.round(x)}px`;
+  tip.style.top = `${Math.round(y)}px`;
+}
+
+function showSkillHoverTooltipNow(state, anchor, action) {
+  const tip = ensureSkillHoverTooltipEl();
+  skillHoverTooltipAnchor = anchor;
+
+  const flavor = previewActionDescText(state, action);
+  const hints = buildActionButtonEffectHints(state);
+  const mech =
+    action === "attack"
+      ? hints.attack
+      : action === "heavy"
+        ? hints.heavy
+        : action === "defend"
+          ? hints.defend
+          : action === "block"
+            ? hints.block
+            : action === "rest"
+              ? hints.rest
+              : "";
+
+  tip.innerHTML = `
+    <div class="skill-hover-tooltip__flavor">${escapeHtml(flavor)}</div>
+    <div class="skill-hover-tooltip__mech">${mech || escapeHtml("—")}</div>
+  `;
+
+  // measure + place
+  requestAnimationFrame(() => {
+    if (skillHoverTooltipAnchor !== anchor) return;
+    positionSkillHoverTooltip(anchor, tip);
+    tip.classList.add("is-visible");
+  });
+}
+
+function armSkillHoverTooltip(state, anchor, action) {
+  hideSkillHoverTooltip();
+  skillHoverTooltipTimer = window.setTimeout(() => {
+    skillHoverTooltipTimer = null;
+    showSkillHoverTooltipNow(state, anchor, action);
+  }, SKILL_HOVER_TOOLTIP_DELAY_MS);
+}
+
 function commitTurnResolutionBundlePerSegment(state, bundle, ui) {
   if (bundle?.targetId) state.targetId = bundle.targetId;
   const segments = buildResolutionSegments(state, bundle);
@@ -5432,6 +5773,7 @@ function mkInitialState() {
   const enemyA = mkFighter({ name: "—", hp: ns(1), stagger: 0, staggerThreshold: 3, level: 1 });
   const enemyB = mkFighter({ name: "—", hp: ns(1), stagger: 0, staggerThreshold: 3, level: 1 });
 
+  const prof = typeof localStorage !== "undefined" ? loadPlayerProfile() : null;
   return {
     phase: "node", // node | ready | fight | resolving | ending | endingLose | win | lose
     pendingBattleNodeId: null,
@@ -5452,7 +5794,14 @@ function mkInitialState() {
     /** 第一章全局逐回合战功记录 */
     chapterMeritLog: /** @type {any[]} */ ([]),
     _leaderboardSavedForThisRun: false,
-    _playerName: "",
+    _playerName: prof?.name || "",
+    _playerFaction: prof?.faction || "qun",
+    _playerProvince: prof?.province || "",
+    _playerCity: prof?.city || "",
+    _playerCountry: prof?.country || "",
+    _chapter1Cleared: !!prof?.chapter1Cleared,
+    _geoFetched: !!(prof && (prof.province || prof.country)),
+    _geoFetching: false,
     _nameDialogMode: /** @type {"intro"|"postBoss"|null} */ (null),
     battleMeritFxQueue: /** @type {any[]} */ ([]),
     battleMeritFxPlaying: false,
@@ -5465,6 +5814,7 @@ function mkInitialState() {
     /** 本地榜滚动跟随：上次渲染时的战功与名次，用于判断平滑滚动 */
     _settleLbLastMerit: /** @type {number|null} */ (null),
     _settleLbLastRank: /** @type {number|null} */ (null),
+    _leaderboardPrimed: false,
     /** 第一章战功档案：{ retries: Record<id,count>, records: Record<id, object> } */
     meritChapter: /** @type {{ retries: Record<string, number>, records: Record<string, any> }} */ ({
       retries: {},
@@ -5516,6 +5866,12 @@ function mkInitialState() {
     brokenFirstShieldCharges: 0,
     /** 夺势突进：本场战斗尚未打出过快攻时可为 true，在 startBattleFromNode 按 perk 初始化 */
     firstQuickAttackBonusPending: false,
+    /** 逼守抢口：重击命中防御目标后，下回合首次快攻额外伤害 */
+    _breakDefenseFollowupPending: false,
+    /** 以守待变：本回合未受伤，则下回合首次快攻额外伤害 */
+    _noDamageNextAttackPending: false,
+    /** 截锋断势：本回合我方快攻打断重击的目标 id（用于本回合对其额外失衡） */
+    _attackInterruptedHeavyTargetId: /** @type {EnemyId|null} */ (null),
     /** 战斗失败后可重试：与 battleSnapshot.nodeId 一致时恢复玩家状态 */
     pendingRetryBattleNodeId: /** @type {string|null} */ (null),
     endingArmed: false,
@@ -5671,6 +6027,169 @@ const BOSS_EXEC_PLAYER_DRAMA_PHASE = "bossExecuteDrama";
 const CH1_MERIT_LEADERBOARD_KEY = "mud_ch1_merit_leaderboard_v1";
 /** 仅写入一次：本地榜填充演示用机器人（丁功～丙功战功随机） */
 const CH1_MERIT_LEADERBOARD_BOT_SEED_KEY = "mud_ch1_merit_lb_bots_seeded_v1";
+const CH1_PLAYER_PROFILE_KEY = "mud_ch1_player_profile_v1";
+
+function loadPlayerProfile() {
+  try {
+    const raw = localStorage.getItem(CH1_PLAYER_PROFILE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || typeof obj !== "object") return null;
+    const name = String(obj.name || "").trim();
+    if (!name) return null;
+    return {
+      name,
+      faction: normalizeFactionKey(obj.faction || "qun"),
+      province: String(obj.province || "").trim(),
+      city: String(obj.city || "").trim(),
+      country: String(obj.country || "").trim(),
+      chapter1Cleared: !!obj.chapter1Cleared,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function savePlayerProfile(state) {
+  try {
+    const payload = {
+      name: String(state?._playerName || "").trim(),
+      faction: normalizeFactionKey(state?._playerFaction || "qun"),
+      province: String(state?._playerProvince || "").trim(),
+      city: String(state?._playerCity || "").trim(),
+      country: String(state?._playerCountry || "").trim(),
+      chapter1Cleared: !!state?._chapter1Cleared,
+      at: Date.now(),
+    };
+    if (!payload.name) return;
+    localStorage.setItem(CH1_PLAYER_PROFILE_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore
+  }
+}
+
+function clearPlayerProfile(state) {
+  try {
+    localStorage.removeItem(CH1_PLAYER_PROFILE_KEY);
+  } catch {
+    // ignore
+  }
+  if (state) {
+    state._playerName = "";
+    state._playerFaction = "qun";
+    state._playerProvince = "";
+    state._playerCity = "";
+    state._playerCountry = "";
+    state._chapter1Cleared = false;
+    state._geoFetched = false;
+    state._geoFetching = false;
+  }
+}
+
+function factionLabel(faction) {
+  const k = String(faction || "").toLowerCase();
+  if (k === "wei") return "魏";
+  if (k === "shu") return "蜀";
+  if (k === "wu") return "吴";
+  return "群雄";
+}
+
+function normalizeFactionKey(faction) {
+  const k = String(faction || "").toLowerCase();
+  if (k === "wei" || k === "shu" || k === "wu" || k === "qun") return k;
+  return "qun";
+}
+
+function geoLabelFromState(state) {
+  const p = String(state?._playerProvince || "").trim();
+  const c = String(state?._playerCity || "").trim();
+  const country = String(state?._playerCountry || "").trim();
+  if (p) return c && c !== p ? `${p}·${c}` : p;
+  if (country) return country;
+  return "未知地区";
+}
+
+async function fetchPlayerGeoByIp() {
+  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const t = ctrl ? window.setTimeout(() => ctrl.abort(), 2600) : null;
+  try {
+    const apis = [
+      {
+        name: "ipwho",
+        url: "https://ipwho.is/",
+        parse: (data) => {
+          if (!data || typeof data !== "object") return null;
+          if (data.success === false) return null;
+          const province = String(data.region || "").trim();
+          const city = String(data.city || "").trim();
+          const country = String(data.country || "").trim();
+          return { province, city, country };
+        },
+      },
+      {
+        name: "ipapi",
+        url: "https://ipapi.co/json/",
+        parse: (data) => {
+          if (!data || typeof data !== "object") return null;
+          const province = String(data.region || data.region_name || "").trim();
+          const city = String(data.city || "").trim();
+          const country = String(data.country_name || data.country || "").trim();
+          return { province, city, country };
+        },
+      },
+    ];
+
+    for (const api of apis) {
+      try {
+        const res = await fetch(api.url, {
+          method: "GET",
+          headers: { accept: "application/json" },
+          signal: ctrl ? ctrl.signal : undefined,
+        });
+        if (!res.ok) continue;
+        const data = await res.json().catch(() => null);
+        const parsed = api.parse(data);
+        if (parsed && (parsed.province || parsed.country)) return parsed;
+      } catch {
+        // try next
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    if (t) window.clearTimeout(t);
+  }
+}
+
+function ensurePlayerGeoFetched(state, ui) {
+  if (!state || state._geoFetched || state._geoFetching) return;
+  state._geoFetching = true;
+  if (ui?.nameDialogGeoHint) {
+    const origin = typeof location !== "undefined" ? String(location.origin || "") : "";
+    const isFile = typeof location !== "undefined" && location.protocol === "file:";
+    ui.nameDialogGeoHint.textContent = isFile
+      ? "正在定位省份…（提示：直接打开 HTML 可能导致跨域被拦截，建议用本地服务器运行）"
+      : "正在定位省份…";
+    // origin 仅用于排查；不展示给用户
+    void origin;
+  }
+  fetchPlayerGeoByIp().then((geo) => {
+    state._geoFetching = false;
+    state._geoFetched = true;
+    if (geo) {
+      state._playerProvince = geo.province || "";
+      state._playerCity = geo.city || "";
+      state._playerCountry = geo.country || "";
+      if (ui?.nameDialogGeoHint) ui.nameDialogGeoHint.textContent = `定位：${geoLabelFromState(state)}`;
+    } else {
+      if (ui?.nameDialogGeoHint) {
+        const isFile = typeof location !== "undefined" && location.protocol === "file:";
+        ui.nameDialogGeoHint.textContent = "定位失败";
+      }
+    }
+  });
+}
 
 /** 与 computeChapterMerit 评级区间一致（总战功已含 MERIT_SCORE_SCALE） */
 function meritGradeLabelFromFinalScore(finalMeritScore) {
@@ -5994,6 +6513,10 @@ function dom() {
   const $ = (id) => document.getElementById(id);
   return {
     pageTitle: $("pageTitle"),
+    battleLogPanelTitle: $("battleLogPanelTitle"),
+    battleLogPanelSubtitle: $("battleLogPanelSubtitle"),
+    settleLogPanelTitle: $("settleLogPanelTitle"),
+    settleLogPanelSubtitle: $("settleLogPanelSubtitle"),
     chapterRoadmap: $("chapterRoadmap"),
     runMeritWidget: $("runMeritWidget"),
     runMeritValue: $("runMeritValue"),
@@ -6015,17 +6538,26 @@ function dom() {
     introOverlay: $("introOverlay"),
     introTop3: $("introTop3"),
     btnIntroDare: $("btnIntroDare"),
+    btnIntroContinue: $("btnIntroContinue"),
+    btnIntroNew: $("btnIntroNew"),
     winOverlay: $("winOverlay"),
     winGrowthEmbed: $("winGrowthEmbed"),
     winGrowthTitle: $("winGrowthTitle"),
     winGrowthSubtitle: $("winGrowthSubtitle"),
     winGrowthOptions: $("winGrowthOptions"),
+    winWarehousePanel: $("winWarehousePanel"),
+    winWarehouseCards: $("winWarehouseCards"),
     btnWinContinue: $("btnWinContinue"),
     btnWinClaim: $("btnWinClaim"),
     nameDialog: $("nameDialog"),
     nameDialogTitle: $("nameDialogTitle"),
     nameDialogSub: $("nameDialogSub"),
+    nameDialogGeoHint: $("nameDialogGeoHint"),
     nameDialogInput: $("nameDialogInput"),
+    nameDialogFactionWei: $("nameDialogFactionWei"),
+    nameDialogFactionShu: $("nameDialogFactionShu"),
+    nameDialogFactionWu: $("nameDialogFactionWu"),
+    nameDialogFactionQun: $("nameDialogFactionQun"),
     nameDialogOk: $("nameDialogOk"),
     btnStartBattle: $("btnStartBattle"),
     btnRetryBattle: $("btnRetryBattle"),
@@ -6054,7 +6586,6 @@ function dom() {
     pStaggerBarWrap: $("pStaggerBarWrap"),
     battleLog: $("battleLog"),
     settleLog: $("settleLog"),
-    settleRankTop3: $("settleRankTop3"),
     settleRank: $("settleRank"),
     tips: $("tips"),
     tipsPanel: $("tipsPanel"),
@@ -6149,8 +6680,10 @@ function renderWarehouseSummaryTable(state) {
   return `<table><tbody>${trs}</tbody></table>`;
 }
 
-function renderWarehouseCardHtml(tag, title, desc) {
-  return `<div class="wh-card"><div class="wh-card-tag">${escapeHtml(tag)}</div><div class="wh-card-title">${escapeHtml(title)}</div><div class="wh-card-desc">${escapeHtml(desc)}</div></div>`;
+function renderWarehouseCardHtml(tag, title, desc, cls = "", extrasLine = "") {
+  const c = cls ? ` wh-card--${escapeHtml(String(cls))}` : "";
+  const ex = extrasLine ? `<div class="wh-card-extras">${escapeHtml(extrasLine)}</div>` : "";
+  return `<div class="wh-card${c}"><div class="wh-card-tag">${escapeHtml(tag)}</div>${ex}<div class="wh-card-title">${escapeHtml(title)}</div><div class="wh-card-desc">${escapeHtml(desc)}</div></div>`;
 }
 
 function renderWarehouseCards(state) {
@@ -6158,21 +6691,23 @@ function renderWarehouseCards(state) {
   const tech = (state.perks || []).map((perk) => perkCardById(perk));
 
   for (const c of tech) {
-    cards.push(renderWarehouseCardHtml("技法", c.title, c.desc));
+    const p = c?.primary || "tech";
+    const tagText = techPrimaryLabel(p);
+    cards.push(renderWarehouseCardHtml(tagText, c.title, c.desc, techTagCssForPerk(c.perk), techExtraTagsLine(c)));
   }
   if (state.orangeLoot) {
-    cards.push(renderWarehouseCardHtml("橙卡", state.orangeLoot.name, state.orangeLoot.desc));
+    cards.push(renderWarehouseCardHtml("橙卡", state.orangeLoot.name, state.orangeLoot.desc, "orange"));
   }
   if (state.lootR3?.drops?.length) {
     const taken = (state.lootR3.drops || []).filter((d) => state.lootR3.taken?.[d.id]);
     for (const d of taken) {
-      cards.push(renderWarehouseCardHtml("装备", d.title, d.desc));
+      cards.push(renderWarehouseCardHtml("装备", d.title, d.desc, "equip"));
     }
   }
   // 属性成长卡
   const attrGrowths = state._attrGrowthLog || [];
   for (const g of attrGrowths) {
-    cards.push(renderWarehouseCardHtml("属性", g.title, g.desc));
+    cards.push(renderWarehouseCardHtml("属性", g.title, g.desc, "attr"));
   }
   if (!cards.length) {
     return `<div class="wh-empty">暂无卡片</div>`;
@@ -6202,6 +6737,9 @@ function renderFlags(targetEl, fighter, isPlayer, opts = {}) {
 }
 
 function render(state, ui) {
+  if (lastSkillTipUiPhase === "fight" && state.phase !== "fight") hideSkillHoverTooltip();
+  lastSkillTipUiPhase = state.phase;
+
   const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
   const node = chapter.nodes[state.nodeId] || chapter.nodes[chapter.startNodeId];
   state.nodeMeta = { type: node.type, title: node.title || "", subtitle: node.subtitle || "" };
@@ -6256,14 +6794,31 @@ function render(state, ui) {
   }
   const showIntro = state.chapterId === "chapter1" && node.id === "B1" && state.phase === "ready" && !state.introDismissed;
   const introNeedsName = showIntro && !String(state._playerName || "").trim();
+  // 标题界面（intro 显示时）：左侧两块面板替换为排行，不影响进入战斗后的布局与日志。
+  if (showIntro) {
+    if (ui.battleLogPanelTitle) ui.battleLogPanelTitle.textContent = "阵营得分排行";
+    if (ui.battleLogPanelSubtitle) ui.battleLogPanelSubtitle.textContent = "魏｜蜀｜吴｜群雄";
+    if (ui.settleLogPanelTitle) ui.settleLogPanelTitle.textContent = "省份得分排名";
+    if (ui.settleLogPanelSubtitle) ui.settleLogPanelSubtitle.textContent = "根据本机记录汇总";
+    if (ui.battleLog) ui.battleLog.innerHTML = buildTitleFactionRankHtml(state);
+    if (ui.settleLog) ui.settleLog.innerHTML = buildTitleProvinceRankHtml(state);
+    // 主界面：移除卡片仓库与新手提示（不只是隐藏，避免残留 DOM/滚动条）
+    if (ui.dividerBeforeBelowActions) ui.dividerBeforeBelowActions.hidden = true;
+    if (ui.belowActionsWrap) ui.belowActionsWrap.hidden = true;
+  } else {
+    if (ui.battleLogPanelTitle) ui.battleLogPanelTitle.textContent = "战斗日志";
+    if (ui.battleLogPanelSubtitle) ui.battleLogPanelSubtitle.textContent = "即时叙述";
+    if (ui.settleLogPanelTitle) ui.settleLogPanelTitle.textContent = "结算日志";
+    if (ui.settleLogPanelSubtitle) ui.settleLogPanelSubtitle.textContent = "战斗结束奖励";
+  }
   if (ui.introOverlay) {
     // 仅开局 B1 的战前（ready）显示；点击「开始战斗」后隐藏
     ui.introOverlay.hidden = !showIntro;
     if (showIntro && ui.introTop3) {
       ui.introTop3.innerHTML = buildIntroTop3Html();
-      // 异步拉取在线排行覆盖本地前三
+      // 异步拉取在线排行覆盖本地前十
       if (typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured()) {
-        OnlineLeaderboard.fetchLeaderboard(3).then((online) => {
+        OnlineLeaderboard.fetchLeaderboard(10).then((online) => {
           if (online && online.length > 0 && ui.introTop3) {
             ui.introTop3.innerHTML = _buildIntroTop3HtmlFromList(online);
           }
@@ -6271,7 +6826,18 @@ function render(state, ui) {
       }
     }
   }
-  if (ui.btnIntroDare) ui.btnIntroDare.hidden = !showIntro || !introNeedsName;
+  const hasProfileName = !!String(state._playerName || "").trim();
+  const canShowProfileButtons = !!(hasProfileName && state._chapter1Cleared);
+  // intro 下只允许出现「我敢！」或「继续/新角色」，不显示“开始战斗”
+  if (ui.btnIntroDare) ui.btnIntroDare.hidden = !(showIntro && !canShowProfileButtons);
+  if (ui.btnIntroContinue) {
+    const show = showIntro && canShowProfileButtons;
+    ui.btnIntroContinue.hidden = !show;
+    if (show) ui.btnIntroContinue.textContent = `以“${String(state._playerName || "").trim()}”继续战斗`;
+  }
+  if (ui.btnIntroNew) {
+    ui.btnIntroNew.hidden = !(showIntro && canShowProfileButtons);
+  }
   if (ui.btnWinContinue) {
     const isBattle = node.type === "B" || node.type === "E";
     const showWinBtn = isBattle && state.phase === "win" && state.winReady;
@@ -6285,10 +6851,13 @@ function render(state, ui) {
   /** 仅进入战斗后（含进行中/结算动画/胜败）才显示 HP/失衡与行动区；战前与非战斗节点一律不显示 */
   const isWinScreen = showWinOverlayPanel;
   const showCombatBody = isBattleNode && state.phase !== "ready" && !isWinScreen;
+  if (ui.winWarehousePanel) ui.winWarehousePanel.hidden = !isWinScreen;
+  if (ui.winWarehouseCards) ui.winWarehouseCards.innerHTML = renderWarehouseCards(state);
+  if (ui.tipsPanel) ui.tipsPanel.hidden = !!isWinScreen;
   // 「开始战斗」槽位：战中用不可见占位保持与战前相同文档流高度，使按键/相克/新手绝对位置一致
   if (ui.preFightStartWrap) {
     const winScreen = isWinScreen;
-    if (!isBattleNode || winScreen || introNeedsName) {
+    if (!isBattleNode || winScreen || showIntro) {
       ui.preFightStartWrap.hidden = true;
       ui.preFightStartWrap.classList.remove("pre-fight-start--placeholder");
     } else {
@@ -6299,9 +6868,10 @@ function render(state, ui) {
       );
     }
   }
-  if (ui.btnStartBattle) ui.btnStartBattle.hidden = !(isBattleNode && state.phase === "ready" && !introNeedsName);
+  if (ui.btnStartBattle) ui.btnStartBattle.hidden = !(isBattleNode && state.phase === "ready" && !showIntro);
   if (ui.btnRetryBattle) ui.btnRetryBattle.hidden = !(isBattleNode && state.phase === "lose");
   if (ui.battleInfoPanel) ui.battleInfoPanel.classList.toggle("battle-info-panel--ready", inReady);
+  if (ui.battleInfoPanel) ui.battleInfoPanel.classList.toggle("battle-info-panel--intro-title", !!showIntro);
   // B1：乙位未上场时缩小其卡片
   if (ui.battleInfoPanel) {
     const eoBHere = state.enemies.find((x) => x.id === "B");
@@ -6323,11 +6893,15 @@ function render(state, ui) {
   // 必须在可能 early-return 的成长分支之前同步，否则非战斗/成长界面仍会露出占位血条
   if (!inReady) {
     setCombatBodyVisibility(ui, showCombatBody);
-    // 胜利/成长界面：只隐藏敌我卡片与行动描述，保留技能按钮行、卡片仓库与新手提示
-    if (isWinScreen || showGrowth) {
+    // 成长界面：保留下方卡片仓库/新手提示；胜利界面改由胜利层专属仓库展示
+    if (showGrowth) {
       if (ui.actionsWrap) ui.actionsWrap.hidden = false;
       if (ui.dividerBeforeBelowActions) ui.dividerBeforeBelowActions.hidden = false;
       if (ui.belowActionsWrap) ui.belowActionsWrap.hidden = false;
+    } else if (isWinScreen) {
+      if (ui.actionsWrap) ui.actionsWrap.hidden = false;
+      if (ui.dividerBeforeBelowActions) ui.dividerBeforeBelowActions.hidden = true;
+      if (ui.belowActionsWrap) ui.belowActionsWrap.hidden = true;
     }
   }
 
@@ -6496,14 +7070,21 @@ function render(state, ui) {
   if (inReady) {
     clearBattleEntranceB1(state, ui);
     if (ui.turnInfo) ui.turnInfo.textContent = "—";
-    if (ui.actionDesc) {
-      ui.actionDesc.textContent = "—";
-      ui.actionDesc.hidden = false;
+    if (showIntro) {
+      if (ui.actionDesc) ui.actionDesc.hidden = true;
+      if (ui.actionsWrap) ui.actionsWrap.hidden = true;
+      if (ui.dividerBeforeBelowActions) ui.dividerBeforeBelowActions.hidden = true;
+      if (ui.belowActionsWrap) ui.belowActionsWrap.hidden = true;
+    } else {
+      if (ui.actionDesc) {
+        ui.actionDesc.innerHTML = toRichHtml("—");
+        ui.actionDesc.hidden = false;
+      }
+      if (ui.actionsWrap) ui.actionsWrap.hidden = false;
+      if (ui.dividerBeforeBelowActions) ui.dividerBeforeBelowActions.hidden = false;
+      if (ui.belowActionsWrap) ui.belowActionsWrap.hidden = false;
     }
     setFighterSlotsVisibility(ui, true);
-    if (ui.actionsWrap) ui.actionsWrap.hidden = false;
-    if (ui.dividerBeforeBelowActions) ui.dividerBeforeBelowActions.hidden = false;
-    if (ui.belowActionsWrap) ui.belowActionsWrap.hidden = false;
     // 键下说明不再显示（包含数值）
     if (ui.actHintAttack) ui.actHintAttack.innerHTML = "";
     if (ui.actHintHeavy) ui.actHintHeavy.innerHTML = "";
@@ -6519,8 +7100,7 @@ function render(state, ui) {
     ui.actExecuteA.disabled = true;
     ui.actExecuteB.disabled = true;
     if (ui.actExecuteC) ui.actExecuteC.disabled = true;
-    // 战前也同步仓库与汇总（否则「再玩一局」等重置 state 后仍会残留上一屏的卡片 DOM）
-    if (ui.playerSummary) ui.playerSummary.innerHTML = renderWarehouseSummaryTable(state);
+    // 战前也同步仓库（否则「再玩一局」等重置 state 后仍会残留上一屏的卡片 DOM）
     if (ui.warehouseCards) ui.warehouseCards.innerHTML = renderWarehouseCards(state);
     // stop here (avoid rendering meters on placeholder enemies)
     return;
@@ -6743,8 +7323,7 @@ function render(state, ui) {
           )}</span>`;
   }
 
-  // 总加成汇总：放到我方卡片右侧
-  if (ui.playerSummary) ui.playerSummary.innerHTML = renderWarehouseSummaryTable(state);
+  // 总加成汇总 UI 已移除：改为技能图标面板
   // 卡片仓库：只放已获得卡片
   if (ui.warehouseCards) {
     ui.warehouseCards.innerHTML = renderWarehouseCards(state);
@@ -6755,8 +7334,8 @@ function render(state, ui) {
     }
   }
 
-  // action description
-  ui.actionDesc.textContent = state.actionDesc || "—";
+  // action description (rich tokens: {g}/{r}/{o})
+  ui.actionDesc.innerHTML = toRichHtml(state.actionDesc || "—");
 
   // tips
   ui.tips.innerHTML = toRichHtml((state.tips || []).join("\n") || "—");
@@ -7354,6 +7933,12 @@ function finish(state, ui, outcome) {
     restorePlayerAfterBattleWin(state);
     state.settleLog.push("战后休整：{g}体力已回满，失衡与破绽已清除。{/g}");
 
+    // 第一章通关标记：用于回到主界面显示“继续战斗/新角色”两按钮
+    if (state.chapterId === "chapter1" && node.id === "BOSS") {
+      state._chapter1Cleared = true;
+      savePlayerProfile(state);
+    }
+
     // Boss 战不再掉落橙卡；通关后与常战相同弹出「战斗胜利」，点击「通关结算」进入 S1。
 
     // 胜利后：先停留在战斗信息页，等特效结束后再弹出“战斗胜利”
@@ -7614,7 +8199,16 @@ function buildRGrowthPickOptions(state, node) {
     const offer = ensureR1TechOffer(state);
     return offer.map((perk) => {
       const c = perkCardById(perk);
-      return { id: perk, title: c.title, desc: c.desc, perk, next: "B2" };
+      return {
+        id: perk,
+        title: c.title,
+        desc: c.desc,
+        perk,
+        kicker: techTagKickerForPerk(perk),
+        tagLine: techExtraTagsLine(c),
+        cardClass: `pick-card--${techTagCssForPerk(perk)}`,
+        next: "B2",
+      };
     });
   }
   if (node.id === "R2_STAT") {
@@ -7627,6 +8221,7 @@ function buildRGrowthPickOptions(state, node) {
         title: `属性：${c.title}`,
         desc: c.desc,
         _stat: c._stat,
+        kicker: "属性",
         next: "E1",
       }));
   }
@@ -7640,6 +8235,7 @@ function buildRGrowthPickOptions(state, node) {
         title: "全部领取",
         desc: unclaimed.map((d) => `${d.title}（${d.desc}）`).join("；"),
         _equipAll: unclaimed,
+        kicker: "装备",
       });
     } else {
       for (const d of unclaimed) {
@@ -7648,6 +8244,7 @@ function buildRGrowthPickOptions(state, node) {
           title: `拾取：${d.title}`,
           desc: d.desc,
           _equip: d,
+          kicker: "装备",
         });
       }
     }
@@ -7660,9 +8257,29 @@ function buildRGrowthPickOptions(state, node) {
     return merged
       .map((k) => {
         const a = ATTR_CARDS.find((x) => x.id === k);
-        if (a) return { kind: "attr", id: `attr_${a.id}`, title: `属性：${a.title}`, desc: a.desc, _stat: a._stat, next: "N4" };
+        if (a)
+          return {
+            kind: "attr",
+            id: `attr_${a.id}`,
+            title: `属性：${a.title}`,
+            desc: a.desc,
+            _stat: a._stat,
+            kicker: "属性",
+            next: "N4",
+          };
         const t = perkCardById(k);
-        if (t && t.perk) return { kind: "tech", id: t.perk, title: t.title, desc: t.desc, perk: t.perk, next: "N4" };
+        if (t && t.perk)
+          return {
+            kind: "tech",
+            id: t.perk,
+            title: t.title,
+            desc: t.desc,
+            perk: t.perk,
+            kicker: techTagKickerForPerk(t.perk),
+            tagLine: techExtraTagsLine(t),
+            cardClass: `pick-card--${techTagCssForPerk(t.perk)}`,
+            next: "N4",
+          };
         return null;
       })
       .filter(Boolean);
@@ -7689,16 +8306,19 @@ function renderGrowthAsCards(state, ui, chapter, node, opts, optionsMount) {
 
     const card = document.createElement("button");
     card.type = "button";
-    card.className = revealed ? "pick-card" : "pick-card is-facedown";
+    const tagCls = opt?.cardClass ? String(opt.cardClass) : "";
+    card.className = revealed ? `pick-card ${tagCls}`.trim() : `pick-card ${tagCls} is-facedown`.trim();
     if (selectedId === opt.id) card.classList.add("is-selected");
     card.dataset.pickId = opt.id;
+    const tagLine = opt.tagLine ? `<div class="pick-card-tags">${escapeHtml(String(opt.tagLine))}</div>` : "";
     card.innerHTML = `
       <div class="pick-card-inner">
         <div class="pick-card-face pick-card-back">
           <div class="pick-card-back-title">未揭示</div>
         </div>
         <div class="pick-card-face pick-card-front">
-          <div class="pick-card-kicker">选择</div>
+          <div class="pick-card-kicker">${escapeHtml(opt.kicker || "选择")}</div>
+          ${tagLine}
           <div class="pick-card-title">${escapeHtml(opt.title || "成长")}</div>
           <div class="pick-card-desc">${escapeHtml(opt.desc || "")}</div>
         </div>
@@ -7797,6 +8417,9 @@ function onPlayerAction(state, ui, action, opts = {}) {
   if (state.player.hp <= 0) return;
   if (!state.enemies.some((x) => !x.waitingToEnter && x.fighter.hp > 0)) return;
   if (action === "rest" && (state.player.restCooldownLeft || 0) > 0) return;
+
+  // 每回合重置“快攻打断重击”标记（T15）
+  state._attackInterruptedHeavyTargetId = null;
 
   const bundle = opts.bundle;
   const restEarly = action === "rest" && bundle?._restEarlyHeal;
@@ -7925,6 +8548,13 @@ function onPlayerAction(state, ui, action, opts = {}) {
       meritLogPlayerExecute(state, tgt, clinchKill);
       executed[targetId] = true;
       details.push(`→ {o}你处决了${tgt.fighter.name}（直接击杀）。{/o}`);
+      // T14：击杀敌人后自己失衡 -1（处决也算击杀）
+      if (state.perks?.includes("perk_kill_reduce_stagger")) {
+        const before = state.player.stagger;
+        changeStagger(state.player, -1);
+        const reduced = before - state.player.stagger;
+        if (reduced > 0) details.push("→ 斩阵夺势：击杀敌人，你的失衡 -1。");
+      }
       // 即时战功：处决类型（按战斗 id 判定精英）
       if (tgt.archetype === "boss") meritTurn.executeKind = "execute_boss";
       else if ((state.battle?.battleNodeId || state.nodeId) === "E1") meritTurn.executeKind = "execute_elite";
@@ -8089,6 +8719,57 @@ function onPlayerAction(state, ui, action, opts = {}) {
       }
     }
     applyBlockReliefPerkAfterEnemyPhase(state, details, blockSuccessCount, ui, meterFloatSnap);
+
+    // ===== 第二批技法卡：敌方阶段后触发（T17-T22） =====
+    // T17：防御成功承受攻击后，自己失衡 -1
+    if (state.perks?.includes("perk_defend_relief")) {
+      if (action === "defend" && !meritTurn.defendFailedThisTurn && damageTakenThisTurn > 0) {
+        const before = state.player.stagger;
+        changeStagger(state.player, -1);
+        const reduced = before - state.player.stagger;
+        if (reduced > 0) details.push("→ 定步卸力：防御成功承受攻击后，你的失衡 -1。");
+        pushMeterFloatsAndAdvanceSnap(state, ui, meterFloatSnap);
+      }
+    }
+    // T18：盾反成功后恢复生命
+    if (state.perks?.includes("perk_block_heal")) {
+      if (action === "block" && anyBlockSuccess) {
+        const healed = applyHeal(state.player, ns(1));
+        if (healed > 0) {
+          details.push(`→ 盾后回气：盾反成功，{g}HP+${healed}{/g}。`);
+          pushMeterFloatsAndAdvanceSnap(state, ui, meterFloatSnap);
+        }
+      }
+    }
+    // T19：调息成功（未受伤）额外失衡 -1
+    if (state.perks?.includes("perk_rest_extra_stagger_down")) {
+      if (action === "rest" && damageTakenThisTurn === 0) {
+        const before = state.player.stagger;
+        changeStagger(state.player, -1);
+        const reduced = before - state.player.stagger;
+        if (reduced > 0) {
+          details.push("→ 静息归元：调息成功，额外失衡 -1。");
+          pushMeterFloatsAndAdvanceSnap(state, ui, meterFloatSnap);
+        }
+      }
+    }
+    // T20：HP<30% 且防御成功后恢复生命
+    if (state.perks?.includes("perk_lowhp_defend_heal")) {
+      const lowHp =
+        playerHpAtEnemyPhaseStart > 0 && state.player.hpMax > 0 && playerHpAtEnemyPhaseStart / state.player.hpMax < 0.3;
+      if (lowHp && action === "defend" && damageTakenThisTurn === 0 && !meritTurn.defendFailedThisTurn) {
+        const healed = applyHeal(state.player, ns(1));
+        if (healed > 0) {
+          details.push(`→ 危桥守命：低血防御成功，{g}HP+${healed}{/g}。`);
+          pushMeterFloatsAndAdvanceSnap(state, ui, meterFloatSnap);
+        }
+      }
+    }
+    // T22：本回合未受伤 → 下回合第一次快攻额外伤害
+    if (state.perks?.includes("perk_no_damage_next_attack")) {
+      if (damageTakenThisTurn === 0) state._noDamageNextAttackPending = true;
+    }
+
     // 头目处决玩家：本回合敌方阶段结束时仍为破绽且场上有 canExecutePlayer 的头目 → 分四段延时演出后处决
     const execBoss = findBossExecutePlayerExecutor(state);
     if (state.player.broken && state.player.hp > 0 && execBoss) {
@@ -8146,6 +8827,8 @@ function onPlayerAction(state, ui, action, opts = {}) {
   meritTurn.anyBlockSuccess = anyBlockSuccess;
   meritTurn.selfBrokenThisTurn = !playerBrokenAtActionStart && !!state.player.broken;
   meritTurn.justRecoveredFromBrokenNext = playerBrokenAtActionStart && !state.player.broken;
+  // 清理本回合“快攻打断重击”的标记（用于 T15）
+  state._attackInterruptedHeavyTargetId = null;
 
   // 补位：若有后备敌人，填充倒下的槽位（用于“守点战”）
   if (state.battle && Array.isArray(state.battle.reserve) && state.battle.reserve.length) {
@@ -8441,6 +9124,7 @@ function boot() {
 
   function hardRestart() {
     cancelResolutionAnimation(ui);
+    resetOnlineLeaderboardCache();
     if (state._winKillRevealTimer) {
       clearTimeout(state._winKillRevealTimer);
       state._winKillRevealTimer = null;
@@ -8515,17 +9199,52 @@ function boot() {
       ui.nameDialogSub.textContent = mode === "intro" ? "请先报上大名：" : "大人请输入昵称：";
     }
     if (ui.nameDialogOk) {
-      ui.nameDialogOk.textContent = mode === "intro" ? "应战" : "确定";
+      ui.nameDialogOk.textContent = mode === "intro" ? "进入第一场战斗" : "确定";
     }
     if (ui.nameDialogInput) {
       ui.nameDialogInput.value = "";
-      ui.nameDialogInput.placeholder = "最多12个字";
+      ui.nameDialogInput.placeholder = "最多6个字";
     }
+    // 阵营：默认群雄；若已有选择则保留
+    const f = normalizeFactionKey(state._playerFaction || "qun");
+    if (ui.nameDialogFactionWei) ui.nameDialogFactionWei.checked = f === "wei";
+    if (ui.nameDialogFactionShu) ui.nameDialogFactionShu.checked = f === "shu";
+    if (ui.nameDialogFactionWu) ui.nameDialogFactionWu.checked = f === "wu";
+    if (ui.nameDialogFactionQun) ui.nameDialogFactionQun.checked = f === "qun";
+    if (ui.nameDialogGeoHint) ui.nameDialogGeoHint.textContent = state._geoFetched ? `定位：${geoLabelFromState(state)}` : "将根据 IP 自动定位省份（国外也可）。";
+    ensurePlayerGeoFetched(state, ui);
     ui.nameDialog.hidden = false;
     ui.nameDialogInput?.focus();
   }
   if (ui.btnIntroDare) {
     ui.btnIntroDare.addEventListener("click", () => {
+      openNameDialog("intro");
+    });
+  }
+  if (ui.btnIntroContinue) {
+    ui.btnIntroContinue.addEventListener("click", () => {
+      // 继续战斗：使用已保存的玩家信息，不再弹出输入框
+      const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
+      const nodeId = state.nodeId;
+      const node = chapter.nodes[nodeId] || chapter.nodes[chapter.startNodeId];
+      const isBattle = node.type === "B" || node.type === "E";
+      state.introDismissed = true;
+      if (isBattle) {
+        try {
+          startBattleFromNode(state, node);
+        } catch (e) {
+          const msg = e && typeof e === "object" && "message" in e ? String(e.message) : String(e);
+          state.settleLog.push(`{r}开始战斗失败：${msg}{/r}`);
+        }
+      }
+      render(state, ui);
+    });
+  }
+  if (ui.btnIntroNew) {
+    ui.btnIntroNew.addEventListener("click", () => {
+      // 新角色：清空档案并重新输入
+      clearPlayerProfile(state);
+      render(state, ui);
       openNameDialog("intro");
     });
   }
@@ -8557,10 +9276,32 @@ function boot() {
     ui.nameDialogOk.addEventListener("click", () => {
       const name = (ui.nameDialogInput?.value || "").trim() || "无名侠客";
       state._playerName = name;
+      const faction =
+        (ui.nameDialogFactionWei && ui.nameDialogFactionWei.checked && "wei") ||
+        (ui.nameDialogFactionShu && ui.nameDialogFactionShu.checked && "shu") ||
+        (ui.nameDialogFactionWu && ui.nameDialogFactionWu.checked && "wu") ||
+        "qun";
+      state._playerFaction = normalizeFactionKey(faction);
+      // 若还没定位，后台继续拉取；不阻塞进入战斗
+      ensurePlayerGeoFetched(state, ui);
+      savePlayerProfile(state);
       if (ui.nameDialog) ui.nameDialog.hidden = true;
       const mode = state._nameDialogMode || "postBoss";
       state._nameDialogMode = null;
       if (mode === "intro") {
+        const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
+        const nodeId = state.nodeId;
+        const node = chapter.nodes[nodeId] || chapter.nodes[chapter.startNodeId];
+        const isBattle = node.type === "B" || node.type === "E";
+        state.introDismissed = true;
+        if (isBattle) {
+          try {
+            startBattleFromNode(state, node);
+          } catch (e) {
+            const msg = e && typeof e === "object" && "message" in e ? String(e.message) : String(e);
+            state.settleLog.push(`{r}开始战斗失败：${msg}{/r}`);
+          }
+        }
         render(state, ui);
         return;
       }
@@ -8568,6 +9309,14 @@ function boot() {
     });
     ui.nameDialogInput?.addEventListener("keydown", (e) => {
       if (e.key === "Enter") ui.nameDialogOk.click();
+    });
+    // 取名规则：最多 6 个字符
+    ui.nameDialogInput?.addEventListener("input", () => {
+      const el = ui.nameDialogInput;
+      if (!el) return;
+      const raw = String(el.value || "");
+      const limited = Array.from(raw).slice(0, 6).join("");
+      if (limited !== raw) el.value = limited;
     });
   }
   if (ui.btnRetryBattle) {
@@ -8629,6 +9378,38 @@ function boot() {
   ui.actDefend.addEventListener("click", () => queuePlayerAction(state, ui, "defend"));
   ui.actBlock.addEventListener("click", () => queuePlayerAction(state, ui, "block"));
   ui.actRest.addEventListener("click", () => queuePlayerAction(state, ui, "rest"));
+  // 悬浮说明：延迟 0.5s 显示独立 tooltip（不占用顶部 actionDesc）
+  const skillHoverBinds = [
+    [ui.actAttack, "attack"],
+    [ui.actHeavy, "heavy"],
+    [ui.actDefend, "defend"],
+    [ui.actBlock, "block"],
+    [ui.actRest, "rest"],
+  ];
+  for (const [btn, action] of skillHoverBinds) {
+    if (!btn) continue;
+    btn.addEventListener("mouseenter", () => armSkillHoverTooltip(state, btn, action));
+    btn.addEventListener("focus", () => armSkillHoverTooltip(state, btn, action));
+    btn.addEventListener("mouseleave", () => hideSkillHoverTooltip());
+    btn.addEventListener("blur", () => hideSkillHoverTooltip());
+  }
+
+  // 滚动/缩放/点击别处时收起 tooltip（避免“粘”在屏幕上）
+  window.addEventListener(
+    "scroll",
+    () => {
+      hideSkillHoverTooltip();
+    },
+    true,
+  );
+  window.addEventListener("resize", () => hideSkillHoverTooltip(), { passive: true });
+  document.addEventListener("pointerdown", (e) => {
+    const t = e.target;
+    if (!(t instanceof Element)) return;
+    if (t.closest(".skill-hover-tooltip")) return;
+    if (t.closest(".skill-icon")) return;
+    hideSkillHoverTooltip();
+  });
   function bindExecuteOnCard(btn, id) {
     btn.addEventListener("click", (ev) => {
       ev.stopPropagation();

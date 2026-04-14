@@ -33,24 +33,23 @@
         <section class="left-col">
           <section class="panel">
             <div class="panel-header">
-              <div class="panel-title">战斗日志</div>
-              <div class="panel-subtitle">即时叙述</div>
+              <div id="battleLogPanelTitle" class="panel-title">战斗日志</div>
+              <div id="battleLogPanelSubtitle" class="panel-subtitle">即时叙述</div>
             </div>
             <div id="battleLog" class="scrollbox" aria-live="polite"></div>
           </section>
 
           <section class="panel panel--settle-split">
             <div class="panel-header">
-              <div class="panel-title">结算日志</div>
-              <div class="panel-subtitle">战斗结束奖励</div>
+              <div id="settleLogPanelTitle" class="panel-title">结算日志</div>
+              <div id="settleLogPanelSubtitle" class="panel-subtitle">战斗结束奖励</div>
             </div>
             <div class="settle-split">
               <div id="settleLog" class="scrollbox settle-log-half"></div>
               <div class="settle-rank-half">
                 <div class="settle-rank-head">
-                  <div class="settle-rank-title">英雄榜</div>
+                  <div class="settle-rank-title">天下排行榜</div>
                 </div>
-                <div id="settleRankTop3" class="settle-rank-top3" aria-label="英雄榜前三"></div>
                 <div id="settleRank" class="scrollbox settle-rank-list"></div>
               </div>
             </div>
@@ -87,11 +86,13 @@
                   <p>这是一款三国题材的 MUD / 文字战斗原型，核心玩法是根据敌人的意图，在“快攻、重击、防御、盾反、调息”之间做选择，通过打出失衡与处决赢下战斗。</p>
                   <div class="intro-sub">你的目标</div>
                   <p>完成第一章《边寨首功》。<br>在通关的前提下，尽量用更少的回合、更高的剩余血量、更少的破绽次数，拿到更高战功，并进入排行榜。</p>
-                  <div class="intro-sub">天下英雄榜（前三）</div>
-                  <div id="introTop3" class="intro-top3" aria-label="英雄榜前三"></div>
+                  <div class="intro-sub">天下英雄榜（前十）</div>
+                  <div id="introTop3" class="intro-top3" aria-label="英雄榜前十"></div>
                   <div class="intro-dare">你敢来挑战天下英雄榜吗？</div>
                   <div class="intro-dare-actions">
-                    <button id="btnIntroDare" class="btn btn-offense intro-dare-btn" type="button">敢</button>
+                    <button id="btnIntroDare" class="btn btn-offense intro-dare-btn" type="button">我敢！</button>
+                    <button id="btnIntroContinue" class="btn btn-secondary intro-dare-btn" type="button" hidden>以“侠士”继续战斗</button>
+                    <button id="btnIntroNew" class="btn btn-secondary intro-dare-btn" type="button" hidden>以新角色开始游戏</button>
                   </div>
                 </div>
               </div>
@@ -107,6 +108,10 @@
                   <button id="btnWinContinue" class="btn win-claim" type="button">领取奖励</button>
                   <button id="btnWinClaim" class="btn win-claim" type="button">进入战功名人堂</button>
                 </div>
+                <div id="winWarehousePanel" class="win-warehouse-panel" hidden>
+                  <div class="win-warehouse-title">卡片仓库</div>
+                  <div id="winWarehouseCards" class="win-warehouse-cards"></div>
+                </div>
                 <div id="winGrowthEmbed" class="win-growth-embed" hidden>
                   <div class="win-growth-title" id="winGrowthTitle"></div>
                   <div class="win-growth-sub" id="winGrowthSubtitle"></div>
@@ -118,7 +123,17 @@
               <div class="name-dialog">
                 <div id="nameDialogTitle" class="name-dialog-title">请输入大名</div>
                 <div id="nameDialogSub" class="name-dialog-sub">大人请输入昵称：</div>
-                <input id="nameDialogInput" class="name-dialog-input" type="text" maxlength="12" placeholder="最多12个字" />
+                <div class="name-dialog-row">
+                  <div class="name-dialog-row__label">阵营</div>
+                  <div class="name-dialog-factions" role="radiogroup" aria-label="选择阵营">
+                    <label class="name-dialog-faction faction-pill--wei"><input type="radio" name="faction" id="nameDialogFactionWei" value="wei" /><span class="faction--wei">魏</span></label>
+                    <label class="name-dialog-faction faction-pill--shu"><input type="radio" name="faction" id="nameDialogFactionShu" value="shu" /><span class="faction--shu">蜀</span></label>
+                    <label class="name-dialog-faction faction-pill--wu"><input type="radio" name="faction" id="nameDialogFactionWu" value="wu" /><span class="faction--wu">吴</span></label>
+                    <label class="name-dialog-faction faction-pill--qun"><input type="radio" name="faction" id="nameDialogFactionQun" value="qun" checked /><span class="faction--qun">群雄</span></label>
+                  </div>
+                </div>
+                <div id="nameDialogGeoHint" class="name-dialog-geo-hint" aria-live="polite"></div>
+                <input id="nameDialogInput" class="name-dialog-input" type="text" maxlength="6" placeholder="最多6个字" />
                 <div class="name-dialog-actions">
                   <button id="nameDialogOk" class="btn btn-offense" type="button">确定</button>
                 </div>
@@ -252,9 +267,19 @@
                 </div>
                 <div id="pFlags" class="flags"></div>
               </div>
-              <section class="mini-panel player-summary-panel" aria-label="总加成汇总">
-                <div class="mini-title">总加成汇总</div>
-                <div id="playerSummary" class="player-summary"></div>
+              <section class="mini-panel skill-icons-panel" aria-label="技能">
+                <div class="mini-title">技能</div>
+                <div class="skill-icons">
+                  <div class="skill-icons-row">
+                    <button id="actAttack" class="skill-icon skill-icon--attack btn btn-quick" type="button">快攻</button>
+                    <button id="actHeavy" class="skill-icon skill-icon--heavy btn btn-heavy" type="button">重击</button>
+                  </div>
+                  <div class="skill-icons-row">
+                    <button id="actDefend" class="skill-icon skill-icon--defend btn btn-defend" type="button">防御</button>
+                    <button id="actBlock" class="skill-icon skill-icon--block btn btn-block" type="button">盾反</button>
+                    <button id="actRest" class="skill-icon skill-icon--rest btn btn-rest" type="button">调息</button>
+                  </div>
+                </div>
               </section>
             </div>
 
@@ -269,23 +294,23 @@
 
             <div id="actionsWrap" class="actions">
               <div class="action-cell">
-                <button id="actAttack" class="btn btn-quick" type="button">快攻</button>
+                <button id="actAttackOld" class="btn btn-quick" type="button">快攻</button>
                 <div id="actHintAttack" class="action-effect" aria-hidden="true"></div>
               </div>
               <div class="action-cell">
-                <button id="actHeavy" class="btn btn-heavy" type="button">重击</button>
+                <button id="actHeavyOld" class="btn btn-heavy" type="button">重击</button>
                 <div id="actHintHeavy" class="action-effect" aria-hidden="true"></div>
               </div>
               <div class="action-cell">
-                <button id="actDefend" class="btn btn-defend" type="button">防御</button>
+                <button id="actDefendOld" class="btn btn-defend" type="button">防御</button>
                 <div id="actHintDefend" class="action-effect" aria-hidden="true"></div>
               </div>
               <div class="action-cell">
-                <button id="actBlock" class="btn btn-block" type="button">盾反</button>
+                <button id="actBlockOld" class="btn btn-block" type="button">盾反</button>
                 <div id="actHintBlock" class="action-effect" aria-hidden="true"></div>
               </div>
               <div class="action-cell">
-                <button id="actRest" class="btn btn-rest" type="button">调息</button>
+                <button id="actRestOld" class="btn btn-rest" type="button">调息</button>
                 <div id="actHintRest" class="action-effect" aria-hidden="true"></div>
               </div>
             </div>
