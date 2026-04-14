@@ -1456,10 +1456,12 @@ function buildHeroRankRowHtml(e, rank) {
           ? `<span class="medal medal--bronze" aria-hidden="true"></span>`
           : "";
   const score = e.finalMerit ?? 0;
+  const region = e.province ? escapeHtml(e.province + (e.city && e.city !== e.province ? "·" + e.city : "")) : "";
+  const regionTag = region && e.kind !== "live" ? `<span class="rank-region" style="opacity:0.5;font-size:0.8em;margin-left:3px">${region}</span>` : "";
   const name =
     e.kind === "live"
       ? `${escapeHtml(e.name || "你")}<span class="rank-live-badge">本局</span>`
-      : escapeHtml(e.name || "—");
+      : escapeHtml(e.name || "—") + regionTag;
   const gradeHtml =
     e.kind === "live"
       ? `<span class="rank-live-pill" title="按当前累计战功与历史「总战功」对比，非通关结算评级">本局预览</span>`

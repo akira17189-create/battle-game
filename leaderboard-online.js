@@ -8,6 +8,34 @@ const OnlineLeaderboard = (() => {
   let _geoCache = null;
   let _geoFetching = false;
 
+  /** 英文省份→中文映射 */
+  const PROVINCE_ZH = {
+    "Beijing":"北京","Shanghai":"上海","Tianjin":"天津","Chongqing":"重庆",
+    "Guangdong":"广东","Zhejiang":"浙江","Jiangsu":"江苏","Shandong":"山东",
+    "Henan":"河南","Hebei":"河北","Sichuan":"四川","Hunan":"湖南","Hubei":"湖北",
+    "Fujian":"福建","Anhui":"安徽","Jiangxi":"江西","Shanxi":"山西","Shaanxi":"陕西",
+    "Liaoning":"辽宁","Jilin":"吉林","Heilongjiang":"黑龙江","Yunnan":"云南",
+    "Guizhou":"贵州","Gansu":"甘肃","Qinghai":"青海","Hainan":"海南",
+    "Guangxi":"广西","Inner Mongolia":"内蒙古","Tibet":"西藏","Xinjiang":"新疆",
+    "Ningxia":"宁夏","Hong Kong":"香港","Macau":"澳门","Taiwan":"台湾",
+  };
+  /** 英文城市→中文映射（主要城市） */
+  const CITY_ZH = {
+    "Beijing":"北京","Shanghai":"上海","Guangzhou":"广州","Shenzhen":"深圳",
+    "Chengdu":"成都","Hangzhou":"杭州","Wuhan":"武汉","Chongqing":"重庆",
+    "Nanjing":"南京","Tianjin":"天津","Suzhou":"苏州","Xi'an":"西安",
+    "Zhengzhou":"郑州","Changsha":"长沙","Dongguan":"东莞","Qingdao":"青岛",
+    "Shenyang":"沈阳","Ningbo":"宁波","Kunming":"昆明","Dalian":"大连",
+    "Xiamen":"厦门","Fuzhou":"福州","Hefei":"合肥","Jinan":"济南",
+    "Wenzhou":"温州","Foshan":"佛山","Nanning":"南宁","Changchun":"长春",
+    "Harbin":"哈尔滨","Shijiazhuang":"石家庄","Guiyang":"贵阳","Nanchang":"南昌",
+    "Lanzhou":"兰州","Wuxi":"无锡","Zhuhai":"珠海","Huizhou":"惠州",
+    "Zhongshan":"中山","Taiyuan":"太原","Urumqi":"乌鲁木齐","Hohhot":"呼和浩特",
+    "Lhasa":"拉萨","Xining":"西宁","Yinchuan":"银川","Haikou":"海口",
+    "Hong Kong":"香港","Macau":"澳门","Taipei":"台北",
+  };
+  function toZh(eng, map) { return map[eng] || eng; }
+
   /** 检查 Supabase 是否已配置 */
   function isConfigured() {
     return (
@@ -38,14 +66,17 @@ const OnlineLeaderboard = (() => {
     if (_geoFetching) return { province: "", city: "" };
     _geoFetching = true;
     try {
-      const res = await fetch("http://ip-api.com/json/?lang=zh-CN&fields=regionName,city", { mode: "cors" });
+      // 优先用 HTTPS 兼容的 API（GitHub Pages 等 HTTPS 站点需要）
+      const res = await fetch("https://ipwho.is/?lang=zh-CN");
       if (res.ok) {
         const data = await res.json();
-        _geoCache = {
-          province: data.regionName || "",
-          city: data.city || "",
-        };
-        return _geoCache;
+        if (data.success !== false) {
+          _geoCache = {
+            province: toZh(data.region || "", PROVINCE_ZH),
+            city: toZh(data.city || "", CITY_ZH),
+          };
+          return _geoCache;
+        }
       }
     } catch {
       /* 网络异常忽略 */
