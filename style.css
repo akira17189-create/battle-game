@@ -2170,17 +2170,20 @@ body{
   opacity:1;
   transition:opacity .15s ease 1s;
 }
-.action-effect .action-effect-lead{
+.action-effect .action-effect-lead,
+.skill-hover-tooltip__mech .action-effect-lead{
   color: rgba(229,231,235,.96);
   font-weight: 900;
   text-shadow: 0 0 10px rgba(255,255,255,.08);
 }
-.action-effect .action-effect-bonus{
+.action-effect .action-effect-bonus,
+.skill-hover-tooltip__mech .action-effect-bonus{
   color: #fde047;
   font-weight: 800;
   text-shadow: 0 0 10px rgba(234,179,8,.35);
 }
-.action-effect .action-effect-bonus--t2{
+.action-effect .action-effect-bonus--t2,
+.skill-hover-tooltip__mech .action-effect-bonus--t2{
   color: #fb923c;
   font-weight: 800;
   text-shadow: 0 0 10px rgba(251,146,60,.4);

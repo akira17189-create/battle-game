@@ -101,7 +101,7 @@ const SKILL_CARDS = [
     id: "T09",
     perk: "perk_kill_next_attack",
     title: "夺势突进",
-    desc: "战斗开始后，首次快攻伤害 +10。",
+    desc: `战斗开始后，首次快攻伤害 +${ns(1)}。`,
     primary: "offense",
     extraTags: ["快攻", "首击"],
   },
@@ -2688,11 +2688,20 @@ function buildActionButtonEffectHints(state) {
   ];
   if (broken) attackLines.push("破绽中：快攻不可用");
   let aHi = 0;
+  if (state._breakDefenseFollowupPending) {
+    attackLines.push(hintBonusTier(`逼守抢口：下回合首次快攻额外伤害 +${ns(1)}`, aHi++));
+  }
+  if (state._noDamageNextAttackPending) {
+    attackLines.push(hintBonusTier(`以守待变：下回合首次快攻额外伤害 +${ns(1)}`, aHi++));
+  }
   if (p.includes("perk_staggerstrike"))
     attackLines.push(hintBonusTier(`夺命追击：快攻命中失衡值不为 0 的目标时伤害 +${ns(1)}`, aHi++));
   if (p.includes("perk_attackvsadjust")) attackLines.push(hintBonusTier("乘势压攻：敌调整时攻击失衡 +1", aHi++));
   if (p.includes("perk_kill_next_attack"))
     attackLines.push(hintBonusTier(`夺势突进：战斗开始后首次快攻伤害 +${ns(1)}`, aHi++));
+  if (p.includes("perk_follow_attack")) attackLines.push(hintBonusTier("追身快斩：快攻命中非防御意图目标，失衡 +1", aHi++));
+  if (p.includes("perk_interrupt_bonus")) attackLines.push(hintBonusTier("截锋断势：快攻打断重击成功，失衡 +1", aHi++));
+  if (p.includes("perk_kill_reduce_stagger")) attackLines.push(hintBonusTier("斩阵夺势：击杀敌人后，自身失衡 -1", aHi++));
   const wrapLead = (html) => {
     const i = html.indexOf("<br>");
     if (i === -1) return `<span class="action-effect-lead">${html}</span>`;
@@ -2707,9 +2716,14 @@ function buildActionButtonEffectHints(state) {
   const heavyLines = [heavyLine0, `敌防御：伤−${ns(2)}｜失衡先−1再+压制1`];
   if (p.includes("perk_armorbreak")) heavyLines.push(hintBonusTier("破甲发力：重击额外 +1 失衡", heavyHi++));
   if (p.includes("perk_heavybreakdef")) heavyLines.push(hintBonusTier(`断势重斩：对防御目标重击伤害 +${ns(1)}`, heavyHi++));
+  if (p.includes("perk_heavy_vs_staggered"))
+    heavyLines.push(hintBonusTier(`断脉沉击：重击命中失衡目标伤害 +${ns(1)}`, heavyHi++));
+  if (p.includes("perk_attack_vs_broken"))
+    heavyLines.push(hintBonusTier(`乘隙追命：对破绽目标重击伤害 +${ns(1)}`, heavyHi++));
   if (br) heavyLines.push(hintBonusTier(`破阵：下一次重击额外+伤${ns(1)}、+失衡1`, heavyHi++));
   heavyLines.push(`场上有敌快攻意图时，你出重击也可能${pct}%被打断并改快攻结算`);
   if (broken) heavyLines.push("破绽中：重击不可用");
+  if (p.includes("perk_kill_reduce_stagger")) heavyLines.push(hintBonusTier("斩阵夺势：击杀敌人后，自身失衡 -1", heavyHi++));
   const heavy = wrapLead(heavyLines.join("<br>"));
 
   const defendLines = [`被攻击：受伤-${ns(1)}，失衡-1`];
@@ -2717,6 +2731,12 @@ function buildActionButtonEffectHints(state) {
   if (broken) defendLines.push("你失衡：本回合防御30%失败");
   if (defB > 0) defendLines.push(hintBonusTier(`防御成长：防御时额外减伤 +${ns(defB)}`, 0));
   if (p.includes("perk_brokenfirstshield")) defendLines.push(hintBonusTier(`硬撑架势：破绽后首次受击伤害 -${ns(1)}`, 0));
+  if (p.includes("perk_broken_defend_bonus"))
+    defendLines.push(hintBonusTier(`破绽强守：破绽中防御额外减伤 -${ns(1)}`, 0));
+  let dHi = 0;
+  if (p.includes("perk_defend_relief")) defendLines.push(hintBonusTier("定步卸力：防御成功承伤后，自身失衡 -1", dHi++));
+  if (p.includes("perk_lowhp_defend_heal"))
+    defendLines.push(hintBonusTier(`危桥守命：低血且防御成功时 HP+${ns(1)}`, dHi++));
   const defend = wrapLead(defendLines.join("<br>"));
 
   let blockFirst = "对重击成功：敌失衡+2";
@@ -2729,6 +2749,7 @@ function buildActionButtonEffectHints(state) {
     "敌非重击（防御/盾反/调息）：盾反挥空",
   ];
   if (p.includes("perk_blockrelief")) blockLines.push(hintBonusTier("借力反震：盾反成功几次，失衡减几次", 0));
+  if (p.includes("perk_block_heal")) blockLines.push(hintBonusTier(`盾后回气：盾反成功后 HP+${ns(1)}`, 0));
   blockLines.push("若未受伤，盾反成功会让自己失衡+1（可叠加）");
   if (broken) blockLines.push("你失衡：本回合盾反25%失败");
   const block = wrapLead(blockLines.join("<br>"));
@@ -2745,11 +2766,18 @@ function buildActionButtonEffectHints(state) {
       `本回合受快攻/重击：${evPct === 70 ? `<span class="action-effect-bonus">${evPct}%</span>` : `${evPct}%`} 完全闪避（免伤）`,
     ].join("<br>");
     /** 三条均为默认机制，整段用 lead 白字；勿用 wrapLead 拆行，否则后续行会落回 .action-effect 的 muted 色 */
-    if (execHeal > 0) {
-      rest = `<span class="action-effect-lead">${restCore}</span><br>${hintBonusTier(`处决回血：+${execHeal}`, 0)}`;
-    } else {
-      rest = `<span class="action-effect-lead">${restCore}</span>`;
+    const extras = [];
+    let rHi = 0;
+    if (p.includes("perk_rest_extra_stagger_down")) {
+      extras.push(hintBonusTier("静息归元：调息成功（本回合未受伤），额外失衡 -1", rHi++));
     }
+    if (execHeal > 0) {
+      extras.push(hintBonusTier(`处决回血：+${execHeal}`, rHi++));
+    }
+    rest =
+      extras.length > 0
+        ? `<span class="action-effect-lead">${restCore}</span><br>${extras.join("<br>")}`
+        : `<span class="action-effect-lead">${restCore}</span>`;
   }
 
   return { attack, heavy, defend, block, rest };
@@ -2765,30 +2793,48 @@ const LABEL_EXECUTE_ON_CARD = "失衡已满！上前处决！";
 function getActionEnhancementSources(state) {
   const p = state.perks || [];
   const br = !!state.battleBuffs?.breaklineReady;
+  /** @param {string[]} arr @param {string} key */
+  const add = (arr, key) => {
+    if (!arr.includes(key)) arr.push(key);
+  };
   const attack = [];
-  if (p.includes("perk_staggerstrike")) attack.push("staggerstrike");
-  if (p.includes("perk_attackvsadjust")) attack.push("attackvsadjust");
-  if (p.includes("perk_kill_next_attack")) attack.push("kill_next_attack");
+  if (p.includes("perk_staggerstrike")) add(attack, "staggerstrike");
+  if (p.includes("perk_attackvsadjust")) add(attack, "attackvsadjust");
+  if (p.includes("perk_kill_next_attack")) add(attack, "kill_next_attack");
+  if (p.includes("perk_follow_attack")) add(attack, "follow_attack");
+  if (p.includes("perk_interrupt_bonus")) add(attack, "interrupt_bonus");
+  if (p.includes("perk_attack_vs_broken")) add(attack, "attack_vs_broken");
+  if (p.includes("perk_kill_reduce_stagger")) add(attack, "kill_reduce_stagger");
+  if (state._breakDefenseFollowupPending) add(attack, "break_defense_followup_pending");
+  if (state._noDamageNextAttackPending) add(attack, "no_damage_next_attack_pending");
   const heavy = [];
-  if (p.includes("perk_armorbreak")) heavy.push("armorbreak");
-  if (p.includes("perk_heavybreakdef")) heavy.push("heavybreakdef");
-  if (br) heavy.push("breakline");
-  if ((state.player?.heavyStgBonus || 0) > 0) heavy.push("equip_heavystg");
+  if (p.includes("perk_armorbreak")) add(heavy, "armorbreak");
+  if (p.includes("perk_heavybreakdef")) add(heavy, "heavybreakdef");
+  if (br) add(heavy, "breakline");
+  if ((state.player?.heavyStgBonus || 0) > 0) add(heavy, "equip_heavystg");
   if ((state.player?.atkBonus || 0) > 0) {
-    attack.push("atkstat");
-    heavy.push("atkstat");
+    add(attack, "atkstat");
+    add(heavy, "atkstat");
   }
+  if (p.includes("perk_heavy_vs_staggered")) add(heavy, "heavy_vs_staggered");
+  if (p.includes("perk_attack_vs_broken")) add(heavy, "attack_vs_broken");
+  if (p.includes("perk_kill_reduce_stagger")) add(heavy, "kill_reduce_stagger");
   const defend = [];
-  if (p.includes("perk_brokenfirstshield")) defend.push("brokenfirstshield");
-  if ((state.player?.defendMitigationBonus || 0) > 0) defend.push("defstat");
+  if (p.includes("perk_brokenfirstshield")) add(defend, "brokenfirstshield");
+  if ((state.player?.defendMitigationBonus || 0) > 0) add(defend, "defstat");
+  if (p.includes("perk_broken_defend_bonus")) add(defend, "broken_defend_bonus");
+  if (p.includes("perk_defend_relief")) add(defend, "defend_relief");
+  if (p.includes("perk_lowhp_defend_heal")) add(defend, "lowhp_defend_heal");
   const block = [];
-  if (p.includes("perk_guardshock")) block.push("guardshock");
-  if (p.includes("perk_blockrelief")) block.push("blockrelief");
+  if (p.includes("perk_guardshock")) add(block, "guardshock");
+  if (p.includes("perk_blockrelief")) add(block, "blockrelief");
+  if (p.includes("perk_block_heal")) add(block, "block_heal");
   const rest = [];
-  if ((state.player?.executeHealBonus || 0) > 0) rest.push("executeheal");
-  if (p.includes("perk_rest_evade")) rest.push("rest_evade");
+  if ((state.player?.executeHealBonus || 0) > 0) add(rest, "executeheal");
+  if (p.includes("perk_rest_evade")) add(rest, "rest_evade");
+  if (p.includes("perk_rest_extra_stagger_down")) add(rest, "rest_extra_stagger_down");
   const execute = [];
-  if ((state.player?.executeHealBonus || 0) > 0) execute.push("executeheal");
+  if ((state.player?.executeHealBonus || 0) > 0) add(execute, "executeheal");
   return { attack, heavy, defend, block, rest, execute };
 }
 
