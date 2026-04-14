@@ -1469,13 +1469,38 @@ function buildHeroRankRowHtml(e, rank) {
   return `<div class="${rowCls}"${liveAttrs}><span class="rank-left">${medal}<span class="rank-num${e.kind === "live" ? " rank-num--live" : ""}">${rank}</span></span><span class="rank-name">${name}</span><span class="rank-score">${escapeHtml(String(score))}</span><span class="rank-grade">${gradeHtml}</span></div>`;
 }
 
+/** 缓存在线排行榜数据，避免每帧重复请求 */
+let _onlineLeaderboardCache = null;
+let _onlineLeaderboardFetching = false;
+function ensureOnlineLeaderboardCache(callback) {
+  if (_onlineLeaderboardCache) { callback(_onlineLeaderboardCache); return; }
+  if (_onlineLeaderboardFetching) return;
+  if (typeof OnlineLeaderboard === "undefined" || !OnlineLeaderboard.isConfigured()) return;
+  _onlineLeaderboardFetching = true;
+  OnlineLeaderboard.fetchLeaderboard(30).then((data) => {
+    if (data && data.length > 0) {
+      _onlineLeaderboardCache = data;
+      callback(data);
+    }
+    _onlineLeaderboardFetching = false;
+  }).catch(() => { _onlineLeaderboardFetching = false; });
+}
+
 /** 左侧英雄榜：前三名固定展示，其余可滚动；混排逻辑不变 */
 function renderLocalLeaderboardToSettlePanel(ui, state) {
   const box = ui.settleRank;
   const top3box = ui.settleRankTop3;
   if (!box || !top3box) return;
   const meritDisp = getLiveMeritScoreForRankDisplay(ui, state);
-  const saved = loadChapter1MeritLeaderboard().slice(0, 30);
+  const localSaved = loadChapter1MeritLeaderboard().slice(0, 30);
+  // 优先使用在线数据，否则用本地数据
+  const saved = _onlineLeaderboardCache || localSaved;
+  // 首次触发异步拉取在线数据，拿到后重新渲染
+  if (!_onlineLeaderboardCache) {
+    ensureOnlineLeaderboardCache(() => {
+      renderLocalLeaderboardToSettlePanel(ui, state);
+    });
+  }
   const nick = (state?._playerName || "").trim() || "你";
   const reduced =
     typeof window !== "undefined" &&
