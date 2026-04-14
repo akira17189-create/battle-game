@@ -1230,10 +1230,12 @@ function _buildIntroTop3HtmlFromList(list) {
     const name = escapeHtml(e.name || "—");
     const score = escapeHtml(String(e.finalMerit ?? "—"));
     const medal = rank === 1 ? "medal--gold" : rank === 2 ? "medal--silver" : "medal--bronze";
+    const region = e.province ? escapeHtml(e.province + (e.city && e.city !== e.province ? "·" + e.city : "")) : "";
+    const regionHtml = region ? `<span class="intro-top3-region" style="opacity:0.6;font-size:0.85em;margin-left:4px">${region}</span>` : "";
     return `
 <div class="intro-top3-row">
   <span class="intro-top3-left"><span class="medal ${medal}" aria-hidden="true"></span><span class="intro-top3-rank">${rank}</span></span>
-  <span class="intro-top3-name">${name}</span>
+  <span class="intro-top3-name">${name}${regionHtml}</span>
   <span class="intro-top3-score">${score}</span>
   <span class="intro-top3-grade">${meritGradeSpanHtml(e.grade)}</span>
 </div>`;
@@ -1251,13 +1253,14 @@ async function buildOnlineMeritLeaderboardHtml() {
           ? `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")} ${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`
           : "—";
         const name = escapeHtml(e.name || "—");
-        return `<tr><td>${i + 1}</td><td>${name}</td><td><strong>${escapeHtml(String(e.finalMerit ?? "—"))}</strong></td><td>${meritGradeSpanHtml(e.grade)}</td><td>${escapeHtml(String(e.runSum ?? "—"))}</td><td class="merit-lb-date">${escapeHtml(dateStr)}</td></tr>`;
+        const region = e.province ? escapeHtml(e.province + (e.city && e.city !== e.province ? "·" + e.city : "")) : "";
+        return `<tr><td>${i + 1}</td><td>${name}</td><td>${region}</td><td><strong>${escapeHtml(String(e.finalMerit ?? "—"))}</strong></td><td>${meritGradeSpanHtml(e.grade)}</td><td>${escapeHtml(String(e.runSum ?? "—"))}</td><td class="merit-lb-date">${escapeHtml(dateStr)}</td></tr>`;
       }).join("");
       return `
 <div class="merit-report-section merit-lb-section">
   <div class="merit-report-kicker">天下英雄榜（在线排行）</div>
   <table class="merit-report-table merit-lb-table">
-    <thead><tr><th>#</th><th>昵称</th><th>总战功</th><th>评级</th><th>场次累计</th><th>时间</th></tr></thead>
+    <thead><tr><th>#</th><th>昵称</th><th>地区</th><th>总战功</th><th>评级</th><th>场次累计</th><th>时间</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
 </div>`;
@@ -8404,11 +8407,32 @@ function boot() {
     });
   }
 
-  // 清空排行榜：测试按钮
+  // 备份排行榜按钮
+  const btnBackupLB = document.getElementById("btnBackupLeaderboard");
+  if (btnBackupLB) {
+    btnBackupLB.addEventListener("click", async () => {
+      btnBackupLB.textContent = "备份中...";
+      btnBackupLB.disabled = true;
+      const ok = typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured()
+        ? await OnlineLeaderboard.backupLeaderboard()
+        : false;
+      btnBackupLB.textContent = ok ? "备份成功 ✓" : "备份失败";
+      btnBackupLB.disabled = false;
+      setTimeout(() => { btnBackupLB.textContent = "备份排行榜"; }, 2000);
+    });
+  }
+
+  // 清空排行榜按钮
   const btnClearLB = document.getElementById("btnClearLeaderboard");
   if (btnClearLB) {
-    btnClearLB.addEventListener("click", () => {
+    btnClearLB.addEventListener("click", async () => {
+      if (!confirm("确定要清空排行榜吗？此操作不可恢复，建议先备份！")) return;
       localStorage.removeItem(CH1_MERIT_LEADERBOARD_KEY);
+      // 同时清空在线排行榜
+      if (typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured()) {
+        await OnlineLeaderboard.clearLeaderboard();
+        _onlineLeaderboardCache = null;
+      }
       renderLocalLeaderboardToSettlePanel(ui, state);
     });
   }
