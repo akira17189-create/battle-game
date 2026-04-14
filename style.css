@@ -18,6 +18,8 @@
   /* 技能按键悬浮说明：高于战斗区内卡片/提示等；全屏蒙层再高于说明 */
   --z-skill-tooltip: 50000;
   --z-modal-overlay: 60000;
+  /* 顶部累计战功悬浮框：全局最高，避免被任意面板遮挡 */
+  --z-run-merit-hint: 120000;
 }
 
 *{box-sizing:border-box}
@@ -56,34 +58,40 @@ body{
 }
 .topbar-row--main{
   width:100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 16px;
   align-items:flex-start;
 }
 .title{
   flex:0 0 auto;
   max-width:42%;
+  min-width: 280px;
 }
 /* 标题右侧：进度线 + 累计战功 */
 .topbar-roadmap-merit{
-  flex:1 1 auto;
-  min-width:0;
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:14px;
+  min-width: 0;
+  position: relative;
+  min-height: 74px;
+  padding-right: 156px;
+  display:block;
 }
 .topbar-roadmap-merit .chapter-roadmap{
-  flex:1 1 auto;
-  min-width:0;
+  width: min(760px, 100%);
+  max-width: 100%;
   overflow-x:auto;
   overflow-y:hidden;
   -webkit-overflow-scrolling:touch;
   padding:10px 0 6px;
-  margin-top:0;
-  margin-left:86px; /* 向右移动 70px（原 16px + 70px） */
+  margin: 0 auto;
+  transform: translateX(120px);
   scrollbar-width: thin;
 }
 .run-merit-widget{
   flex:0 0 auto;
+  position: absolute;
+  top: 2px;
+  right: 0;
   display:flex;
   flex-direction:row;
   align-items:baseline;
@@ -91,7 +99,8 @@ body{
   gap:10px;
   padding:2px 0 0;
   min-width:140px;
-  position: relative;
+  transform: translateX(-10px);
+  z-index: calc(var(--z-run-merit-hint) - 1);
 }
 .run-merit-kicker{
   font-size:12px;
@@ -123,7 +132,7 @@ body{
   border: 1px solid rgba(255,255,255,.10);
   background: linear-gradient(180deg, rgba(15,23,42,.98), rgba(2,6,23,.96));
   box-shadow: 0 18px 50px rgba(0,0,0,.55);
-  z-index: 120;
+  z-index: var(--z-run-merit-hint);
   opacity: 0;
   transform: translateY(-6px);
   pointer-events: none;
@@ -166,19 +175,24 @@ body{
 }
 .run-merit-hint .rm-sum--small{ color: rgba(156,163,175,.95); margin-top: 4px; }
 
-/* 左侧：结算日志缩高，下面留一半给排行榜 */
+/* 左侧：结算日志缩高，下面留一半给英雄榜 */
 .panel--settle-split .settle-split{
   display: grid;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: 1fr 2fr;
   flex: 1 1 0;
+  height: 100%;
   min-height: 0;
 }
 .panel--settle-split .scrollbox{
   max-height: none;
 }
-.panel--settle-split .settle-log-half,
-.panel--settle-split .scrollbox.settle-rank-list{
+.panel--settle-split .settle-log-half{
   height: 100%;
+}
+.panel--settle-split .settle-rank-half .scrollbox.settle-rank-list{
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
 }
 .settle-log-half{
   border-bottom: 1px solid rgba(255,255,255,.06);
@@ -197,10 +211,68 @@ body{
   font-weight: 900;
   letter-spacing: .06em;
 }
-.settle-rank-sub{
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 2px;
+.settle-rank-top3{
+  flex-shrink: 0;
+  padding: 6px 0 8px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.04);
+}
+.rank-row--live-preview{
+  position: relative;
+  border: 1px dashed rgba(250,204,21,.5) !important;
+  background: linear-gradient(90deg, rgba(234,179,8,.16), rgba(30,41,59,.4)) !important;
+  box-shadow: inset 0 0 0 1px rgba(250,204,21,.1), 0 0 20px rgba(234,179,8,.08);
+}
+.rank-row--live-preview .rank-score{
+  color: #fef08a;
+}
+.rank-live-badge{
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  vertical-align: middle;
+  color: rgba(254,249,195,.95);
+  background: rgba(234,179,8,.22);
+  border: 1px solid rgba(250,204,21,.35);
+}
+.rank-live-pill{
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(254,240,138,.95);
+  background: rgba(51,65,85,.75);
+  border: 1px solid rgba(250,204,21,.28);
+}
+.rank-num--live.is-rising{
+  animation: meritRankRise 0.68s cubic-bezier(0.22,1,0.36,1) 1;
+}
+@keyframes meritRankRise{
+  0%{
+    transform: translateY(16px) scale(0.88);
+    opacity: 0.4;
+    filter: blur(0.5px);
+    color: #facc15;
+  }
+  48%{
+    transform: translateY(-5px) scale(1.07);
+    opacity: 1;
+    filter: none;
+    color: #fffef0;
+    text-shadow: 0 0 26px rgba(254,249,195,.55), 0 0 40px rgba(250,204,21,.35);
+  }
+  100%{
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    color: #fef08a;
+    text-shadow: 0 0 18px rgba(250,204,21,.35);
+  }
 }
 .scrollbox.settle-rank-list{
   padding-top: 10px;
@@ -297,6 +369,32 @@ body{
 }
 .top-actions{
   flex:0 0 auto;
+}
+@media (max-width: 1220px){
+  .topbar-row--main{
+    display:flex;
+    align-items:flex-start;
+  }
+  .topbar-roadmap-merit{
+    min-height: 0;
+    padding-right: 0;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:14px;
+  }
+  .run-merit-widget{
+    position: relative;
+    top: auto;
+    right: auto;
+    transform: none;
+  }
+  .topbar-roadmap-merit .chapter-roadmap{
+    width: auto;
+    flex:1 1 auto;
+    margin: 0;
+    transform: none;
+  }
 }
 .chapter-roadmap-inner{
   display:flex;
@@ -437,6 +535,120 @@ body{
   opacity: 1;
   visibility: visible;
 }
+.battle-merit-fx-layer{
+  position: absolute;
+  inset: 0;
+  z-index: 88;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+}
+.battle-merit-fx-layer[hidden]{ display: none !important; }
+.battle-merit-fx-layer.is-active{ opacity: 1; }
+.battle-merit-burst{
+  position: absolute;
+  left: 50%;
+  top: var(--resolution-anchor-y, 50%);
+  width: clamp(92px, 10vw, 160px);
+  height: clamp(92px, 10vw, 160px);
+  border-radius: 999px;
+  transform: translate(-50%, -50%) scale(.45);
+  opacity: 0;
+}
+.battle-merit-fx-layer.is-active .battle-merit-burst{
+  animation: battleMeritBurstPop var(--battle-merit-ms, 720ms) ease-out both;
+}
+.battle-merit-judgement,
+.battle-merit-delta,
+.battle-merit-combo{
+  position: absolute;
+  left: 50%;
+  top: var(--resolution-anchor-y, 50%);
+  transform: translate(-50%, -50%);
+  text-align: center;
+  white-space: nowrap;
+  user-select: none;
+}
+.battle-merit-judgement{
+  font-size: clamp(22px, 4vw, 42px);
+  font-weight: 1000;
+  letter-spacing: .08em;
+  text-shadow: 0 4px 16px rgba(0,0,0,.52);
+  animation: battleMeritJudgePop var(--battle-merit-ms, 720ms) cubic-bezier(.2,.9,.2,1) both;
+}
+.battle-merit-delta{
+  margin-top: 42px;
+  font-size: clamp(16px, 2.6vw, 26px);
+  font-family: var(--mono);
+  font-weight: 900;
+  text-shadow: 0 2px 10px rgba(0,0,0,.52);
+  animation: battleMeritDeltaFloat var(--battle-merit-ms, 720ms) ease-out both;
+}
+.battle-merit-combo{
+  margin-top: -44px;
+  font-size: clamp(14px, 2.3vw, 28px);
+  font-weight: 1000;
+  letter-spacing: .08em;
+  text-shadow: 0 2px 12px rgba(0,0,0,.52);
+  animation: battleMeritComboPop var(--battle-merit-ms, 720ms) ease-out both;
+}
+.battle-merit-combo.is-x2{ transform: translate(-50%, -50%) scale(1.08); }
+.battle-merit-combo.is-x3{ transform: translate(-50%, -50%) scale(1.16); }
+.battle-merit-combo.is-x4{ transform: translate(-50%, -50%) scale(1.24); }
+.battle-merit-fx-layer.battle-merit--normal .battle-merit-judgement{ color: rgba(254,240,138,.98); }
+.battle-merit-fx-layer.battle-merit--normal .battle-merit-delta{ color: rgba(253,224,71,.98); }
+.battle-merit-fx-layer.battle-merit--normal .battle-merit-combo{ color: rgba(255,255,255,.95); }
+.battle-merit-fx-layer.battle-merit--normal .battle-merit-burst{
+  background: radial-gradient(circle at center, rgba(250,204,21,.28), rgba(0,0,0,0) 68%);
+}
+.battle-merit-fx-layer.battle-merit--gold .battle-merit-judgement{ color: rgba(251,191,36,.98); text-shadow: 0 0 20px rgba(251,191,36,.35), 0 4px 16px rgba(0,0,0,.52); }
+.battle-merit-fx-layer.battle-merit--gold .battle-merit-delta{ color: rgba(254,215,170,.98); }
+.battle-merit-fx-layer.battle-merit--gold .battle-merit-combo{ color: rgba(254,240,138,.98); }
+.battle-merit-fx-layer.battle-merit--gold .battle-merit-burst{
+  background: radial-gradient(circle at center, rgba(245,158,11,.34), rgba(0,0,0,0) 70%);
+}
+.battle-merit-fx-layer.battle-merit--execute .battle-merit-judgement{
+  color: rgba(255,255,255,.98);
+  text-shadow: 0 0 22px rgba(251,191,36,.48), 0 0 10px rgba(239,68,68,.45);
+}
+.battle-merit-fx-layer.battle-merit--execute .battle-merit-delta{ color: rgba(254,215,170,.98); }
+.battle-merit-fx-layer.battle-merit--execute .battle-merit-combo{ color: rgba(254,240,138,.98); }
+.battle-merit-fx-layer.battle-merit--execute .battle-merit-burst{
+  background: radial-gradient(circle at center, rgba(239,68,68,.30), rgba(250,204,21,.26) 36%, rgba(0,0,0,0) 72%);
+}
+.battle-merit-fx-layer.battle-merit--red .battle-merit-judgement{ color: rgba(248,113,113,.98); text-shadow: 0 0 16px rgba(239,68,68,.42), 0 4px 16px rgba(0,0,0,.52); }
+.battle-merit-fx-layer.battle-merit--red .battle-merit-delta{ color: rgba(252,165,165,.98); }
+.battle-merit-fx-layer.battle-merit--red .battle-merit-combo{ color: rgba(254,202,202,.95); }
+.battle-merit-fx-layer.battle-merit--red .battle-merit-burst{
+  background: radial-gradient(circle at center, rgba(239,68,68,.34), rgba(0,0,0,0) 72%);
+}
+.battle-merit-fx-layer.battle-merit--strong .battle-merit-judgement{ font-size: clamp(26px, 4.6vw, 48px); }
+.battle-merit-fx-layer.battle-merit--strong .battle-merit-delta{ font-size: clamp(18px, 2.9vw, 30px); }
+@keyframes battleMeritBurstPop{
+  0%{ transform: translate(-50%, -50%) scale(.45); opacity: 0; }
+  22%{ opacity: .92; }
+  62%{ opacity: .28; transform: translate(-50%, -50%) scale(1.04); }
+  100%{ transform: translate(-50%, -50%) scale(1.22); opacity: 0; }
+}
+@keyframes battleMeritJudgePop{
+  0%{ opacity: 0; transform: translate(-50%, -50%) scale(.7); }
+  22%{ opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  72%{ opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100%{ opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes battleMeritDeltaFloat{
+  0%{ opacity: 0; transform: translate(-50%, -8px); }
+  20%{ opacity: 1; transform: translate(-50%, 0); }
+  72%{ opacity: 1; transform: translate(-50%, -8px); }
+  100%{ opacity: 0; transform: translate(-50%, -16px); }
+}
+@keyframes battleMeritComboPop{
+  0%{ opacity: 0; transform: translate(-50%, -58px) scale(.86); }
+  18%{ opacity: 1; transform: translate(-50%, -52px) scale(1); }
+  72%{ opacity: 1; transform: translate(-50%, -56px) scale(1); }
+  100%{ opacity: 0; transform: translate(-50%, -62px) scale(1); }
+}
 .resolution-primary{
   position: absolute;
   left: 50%;
@@ -487,6 +699,22 @@ body{
 .resolution-layer.is-active.resolution-layer--clash .resolution-capsule--enemy{
   animation: resolutionFromRight .32s cubic-bezier(.2,.9,.2,1) both;
 }
+/* 碰撞段：我方「占位 none」与敌方守势意图不参与飞入，避免防御/盾反药丸像对攻一样对撞 */
+.resolution-layer.is-active.resolution-layer--clash .resolution-capsule--player.battle-clash-chip--none{
+  animation: none !important;
+  opacity: 0 !important;
+  transform: none !important;
+  filter: none !important;
+  pointer-events: none;
+}
+.resolution-layer.is-active.resolution-layer--clash .resolution-capsule--enemy.intent-defend,
+.resolution-layer.is-active.resolution-layer--clash .resolution-capsule--enemy.intent-block{
+  animation: none !important;
+  opacity: 0 !important;
+  transform: none !important;
+  filter: none !important;
+  pointer-events: none;
+}
 /* 对撞层玩家侧：与主行动栏同色（快攻浅红 / 重击深红 / 防御蓝 / 盾反黄 / 调息绿） */
 .resolution-capsule--player.battle-clash-chip--quick{
   color: rgba(254,226,231,.98);
@@ -533,6 +761,13 @@ body{
   border-style: dashed;
   border-color: rgba(100,116,139,.38);
   background: rgba(15,23,42,.35);
+  box-shadow: none;
+}
+/* 防御/盾反为全体对策：不展示“我方 vs 单敌”对撞胶囊，仅保留敌方侧 */
+.resolution-capsule--player.battle-clash-chip--none{
+  opacity: 0;
+  border-color: transparent;
+  background: transparent;
   box-shadow: none;
 }
 .resolution-capsule--enemy.intent-quick{
@@ -804,12 +1039,23 @@ body{
     opacity: 1 !important;
     filter: none !important;
   }
+  .resolution-layer.is-active.resolution-layer--clash .resolution-capsule--player.battle-clash-chip--none,
+  .resolution-layer.is-active.resolution-layer--clash .resolution-capsule--enemy.intent-defend,
+  .resolution-layer.is-active.resolution-layer--clash .resolution-capsule--enemy.intent-block{
+    opacity: 0 !important;
+  }
 }
 
 /* 战前准备：隐藏敌我卡片区；保留说明行、开始战斗、招式与相克/提示 */
 .battle-info-panel.battle-info-panel--ready{
   display: flex;
   flex-direction: column;
+}
+.battle-info-panel.battle-info-panel--ready .intro-overlay{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  margin: 10px 16px 12px;
 }
 .battle-info-panel.battle-info-panel--ready > .panel-header{
   flex-shrink: 0;
@@ -821,11 +1067,11 @@ body{
   /* 与战中同一槽位：保留与普通态一致的上边框与内边距，避免垂直错位 */
   padding: 16px 16px 6px 16px;
 }
-/* 战前：敌我卡片区仅占位不显示（不用 display:none，避免下方模块整体上移） */
+/* 战前：敌我卡片区完全隐藏，避免与玩法简介叠加后出现大面积空白 */
 .battle-info-panel.battle-info-panel--ready #enemyRowWrap,
 .battle-info-panel.battle-info-panel--ready #dividerAfterEnemies,
 .battle-info-panel.battle-info-panel--ready #playerRowWrap{
-  visibility: hidden;
+  display: none;
   pointer-events: none;
 }
 
@@ -1089,6 +1335,19 @@ body{
   letter-spacing: .02em;
   color: rgba(191,219,254,.95);
   text-shadow: 0 0 14px rgba(59,130,246,.20);
+}
+.intro-dare-actions{
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+}
+.intro-dare-btn{
+  min-width: 140px;
+  padding: 10px 22px;
+  font-size: 18px;
+  font-weight: 1000;
+  letter-spacing: .2em;
+  text-indent: .2em;
 }
 .win-text{
   font-size: 22px;
@@ -1568,8 +1827,12 @@ body{
 
 .left-col{
   display:grid;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: 1fr 2fr;
   gap:14px;
+  /* 左栏三块高度与右侧战斗面板保持一致，并固定比例 */
+  height: var(--battle-info-panel-min-h);
+  min-height: var(--battle-info-panel-min-h);
+  max-height: var(--battle-info-panel-min-h);
 }
 .left-col > .panel{
   display: flex;
@@ -3190,9 +3453,10 @@ body{
   font-weight:700;
 }
 .meters{margin-top:10px; display:grid; gap:10px}
-.meter{display:grid; grid-template-columns: 56px 1fr auto; gap:10px; align-items:center}
+.meter{display:grid; grid-template-columns: 56px 1fr 64px; gap:10px; align-items:center}
 .meter-label{color:var(--muted); font-size:12px}
 .meter-bar{
+  width:100%;
   height:10px;
   background: rgba(255,255,255,.06);
   border:1px solid rgba(255,255,255,.06);
@@ -3402,7 +3666,13 @@ body.ending-slowmo .panel-hint-blink{
 .meter-fill.stagger{
   background: linear-gradient(90deg, rgba(245,158,11,.95), rgba(245,158,11,.55));
 }
-.meter-text{font-family:var(--mono); font-size:12px; color:var(--text)}
+.meter-text{
+  width:64px;
+  text-align:right;
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--text);
+}
 .flags{
   margin-top:10px;
   display:flex;
@@ -3599,6 +3869,11 @@ body.ending-slowmo .panel-hint-blink{
     --battle-info-panel-min-h: clamp(520px, 68vh, 900px);
   }
   .main{grid-template-columns: 1fr; }
+  .left-col{
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
   .panel-log{min-height:62vh}
   .actions{grid-template-columns: 1fr 1fr; }
   .enemy-row{grid-template-columns: 1fr; }

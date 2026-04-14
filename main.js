@@ -614,20 +614,8 @@ const MERIT_RAPID_TURN_BUDGET = 35;
 
 /** 战功统一放大系数（显示、累计、章节奖励与评级区间同步 ×10） */
 const MERIT_SCORE_SCALE = 10;
-
-// 计量条“最大长度”的统一上限：用于让不同上限的敌我血条/失衡条呈现相对长度
-const HP_BAR_CAP = 100;
-const STAGGER_BAR_CAP = 10;
-
-function meterMaxWidthRatio(maxValue, capValue) {
-  const cap = Math.max(1, capValue || 1);
-  const v = Math.max(0, maxValue || 0);
-  // 极小上限也给一点可见宽度（否则 1~2 这类会看不见）
-  const r = clamp(v / cap, 0, 1);
-  if (v > 0 && r < 0.12) return 0.12;
-  return r;
-}
-
+const BATTLE_MERIT_FX_MS = 1300;
+const BATTLE_MERIT_FX_STRONG_MS = 1700;
 // 《第一章即时战功系统》程序需求文档 v1.0
 const TURN_MERIT_EVENT_POINTS = {
   // 正向
@@ -907,6 +895,129 @@ function formatTurnMeritBreakdownLines(record) {
   return lines.join("\n");
 }
 
+function buildBattleMeritVisualEvents(record) {
+  const pos = Array.isArray(record?.positiveEvents) ? record.positiveEvents : [];
+  const neg = Array.isArray(record?.negativeEvents) ? record.negativeEvents : [];
+  const hasPos = (codes) => pos.some((e) => codes.includes(e.code));
+  const hasNeg = (codes) => neg.some((e) => codes.includes(e.code));
+
+  /** @type {{ judgement: string, delta: number, combo: number, tone: "normal"|"gold"|"red"|"execute", strong: boolean }[]} */
+  const out = [];
+  const comboAfter = Math.max(0, record?.momentumAfter || 0);
+  const delta = record?.turnMeritDelta || 0;
+
+  if (hasPos(["execute_boss", "execute_elite", "execute_normal"])) {
+    out.push({ judgement: "处决", delta, combo: comboAfter, tone: "execute", strong: true });
+  } else if (hasPos(["counter_heavy", "block_success"])) {
+    out.push({ judgement: "反制", delta, combo: comboAfter, tone: "gold", strong: true });
+  } else if (hasPos(["interrupt_to_break"])) {
+    out.push({ judgement: "断势", delta, combo: comboAfter, tone: "gold", strong: true });
+  } else if (hasPos(["interrupt_heavy"])) {
+    out.push({ judgement: "打断", delta, combo: comboAfter, tone: "gold", strong: true });
+  } else if (hasPos(["enemy_broken"])) {
+    out.push({ judgement: "破绽", delta, combo: comboAfter, tone: "gold", strong: true });
+  } else if (hasPos(["attack_hit", "heavy_hit"])) {
+    out.push({ judgement: "命中", delta, combo: comboAfter, tone: "normal", strong: false });
+  } else if (hasNeg(["boss_execute_taken"])) {
+    out.push({ judgement: "COMBO BREAK", delta: 0, combo: 0, tone: "red", strong: true });
+  } else if (hasNeg(["self_broken"])) {
+    out.push({ judgement: "失手", delta, combo: comboAfter, tone: "red", strong: false });
+  } else if (hasNeg(["block_fail_vs_quick", "heavy_interrupted"])) {
+    out.push({ judgement: "被破", delta, combo: comboAfter, tone: "red", strong: false });
+  } else if (delta !== 0) {
+    out.push({
+      judgement: delta > 0 ? "得势" : "失势",
+      delta,
+      combo: comboAfter,
+      tone: delta > 0 ? "normal" : "red",
+      strong: false,
+    });
+  }
+
+  const momentumBefore = Math.max(0, record?.momentumBefore || 0);
+  const momentumAfter = Math.max(0, record?.momentumAfter || 0);
+  if (momentumBefore > 0 && momentumAfter === 0 && !out.some((x) => x.judgement === "COMBO BREAK")) {
+    out.push({ judgement: "COMBO BREAK", delta: 0, combo: 0, tone: "red", strong: true });
+  }
+
+  if (!out.length) return out;
+  // 第一版：同回合最多展示主反馈 + COMBO BREAK，一共不超过两条
+  const main = out[0];
+  const breakEvent = out.find((x) => x.judgement === "COMBO BREAK");
+  if (breakEvent && breakEvent !== main) return [main, breakEvent];
+  return [main];
+}
+
+function enqueueBattleMeritFx(state, events) {
+  if (!events?.length) return;
+  state.battleMeritFxQueue = state.battleMeritFxQueue || [];
+  state.battleMeritFxQueue.push(...events);
+  if (state.battleMeritFxQueue.length > 3) {
+    state.battleMeritFxQueue = state.battleMeritFxQueue.slice(-3);
+  }
+}
+
+function clearBattleMeritFx(ui) {
+  if (!ui?.battleMeritFxLayer) return;
+  ui.battleMeritFxLayer.hidden = true;
+  ui.battleMeritFxLayer.setAttribute("aria-hidden", "true");
+  ui.battleMeritFxLayer.className = "battle-merit-fx-layer";
+  if (ui.battleMeritJudgement) ui.battleMeritJudgement.textContent = "";
+  if (ui.battleMeritDelta) ui.battleMeritDelta.textContent = "";
+  if (ui.battleMeritCombo) {
+    ui.battleMeritCombo.textContent = "";
+    ui.battleMeritCombo.className = "battle-merit-combo";
+  }
+}
+
+function renderBattleMeritFx(ui, event) {
+  if (!ui?.battleMeritFxLayer || !event) return;
+  const layer = ui.battleMeritFxLayer;
+  const ms = event.strong ? BATTLE_MERIT_FX_STRONG_MS : BATTLE_MERIT_FX_MS;
+  const toneClass = `battle-merit--${event.tone || "normal"}`;
+  layer.style.setProperty("--battle-merit-ms", `${ms}ms`);
+  layer.className = `battle-merit-fx-layer ${toneClass}${event.strong ? " battle-merit--strong" : ""} is-active`;
+  layer.hidden = false;
+  layer.setAttribute("aria-hidden", "false");
+  if (ui.battleMeritJudgement) ui.battleMeritJudgement.textContent = event.judgement || "";
+  if (ui.battleMeritDelta) {
+    const d = Number(event.delta || 0);
+    ui.battleMeritDelta.textContent = d > 0 ? `+${d}` : d < 0 ? `${d}` : "";
+  }
+  if (ui.battleMeritCombo) {
+    const c = Math.max(0, Number(event.combo || 0));
+    ui.battleMeritCombo.className = "battle-merit-combo";
+    if (c > 0) {
+      ui.battleMeritCombo.textContent = `COMBO x${c}`;
+      if (c >= 4) ui.battleMeritCombo.classList.add("is-x4");
+      else if (c === 3) ui.battleMeritCombo.classList.add("is-x3");
+      else if (c === 2) ui.battleMeritCombo.classList.add("is-x2");
+    } else if (event.judgement === "COMBO BREAK") {
+      ui.battleMeritCombo.textContent = "COMBO BREAK";
+    } else {
+      ui.battleMeritCombo.textContent = "";
+    }
+  }
+}
+
+function playNextBattleMeritFx(state, ui) {
+  if (!ui?.battleMeritFxLayer) return;
+  if (state.battleMeritFxPlaying) return;
+  const queue = state.battleMeritFxQueue || [];
+  if (!queue.length) return;
+  const ev = queue.shift();
+  state.battleMeritFxQueue = queue;
+  state.battleMeritFxPlaying = true;
+  state.visibleCombo = Math.max(0, Number(ev?.combo || 0));
+  renderBattleMeritFx(ui, ev);
+  const ms = ev?.strong ? BATTLE_MERIT_FX_STRONG_MS : BATTLE_MERIT_FX_MS;
+  window.setTimeout(() => {
+    clearBattleMeritFx(ui);
+    state.battleMeritFxPlaying = false;
+    playNextBattleMeritFx(state, ui);
+  }, ms);
+}
+
 function applyTurnMeritResult(state, ui, ctx, turnPack) {
   if (!ctx) return;
   const computed = computeTurnMerit(state, ctx, turnPack, { action: turnPack.action });
@@ -931,6 +1042,9 @@ function applyTurnMeritResult(state, ui, ctx, turnPack) {
 
   // 更新上下文（连势/失手链/下一回合标志）
   updateMeritContextAfterTurn(ctx, turnPack, rec);
+  const visualEvents = buildBattleMeritVisualEvents(rec);
+  enqueueBattleMeritFx(state, visualEvents);
+  playNextBattleMeritFx(state, ui);
 }
 
 function meritLogPlayerExecute(state, tgt, clinchKill) {
@@ -1086,7 +1200,8 @@ function loadChapter1MeritLeaderboard() {
   }
 }
 
-function _buildIntroTop3HtmlFromList(top) {
+function buildIntroTop3Html() {
+  const top = loadChapter1MeritLeaderboard().slice(0, 3);
   if (!top.length) {
     return `<div class="intro-top3-empty">暂无记录。通关第一章后将写入排行榜。</div>`;
   }
@@ -1107,8 +1222,48 @@ function _buildIntroTop3HtmlFromList(top) {
     .join("");
 }
 
-function buildIntroTop3Html() {
-  return _buildIntroTop3HtmlFromList(loadChapter1MeritLeaderboard().slice(0, 3));
+/** 从在线数据列表构建首页前三 HTML */
+function _buildIntroTop3HtmlFromList(list) {
+  if (!list || !list.length) return "";
+  return list.slice(0, 3).map((e, i) => {
+    const rank = i + 1;
+    const name = escapeHtml(e.name || "—");
+    const score = escapeHtml(String(e.finalMerit ?? "—"));
+    const medal = rank === 1 ? "medal--gold" : rank === 2 ? "medal--silver" : "medal--bronze";
+    return `
+<div class="intro-top3-row">
+  <span class="intro-top3-left"><span class="medal ${medal}" aria-hidden="true"></span><span class="intro-top3-rank">${rank}</span></span>
+  <span class="intro-top3-name">${name}</span>
+  <span class="intro-top3-score">${score}</span>
+  <span class="intro-top3-grade">${meritGradeSpanHtml(e.grade)}</span>
+</div>`;
+  }).join("");
+}
+
+/** 异步构建在线排行榜 HTML，失败时降级到本地 */
+async function buildOnlineMeritLeaderboardHtml() {
+  if (typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured()) {
+    const online = await OnlineLeaderboard.fetchLeaderboard(30);
+    if (online && online.length > 0) {
+      const rows = online.map((e, i) => {
+        const t = e.at ? new Date(e.at) : null;
+        const dateStr = t && !Number.isNaN(t.getTime())
+          ? `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")} ${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`
+          : "—";
+        const name = escapeHtml(e.name || "—");
+        return `<tr><td>${i + 1}</td><td>${name}</td><td><strong>${escapeHtml(String(e.finalMerit ?? "—"))}</strong></td><td>${meritGradeSpanHtml(e.grade)}</td><td>${escapeHtml(String(e.runSum ?? "—"))}</td><td class="merit-lb-date">${escapeHtml(dateStr)}</td></tr>`;
+      }).join("");
+      return `
+<div class="merit-report-section merit-lb-section">
+  <div class="merit-report-kicker">天下英雄榜（在线排行）</div>
+  <table class="merit-report-table merit-lb-table">
+    <thead><tr><th>#</th><th>昵称</th><th>总战功</th><th>评级</th><th>场次累计</th><th>时间</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+</div>`;
+    }
+  }
+  return buildLocalMeritLeaderboardHtml();
 }
 
 function roadmapMeritLabelForId(id) {
@@ -1197,21 +1352,20 @@ ${lastLines}
 `;
 }
 
-/** 第一章结算页：写入本地排行榜（每通关一次记一条），同时提交在线排行榜 */
+/** 第一章结算页：写入英雄榜（每通关一次记一条） */
 function ensureChapter1LeaderboardRecord(state) {
   if (state.chapterId !== "chapter1" || state._leaderboardSavedForThisRun) return;
   state._leaderboardSavedForThisRun = true;
   const report = computeChapterMerit(state);
-  const record = {
-    name: state._playerName || "",
+  const list = loadChapter1MeritLeaderboard();
+  list.push({
+    name: (state._playerName || "").trim() || "无名侠客",
     at: Date.now(),
     finalMerit: report.final_merit_score,
     grade: report.grade,
     runSum: state.runMeritScore ?? 0,
     retries: report.total_death_retry,
-  };
-  const list = loadChapter1MeritLeaderboard();
-  list.push(record);
+  });
   list.sort((a, b) => (b.finalMerit || 0) - (a.finalMerit || 0));
   try {
     localStorage.setItem(CH1_MERIT_LEADERBOARD_KEY, JSON.stringify(list.slice(0, 30)));
@@ -1220,12 +1374,18 @@ function ensureChapter1LeaderboardRecord(state) {
   }
   // 同步提交在线排行榜（异步，不阻塞）
   if (typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured()) {
-    OnlineLeaderboard.submitScore(record).catch(() => {});
+    OnlineLeaderboard.submitScore({
+      name: (state._playerName || "").trim() || "无名侠客",
+      finalMerit: report.final_merit_score,
+      grade: report.grade,
+      runSum: state.runMeritScore ?? 0,
+      retries: report.total_death_retry,
+    }).catch(() => {});
   }
 }
 
-function _buildMeritLeaderboardHtmlFromList(list, title) {
-  const top = list.slice(0, 10);
+function buildLocalMeritLeaderboardHtml() {
+  const top = loadChapter1MeritLeaderboard().slice(0, 10);
   const rows = top.length
     ? top
         .map((e, i) => {
@@ -1241,7 +1401,7 @@ function _buildMeritLeaderboardHtmlFromList(list, title) {
     : `<tr><td colspan="6">暂无记录。完成第一章结算后将自动写入。</td></tr>`;
   return `
 <div class="merit-report-section merit-lb-section">
-  <div class="merit-report-kicker">${escapeHtml(title)}</div>
+  <div class="merit-report-kicker">英雄榜（本机记录，至多保留 30 条）</div>
   <table class="merit-report-table merit-lb-table">
     <thead><tr><th>#</th><th>昵称</th><th>总战功</th><th>评级</th><th>场次累计</th><th>时间</th></tr></thead>
     <tbody>${rows}</tbody>
@@ -1249,60 +1409,150 @@ function _buildMeritLeaderboardHtmlFromList(list, title) {
 </div>`;
 }
 
-function buildLocalMeritLeaderboardHtml() {
-  return _buildMeritLeaderboardHtmlFromList(
-    loadChapter1MeritLeaderboard(),
-    "本地排行榜（本机记录，至多保留 30 条）",
-  );
-}
-
-/** 异步构建在线排行榜 HTML，失败时降级到本地 */
-async function buildOnlineMeritLeaderboardHtml() {
-  if (typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured()) {
-    const online = await OnlineLeaderboard.fetchLeaderboard(30);
-    if (online && online.length > 0) {
-      return _buildMeritLeaderboardHtmlFromList(online, "天下英雄榜（在线排行）");
-    }
+function getLiveMeritScoreForRankDisplay(ui, state) {
+  if (state?._endingHealAnimating && ui?.runMeritValue) {
+    const n = Number(String(ui.runMeritValue.textContent).trim());
+    if (Number.isFinite(n)) return Math.max(0, Math.round(n));
   }
-  return buildLocalMeritLeaderboardHtml();
+  return Math.max(0, Math.round(state?.runMeritScore ?? 0));
 }
 
-function _renderLeaderboardListToSettlePanel(box, list) {
-  if (!list.length) {
-    box.innerHTML = `<p class="line muted">暂无记录。完成第一章结算后将自动写入。</p>`;
-    return;
-  }
-  const rows = list
-    .map((e, i) => {
-      const medal =
-        i === 0
-          ? `<span class="medal medal--gold" aria-hidden="true"></span>`
-          : i === 1
-            ? `<span class="medal medal--silver" aria-hidden="true"></span>`
-            : i === 2
-              ? `<span class="medal medal--bronze" aria-hidden="true"></span>`
-              : "";
-      const rank = i + 1;
-      const score = e.finalMerit ?? 0;
-      const name = escapeHtml(e.name || "—");
-      return `<div class="rank-row"><span class="rank-left">${medal}<span class="rank-num">${rank}</span></span><span class="rank-name">${name}</span><span class="rank-score">${escapeHtml(String(score))}</span><span class="rank-grade">${meritGradeSpanHtml(e.grade)}</span></div>`;
-    })
-    .join("");
-  box.innerHTML = rows;
-}
-
-function renderLocalLeaderboardToSettlePanel(ui) {
-  const box = ui.settleRank;
+/** 仅滚动左侧排行榜 scrollbox，将「本局预览」行尽量置于可视区中央（避免 scrollIntoView 带动整页） */
+function scrollSettleRankListToLiveRow(box, smooth) {
   if (!box) return;
-  // 先用本地数据渲染，再异步拉取在线数据覆盖
-  const localList = loadChapter1MeritLeaderboard().slice(0, 30);
-  _renderLeaderboardListToSettlePanel(box, localList);
-  if (typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured()) {
-    OnlineLeaderboard.fetchLeaderboard(30).then((online) => {
-      if (online && online.length > 0) {
-        _renderLeaderboardListToSettlePanel(box, online);
+  const live = box.querySelector("[data-live-preview='1']");
+  if (!live) return;
+  const boxRect = box.getBoundingClientRect();
+  const liveRect = live.getBoundingClientRect();
+  const contentY = box.scrollTop + (liveRect.top - boxRect.top);
+  const viewH = box.clientHeight;
+  const rowH = live.offsetHeight || liveRect.height;
+  let nextTop = contentY - viewH / 2 + rowH / 2;
+  const max = Math.max(0, box.scrollHeight - viewH);
+  nextTop = Math.max(0, Math.min(max, nextTop));
+  if (smooth && typeof box.scrollTo === "function") {
+    try {
+      box.scrollTo({ top: nextTop, behavior: "smooth" });
+    } catch {
+      box.scrollTop = nextTop;
+    }
+  } else {
+    box.scrollTop = nextTop;
+  }
+}
+
+/** 英雄榜单行 HTML（rank 为 1-based 名次） */
+function buildHeroRankRowHtml(e, rank) {
+  const i = rank - 1;
+  const medal =
+    i === 0
+      ? `<span class="medal medal--gold" aria-hidden="true"></span>`
+      : i === 1
+        ? `<span class="medal medal--silver" aria-hidden="true"></span>`
+        : i === 2
+          ? `<span class="medal medal--bronze" aria-hidden="true"></span>`
+          : "";
+  const score = e.finalMerit ?? 0;
+  const name =
+    e.kind === "live"
+      ? `${escapeHtml(e.name || "你")}<span class="rank-live-badge">本局</span>`
+      : escapeHtml(e.name || "—");
+  const gradeHtml =
+    e.kind === "live"
+      ? `<span class="rank-live-pill" title="按当前累计战功与历史「总战功」对比，非通关结算评级">本局预览</span>`
+      : meritGradeSpanHtml(e.grade);
+  const rowCls = e.kind === "live" ? "rank-row rank-row--live-preview" : "rank-row";
+  const liveAttrs =
+    e.kind === "live"
+      ? ` data-live-preview="1" role="status" aria-label="本局预览名次 ${rank}，战功 ${score}"`
+      : "";
+  return `<div class="${rowCls}"${liveAttrs}><span class="rank-left">${medal}<span class="rank-num${e.kind === "live" ? " rank-num--live" : ""}">${rank}</span></span><span class="rank-name">${name}</span><span class="rank-score">${escapeHtml(String(score))}</span><span class="rank-grade">${gradeHtml}</span></div>`;
+}
+
+/** 左侧英雄榜：前三名固定展示，其余可滚动；混排逻辑不变 */
+function renderLocalLeaderboardToSettlePanel(ui, state) {
+  const box = ui.settleRank;
+  const top3box = ui.settleRankTop3;
+  if (!box || !top3box) return;
+  const meritDisp = getLiveMeritScoreForRankDisplay(ui, state);
+  const saved = loadChapter1MeritLeaderboard().slice(0, 30);
+  const nick = (state?._playerName || "").trim() || "你";
+  const reduced =
+    typeof window !== "undefined" &&
+    window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const items = saved.map((e) => ({ kind: /** @type {"saved"} */ ("saved"), ...e }));
+  items.push({ kind: "live", name: nick, finalMerit: meritDisp });
+  items.sort((a, b) => {
+    const sa = a.finalMerit ?? 0;
+    const sb = b.finalMerit ?? 0;
+    if (sb !== sa) return sb - sa;
+    return a.kind === "live" ? -1 : 1;
+  });
+
+  let liveRank = 0;
+  const rowParts = items.map((e, i) => {
+    const rank = i + 1;
+    if (e.kind === "live") liveRank = rank;
+    return buildHeroRankRowHtml(e, rank);
+  });
+  const top3html = rowParts.slice(0, 3).join("");
+  const restHtml = rowParts.slice(3).join("");
+
+  const prev = state?._liveMeritRankPrev;
+  const improved = !!(state && prev != null && liveRank > 0 && liveRank < prev);
+  const firstListPaint = !state || state._settleLbLastMerit == null;
+  const meritMoved =
+    !!state && state._settleLbLastMerit != null && state._settleLbLastMerit !== meritDisp;
+  const rankMoved = !!state && state._settleLbLastRank != null && state._settleLbLastRank !== liveRank;
+  /** 战功/名次变化或名次上升时跟随本局行（innerHTML 会重置 scrollTop，须在同一帧末再定位） */
+  const needsFollow = !!(state && liveRank > 0 && (firstListPaint || meritMoved || rankMoved || improved));
+  const followSmooth =
+    !firstListPaint && !reduced && (meritMoved || rankMoved || improved);
+
+  const prevScrollTop = box.scrollTop;
+  top3box.innerHTML = top3html;
+  box.innerHTML = restHtml;
+
+  if (state) {
+    state._liveMeritRankPrev = liveRank;
+    state._settleLbLastMerit = meritDisp;
+    state._settleLbLastRank = liveRank;
+
+    if (improved && !reduced) {
+      const numEl =
+        top3box.querySelector(".rank-row--live-preview .rank-num--live") ||
+        box.querySelector(".rank-row--live-preview .rank-num--live");
+      if (numEl) {
+        numEl.classList.remove("is-rising");
+        void numEl.offsetWidth;
+        numEl.classList.add("is-rising");
+        if (state._liveRankRiseTimer) window.clearTimeout(state._liveRankRiseTimer);
+        state._liveRankRiseTimer = window.setTimeout(() => {
+          numEl.classList.remove("is-rising");
+          state._liveRankRiseTimer = null;
+        }, 720);
       }
-    }).catch(() => {});
+    }
+
+    if (liveRank > 0) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const liveInScroll = box.querySelector("[data-live-preview='1']");
+          if (liveInScroll) {
+            if (needsFollow) {
+              scrollSettleRankListToLiveRow(box, followSmooth);
+            } else {
+              const max = Math.max(0, box.scrollHeight - box.clientHeight);
+              box.scrollTop = Math.min(max, prevScrollTop);
+            }
+          } else {
+            box.scrollTop = 0;
+          }
+        });
+      });
+    }
   }
 }
 
@@ -1338,6 +1588,13 @@ function resetChapter1NewGame(state) {
   state._runMeritAnimGen = (state._runMeritAnimGen || 0) + 1;
   state._runMeritAnimating = false;
   delete state._pendingRunMeritAnim;
+  state._liveMeritRankPrev = null;
+  state._settleLbLastMerit = null;
+  state._settleLbLastRank = null;
+  if (state._liveRankRiseTimer) {
+    window.clearTimeout(state._liveRankRiseTimer);
+    state._liveRankRiseTimer = null;
+  }
   state._runMeritSyncedToFinal = false;
   const p = state.player;
   const fresh = mkFighter({ name: "我", hp: ns(6), stagger: 0, staggerThreshold: 4, level: 1 });
@@ -1378,6 +1635,11 @@ function resetChapter1NewGame(state) {
   state.tipsHighlightDismissed = false;
   state.introDismissed = false;
   state.firstQuickAttackBonusPending = false;
+  state._playerName = "";
+  state._nameDialogMode = null;
+  state.battleMeritFxQueue = [];
+  state.battleMeritFxPlaying = false;
+  state.visibleCombo = 0;
   state.winGrowthEmbed = false;
   state.winGrowthEmbedNodeId = null;
 }
@@ -2280,7 +2542,7 @@ function buildActionButtonEffectHints(state) {
 }
 
 /** 与 index.html 卡面处决按钮文案一致 */
-const LABEL_EXECUTE_ON_CARD = "发现破绽！上前处决！";
+const LABEL_EXECUTE_ON_CARD = "失衡已满！上前处决！";
 
 /**
  * 各按键的强化来源列表（用于 +1/+2… 后缀与悬浮说明；同键多条来源即叠层）
@@ -2367,6 +2629,7 @@ function playerClashChipClass(action) {
 /** 多段对拼里「我」用中性样式，与具体招式胶囊区分 */
 function resolutionPlayerChipClass(playerChipKey) {
   /** 调息回合对撞：本段无「出手意图」，仅占位（与敌意图对撞） */
+  if (playerChipKey === "none") return "battle-clash-chip--none";
   if (playerChipKey === "neutral") return "battle-clash-chip--neutral-intent";
   if (playerChipKey === "me") return "battle-clash-chip--me";
   if (playerChipKey === "broken") return "intent-broken";
@@ -3507,7 +3770,10 @@ function cancelResolutionAnimation(ui) {
     resolutionAnimResolve = null;
     done();
   }
-  if (!ui?.resolutionLayer) return;
+  if (!ui?.resolutionLayer) {
+    clearBattleMeritFx(ui);
+    return;
+  }
   ui.battleInfoPanel?.classList.remove("is-resolving");
   ui.resolutionLayer.classList.remove(
     "is-active",
@@ -3537,6 +3803,7 @@ function cancelResolutionAnimation(ui) {
     );
   }
   if (ui.resolutionSecondary) ui.resolutionSecondary.innerHTML = "";
+  clearBattleMeritFx(ui);
 }
 
 /**
@@ -3799,9 +4066,14 @@ function buildResolutionSegments(state, bundle) {
       ];
     }
     if (pa === "defend" || pa === "block") {
+      const secCaps = resolutionPlayerCapsuleForSegment(state, pa, primary.outcomeType, primary);
+      const playerCaps =
+        secCaps.playerChipKey === "broken"
+          ? secCaps
+          : { playerText: "", playerChipKey: "none" };
       return [
         {
-          ...resolutionPlayerCapsuleForSegment(state, pa, primary.outcomeType, primary),
+          ...playerCaps,
           enemyRow: primary,
           outcome: primary.outcomeType,
           soloIntro: false,
@@ -3837,19 +4109,13 @@ function buildResolutionSegments(state, bundle) {
       actingRows = sortEnemyOutcomeRowsForBlockClashOrder(state, actingRows);
     }
     const segments = [];
-    let firstClashDone = false;
     for (const row of actingRows) {
       const secCaps = resolutionPlayerCapsuleForSegment(state, pa, row.outcomeType, row);
       let playerCaps;
-      if (row.outcomeType === "none") {
-        playerCaps = secCaps;
-      } else if (!firstClashDone) {
-        firstClashDone = true;
-        playerCaps = secCaps;
-      } else if (row.outcomeType === "dual_broken") {
+      if (secCaps.playerChipKey === "broken") {
         playerCaps = secCaps;
       } else {
-        playerCaps = { playerText: "我", playerChipKey: "me" };
+        playerCaps = { playerText: "", playerChipKey: "none" };
       }
       segments.push({
         ...playerCaps,
@@ -4156,7 +4422,7 @@ function playOneResolutionSegment(state, bundle, ui, segment, isLast) {
           resolutionFirstStrikeTimer = window.setTimeout(() => {
             resolutionFirstStrikeTimer = null;
             if (!ui?.resolutionLabel) return;
-            ui.resolutionLabel.textContent = "崩了！";
+            ui.resolutionLabel.textContent = "他崩了！";
             ui.resolutionLabel.classList.remove("resolution-label--pop", "resolution-label--step-1");
             void ui.resolutionLabel.offsetWidth;
             ui.resolutionLabel.classList.add("resolution-label--pop", "resolution-label--enemy-break", "resolution-label--step-2");
@@ -4168,7 +4434,7 @@ function playOneResolutionSegment(state, bundle, ui, segment, isLast) {
           resolutionFirstStrikeTimer = window.setTimeout(() => {
             resolutionFirstStrikeTimer = null;
             if (!ui?.resolutionLabel) return;
-            ui.resolutionLabel.textContent = "崩了！";
+            ui.resolutionLabel.textContent = "他崩了！";
             ui.resolutionLabel.classList.remove("resolution-label--pop", "resolution-label--step-1");
             void ui.resolutionLabel.offsetWidth;
             ui.resolutionLabel.classList.add("resolution-label--pop", "resolution-label--enemy-break", "resolution-label--step-2");
@@ -4180,7 +4446,7 @@ function playOneResolutionSegment(state, bundle, ui, segment, isLast) {
           resolutionFirstStrikeTimer = window.setTimeout(() => {
             resolutionFirstStrikeTimer = null;
             if (!ui?.resolutionLabel) return;
-            ui.resolutionLabel.textContent = "崩了！";
+            ui.resolutionLabel.textContent = "他崩了！";
             ui.resolutionLabel.classList.remove("resolution-label--pop", "resolution-label--step-1");
             void ui.resolutionLabel.offsetWidth;
             ui.resolutionLabel.classList.add("resolution-label--pop", "resolution-label--enemy-break", "resolution-label--step-2");
@@ -5156,8 +5422,19 @@ function mkInitialState() {
     /** 第一章全局逐回合战功记录 */
     chapterMeritLog: /** @type {any[]} */ ([]),
     _leaderboardSavedForThisRun: false,
+    _playerName: "",
+    _nameDialogMode: /** @type {"intro"|"postBoss"|null} */ (null),
+    battleMeritFxQueue: /** @type {any[]} */ ([]),
+    battleMeritFxPlaying: false,
+    visibleCombo: 0,
     _runMeritAnimating: false,
     _runMeritAnimGen: 0,
+    /** 本地榜实时预览：上一帧名次，用于名次上升动画 */
+    _liveMeritRankPrev: /** @type {number|null} */ (null),
+    _liveRankRiseTimer: /** @type {number|null} */ (null),
+    /** 本地榜滚动跟随：上次渲染时的战功与名次，用于判断平滑滚动 */
+    _settleLbLastMerit: /** @type {number|null} */ (null),
+    _settleLbLastRank: /** @type {number|null} */ (null),
     /** 第一章战功档案：{ retries: Record<id,count>, records: Record<id, object> } */
     meritChapter: /** @type {{ retries: Record<string, number>, records: Record<string, any> }} */ ({
       retries: {},
@@ -5700,8 +5977,14 @@ function dom() {
     resolutionBurst: $("resolutionBurst"),
     resolutionLabel: $("resolutionLabel"),
     resolutionSecondary: $("resolutionSecondary"),
+    battleMeritFxLayer: $("battleMeritFxLayer"),
+    battleMeritJudgement: $("battleMeritJudgement"),
+    battleMeritDelta: $("battleMeritDelta"),
+    battleMeritCombo: $("battleMeritCombo"),
+    battleMeritBurst: $("battleMeritBurst"),
     introOverlay: $("introOverlay"),
     introTop3: $("introTop3"),
+    btnIntroDare: $("btnIntroDare"),
     winOverlay: $("winOverlay"),
     winGrowthEmbed: $("winGrowthEmbed"),
     winGrowthTitle: $("winGrowthTitle"),
@@ -5710,6 +5993,8 @@ function dom() {
     btnWinContinue: $("btnWinContinue"),
     btnWinClaim: $("btnWinClaim"),
     nameDialog: $("nameDialog"),
+    nameDialogTitle: $("nameDialogTitle"),
+    nameDialogSub: $("nameDialogSub"),
     nameDialogInput: $("nameDialogInput"),
     nameDialogOk: $("nameDialogOk"),
     btnStartBattle: $("btnStartBattle"),
@@ -5739,6 +6024,7 @@ function dom() {
     pStaggerBarWrap: $("pStaggerBarWrap"),
     battleLog: $("battleLog"),
     settleLog: $("settleLog"),
+    settleRankTop3: $("settleRankTop3"),
     settleRank: $("settleRank"),
     tips: $("tips"),
     tipsPanel: $("tipsPanel"),
@@ -5938,9 +6224,10 @@ function render(state, ui) {
     const isBattle = node.type === "B" || node.type === "E";
     ui.winOverlay.hidden = !(isBattle && showWinOverlayPanel);
   }
+  const showIntro = state.chapterId === "chapter1" && node.id === "B1" && state.phase === "ready" && !state.introDismissed;
+  const introNeedsName = showIntro && !String(state._playerName || "").trim();
   if (ui.introOverlay) {
     // 仅开局 B1 的战前（ready）显示；点击「开始战斗」后隐藏
-    const showIntro = state.chapterId === "chapter1" && node.id === "B1" && state.phase === "ready" && !state.introDismissed;
     ui.introOverlay.hidden = !showIntro;
     if (showIntro && ui.introTop3) {
       ui.introTop3.innerHTML = buildIntroTop3Html();
@@ -5954,9 +6241,12 @@ function render(state, ui) {
       }
     }
   }
+  if (ui.btnIntroDare) ui.btnIntroDare.hidden = !showIntro || !introNeedsName;
   if (ui.btnWinContinue) {
     const isBattle = node.type === "B" || node.type === "E";
-    ui.btnWinContinue.hidden = !(isBattle && state.phase === "win" && state.winReady);
+    const showWinBtn = isBattle && state.phase === "win" && state.winReady;
+    ui.btnWinContinue.hidden = !showWinBtn;
+    ui.btnWinContinue.textContent = showWinBtn && node.id === "BOSS" ? "通关结算" : "领取奖励";
   }
   // 「恭喜进入战功名人堂」不应在每场胜利弹层出现：改到 Boss 通关后的 S1 积分结算页展示
   if (ui.btnWinClaim) ui.btnWinClaim.hidden = true;
@@ -5967,8 +6257,8 @@ function render(state, ui) {
   const showCombatBody = isBattleNode && state.phase !== "ready" && !isWinScreen;
   // 「开始战斗」槽位：战中用不可见占位保持与战前相同文档流高度，使按键/相克/新手绝对位置一致
   if (ui.preFightStartWrap) {
-    const winScreen = showWinOverlayPanel;
-    if (!isBattleNode || winScreen) {
+    const winScreen = isWinScreen;
+    if (!isBattleNode || winScreen || introNeedsName) {
       ui.preFightStartWrap.hidden = true;
       ui.preFightStartWrap.classList.remove("pre-fight-start--placeholder");
     } else {
@@ -5979,7 +6269,7 @@ function render(state, ui) {
       );
     }
   }
-  if (ui.btnStartBattle) ui.btnStartBattle.hidden = !(isBattleNode && state.phase === "ready");
+  if (ui.btnStartBattle) ui.btnStartBattle.hidden = !(isBattleNode && state.phase === "ready" && !introNeedsName);
   if (ui.btnRetryBattle) ui.btnRetryBattle.hidden = !(isBattleNode && state.phase === "lose");
   if (ui.battleInfoPanel) ui.battleInfoPanel.classList.toggle("battle-info-panel--ready", inReady);
   // B1：乙位未上场时缩小其卡片
@@ -6086,10 +6376,8 @@ function render(state, ui) {
     } else if (node.id === "S1") {
       ui.nodeTitle.textContent = "第一章结算：边寨首功";
       ui.nodeSubtitle.textContent = "战功评定";
-      const namedThisRun = !!state._leaderboardSavedForThisRun;
-      // 未输入昵称前：不允许进入下一页（按钮不显示）
-      opts = namedThisRun ? (node.options || []).slice() : [];
-      if (namedThisRun && opts.length) {
+      opts = (node.options || []).slice();
+      if (opts.length) {
         // 显示“再玩一局”
         opts = opts.map((o) =>
           o && o.id === "hook"
@@ -6110,26 +6398,12 @@ function render(state, ui) {
           requestAnimationFrame(() => animateRunMeritValue(ui, state, from, to));
         }
       }
-      // 仅 Boss 战通关后（有 BOSS 战功记录）在积分页展示“名人堂”入口
-      if (state.meritChapter?.records?.BOSS && !namedThisRun) {
-        const hallBtn = document.createElement("button");
-        hallBtn.type = "button";
-        hallBtn.className = "btn btn-offense win-claim";
-        hallBtn.textContent = "恭喜进入战功名人堂";
-        hallBtn.addEventListener("click", () => {
-          if (ui.nameDialog) {
-            ui.nameDialog.hidden = false;
-            if (ui.nameDialogInput) {
-              ui.nameDialogInput.value = "";
-              ui.nameDialogInput.focus();
-            }
-          }
-        });
-        ui.nodeOptions.appendChild(hallBtn);
-      }
+      // 第一章结算：直接自动入榜，不再需要“进入名人堂”按钮
+      if (state.meritChapter?.records?.BOSS) ensureChapter1LeaderboardRecord(state);
       const meritWrap = document.createElement("div");
       meritWrap.className = "chapter-merit-report";
       meritWrap.innerHTML = buildMeritReportHtml(report) + buildLocalMeritLeaderboardHtml();
+      ui.nodeOptions.appendChild(meritWrap);
       // 异步拉取在线排行榜覆盖本地版本
       if (typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured()) {
         buildOnlineMeritLeaderboardHtml().then((html) => {
@@ -6137,7 +6411,6 @@ function render(state, ui) {
           if (existing) existing.outerHTML = html;
         }).catch(() => {});
       }
-      ui.nodeOptions.appendChild(meritWrap);
     }
 
     // 成长节点统一用卡片交互（盖住→翻开→点选→显示确认按钮→确认生效）
@@ -6216,6 +6489,9 @@ function render(state, ui) {
     ui.actExecuteA.disabled = true;
     ui.actExecuteB.disabled = true;
     if (ui.actExecuteC) ui.actExecuteC.disabled = true;
+    // 战前也同步仓库与汇总（否则「再玩一局」等重置 state 后仍会残留上一屏的卡片 DOM）
+    if (ui.playerSummary) ui.playerSummary.innerHTML = renderWarehouseSummaryTable(state);
+    if (ui.warehouseCards) ui.warehouseCards.innerHTML = renderWarehouseCards(state);
     // stop here (avoid rendering meters on placeholder enemies)
     return;
   }
@@ -6242,24 +6518,7 @@ function render(state, ui) {
   const eA = eoAFight.fighter;
   const eB = eoBFight.fighter;
 
-  // 条长度（最大长度按上限比例缩放；HP 以 100 为满长度，失衡以 10 为满长度）
-  if (ui.pHpBarWrap) ui.pHpBarWrap.style.width = percent(meterMaxWidthRatio(p.hpMax, HP_BAR_CAP));
-  if (ui.pStaggerBarWrap)
-    ui.pStaggerBarWrap.style.width = percent(meterMaxWidthRatio(p.staggerThreshold || 0, STAGGER_BAR_CAP));
-  if (ui.eAHpBarWrap) ui.eAHpBarWrap.style.width = percent(meterMaxWidthRatio(eA.hpMax, HP_BAR_CAP));
-  if (ui.eAStaggerBarWrap)
-    ui.eAStaggerBarWrap.style.width = percent(meterMaxWidthRatio(eA.staggerThreshold || 0, STAGGER_BAR_CAP));
-  if (ui.eBHpBarWrap) ui.eBHpBarWrap.style.width = percent(meterMaxWidthRatio(eB.hpMax, HP_BAR_CAP));
-  if (ui.eBStaggerBarWrap)
-    ui.eBStaggerBarWrap.style.width = percent(meterMaxWidthRatio(eB.staggerThreshold || 0, STAGGER_BAR_CAP));
-  if (ui.eCHpBarWrap && eoCFight && !eoCFight.waitingToEnter) {
-    ui.eCHpBarWrap.style.width = percent(meterMaxWidthRatio(eoCFight.fighter.hpMax, HP_BAR_CAP));
-  }
-  if (ui.eCStaggerBarWrap && eoCFight && !eoCFight.waitingToEnter) {
-    ui.eCStaggerBarWrap.style.width = percent(
-      meterMaxWidthRatio(eoCFight.fighter.staggerThreshold || 0, STAGGER_BAR_CAP),
-    );
-  }
+  // 计量条外框长度统一固定：仅用 fill 比例表达当前状态
 
   // 受击抖动：仅在战斗中、且至少过了开场首回合，且 HP 下降时触发
   // 开场冷却 / B1 上场动画未结束前：只同步血量快照、不触发抖动（避免入场 transform 与 hit-shake 叠层、以及掐断动画后的跳变）
@@ -6302,7 +6561,10 @@ function render(state, ui) {
     }
   }
 
-  if (ui.playerName) ui.playerName.textContent = p.name;
+  if (ui.playerName) {
+    const nick = String(state._playerName || "").trim();
+    ui.playerName.textContent = nick ? `${p.name}（${nick}）` : p.name;
+  }
   if (ui.playerLevel) ui.playerLevel.textContent = "";
   // 濒死：卡片框红光呼吸
   ui.playerCard?.classList.toggle("player-critical", p.hp > 0 && p.hp <= ns(2));
@@ -6488,7 +6750,7 @@ function render(state, ui) {
     ui.settleLog.appendChild(pEl);
   }
   ui.settleLog.scrollTop = ui.settleLog.scrollHeight;
-  renderLocalLeaderboardToSettlePanel(ui);
+  renderLocalLeaderboardToSettlePanel(ui, state);
 
   // actions enabled
   const inFight = state.phase === "fight" || state.phase === "ending";
@@ -6590,6 +6852,9 @@ function render(state, ui) {
 function gotoNode(state, ui, chapterId, nodeId) {
   state.winGrowthEmbed = false;
   state.winGrowthEmbedNodeId = null;
+  state.battleMeritFxQueue = [];
+  state.battleMeritFxPlaying = false;
+  state.visibleCombo = 0;
   clearBossExecutePlayerDramaTimers(state);
   cancelResolutionAnimation(ui);
   state._pendingMultiEnemyResolution = null;
@@ -6693,6 +6958,9 @@ function deploySequentialSecondIfNeeded(state, details) {
 function startBattleFromNode(state, node) {
   state.winGrowthEmbed = false;
   state.winGrowthEmbedNodeId = null;
+  state.battleMeritFxQueue = [];
+  state.battleMeritFxPlaying = false;
+  state.visibleCombo = 0;
   clearBossExecutePlayerDramaTimers(state);
   if (state._winKillRevealTimer) {
     clearTimeout(state._winKillRevealTimer);
@@ -6921,6 +7189,7 @@ function runEndingHealMeterAnim(state, ui, onComplete) {
     if (ui.pStaggerText) ui.pStaggerText.textContent = `${Math.round(st)}/${stMax}`;
     if (meritDelta > 0 && ui.runMeritValue) {
       ui.runMeritValue.textContent = String(Math.round(meritFrom + meritDelta * u));
+      renderLocalLeaderboardToSettlePanel(ui, state);
     }
     if (u < 1) {
       requestAnimationFrame(step);
@@ -7055,26 +7324,7 @@ function finish(state, ui, outcome) {
     restorePlayerAfterBattleWin(state);
     state.settleLog.push("战后休整：{g}体力已回满，失衡与破绽已清除。{/g}");
 
-    // Boss 橙卡奖励（v0.1）：随机掉落 1 张橙卡（O01~O03）
-    if (node.id === "BOSS" && !state.orangeLoot) {
-      const roll = Math.random();
-      const loot =
-        roll < 0.34
-          ? { id: "O01", name: "青釭真影", desc: "ATK +20", eff: { atk: ns(2) } }
-          : roll < 0.67
-            ? { id: "O02", name: "狮蛮宝铠", desc: "防御时额外减伤 +10；Max HP +20", eff: { def: 1, hp: ns(2) } }
-            : { id: "O03", name: "白玉虎符", desc: "重击额外 +1 失衡；处决后恢复 20 点生命", eff: { heavyStg: 1, execHeal: ns(2) } };
-      state.orangeLoot = loot;
-      if (loot.eff?.atk) state.player.atkBonus = (state.player.atkBonus || 0) + loot.eff.atk;
-      if (loot.eff?.def) state.player.defendMitigationBonus = (state.player.defendMitigationBonus || 0) + loot.eff.def;
-      if (loot.eff?.hp) {
-        state.player.hpMax += loot.eff.hp;
-        state.player.hp = Math.min(state.player.hp + loot.eff.hp, state.player.hpMax);
-      }
-      if (loot.eff?.heavyStg) state.player.heavyStgBonus = (state.player.heavyStgBonus || 0) + loot.eff.heavyStg;
-      if (loot.eff?.execHeal) state.player.executeHealBonus = (state.player.executeHealBonus || 0) + loot.eff.execHeal;
-      state.settleLog.push(`{o}掉落：橙卡【${loot.name}】（${loot.desc}）。{/o}`);
-    }
+    // Boss 战不再掉落橙卡；通关后与常战相同弹出「战斗胜利」，点击「通关结算」进入 S1。
 
     // 胜利后：先停留在战斗信息页，等特效结束后再弹出“战斗胜利”
     state.phase = "win";
@@ -7106,7 +7356,7 @@ function finish(state, ui, outcome) {
   state.battleLog.push("{r}你倒下了。{/r}");
   state.settleLog.push("{r}结算：战斗失败{/r}");
   state.settleLog.push("奖励：无。");
-  state.settleLog.push("可点击「重试本战」或顶部「重试」，重新开始这一场战斗。");
+  state.settleLog.push("可点击「重试本战」，重新开始这一场战斗。");
 }
 
 /** 与 style 中调息动画时长一致 */
@@ -8109,6 +8359,8 @@ function onPlayerAction(state, ui, action, opts = {}) {
 function boot() {
   const ui = dom();
   let state = mkInitialState();
+  // 英雄榜：即使尚未进入战斗也要先展示当前数据
+  renderLocalLeaderboardToSettlePanel(ui, state);
 
   if (ui.beginnerModeToggle) {
     ui.beginnerModeToggle.checked = readBeginnerModeFromStorage();
@@ -8132,7 +8384,7 @@ function boot() {
   if (btnClearLB) {
     btnClearLB.addEventListener("click", () => {
       localStorage.removeItem(CH1_MERIT_LEADERBOARD_KEY);
-      renderLocalLeaderboardToSettlePanel(ui);
+      renderLocalLeaderboardToSettlePanel(ui, state);
     });
   }
 
@@ -8155,25 +8407,27 @@ function boot() {
     render(state, ui);
   }
 
-  ui.btnRestart.addEventListener("click", () => {
-    const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
-    const node = chapter.nodes[state.nodeId] || chapter.nodes[chapter.startNodeId];
-    const isBattle = node.type === "B" || node.type === "E";
-    if (
-      isBattle &&
-      (state.phase === "fight" ||
-        state.phase === BOSS_EXEC_PLAYER_DRAMA_PHASE ||
-        state.phase === "endingLose" ||
-        state.phase === "lose")
-    ) {
-      gotoNode(state, ui, chapter.id, node.id);
-      return;
-    }
-    state.chapterRoadmapCleared = {};
-    markRoadmapNodeDone(state, "N0");
-    markRoadmapNodeDone(state, "N1");
-    gotoNode(state, ui, chapter.id, chapter.startNodeId);
-  });
+  if (ui.btnRestart) {
+    ui.btnRestart.addEventListener("click", () => {
+      const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
+      const node = chapter.nodes[state.nodeId] || chapter.nodes[chapter.startNodeId];
+      const isBattle = node.type === "B" || node.type === "E";
+      if (
+        isBattle &&
+        (state.phase === "fight" ||
+          state.phase === BOSS_EXEC_PLAYER_DRAMA_PHASE ||
+          state.phase === "endingLose" ||
+          state.phase === "lose")
+      ) {
+        gotoNode(state, ui, chapter.id, node.id);
+        return;
+      }
+      state.chapterRoadmapCleared = {};
+      markRoadmapNodeDone(state, "N0");
+      markRoadmapNodeDone(state, "N1");
+      gotoNode(state, ui, chapter.id, chapter.startNodeId);
+    });
+  }
   if (ui.btnWinContinue) {
     ui.btnWinContinue.addEventListener("click", () => {
       const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
@@ -8200,17 +8454,35 @@ function boot() {
       }
     });
   }
+  function openNameDialog(mode) {
+    if (!ui.nameDialog) return;
+    state._nameDialogMode = mode;
+    if (ui.nameDialogTitle) {
+      ui.nameDialogTitle.textContent = mode === "intro" ? "留下大名，再战边寨" : "恭喜进入战功名人堂！";
+    }
+    if (ui.nameDialogSub) {
+      ui.nameDialogSub.textContent = mode === "intro" ? "请先报上大名：" : "大人请输入昵称：";
+    }
+    if (ui.nameDialogOk) {
+      ui.nameDialogOk.textContent = mode === "intro" ? "应战" : "确定";
+    }
+    if (ui.nameDialogInput) {
+      ui.nameDialogInput.value = "";
+      ui.nameDialogInput.placeholder = "最多12个字";
+    }
+    ui.nameDialog.hidden = false;
+    ui.nameDialogInput?.focus();
+  }
+  if (ui.btnIntroDare) {
+    ui.btnIntroDare.addEventListener("click", () => {
+      openNameDialog("intro");
+    });
+  }
   if (ui.btnWinClaim) {
     ui.btnWinClaim.addEventListener("click", () => {
       // 隐藏胜利弹层，弹出昵称输入框
       if (ui.winOverlay) ui.winOverlay.hidden = true;
-      if (ui.nameDialog) {
-        ui.nameDialog.hidden = false;
-        if (ui.nameDialogInput) {
-          ui.nameDialogInput.value = "";
-          ui.nameDialogInput.focus();
-        }
-      }
+      openNameDialog("postBoss");
     });
   }
   if (ui.nameDialogOk) {
@@ -8235,6 +8507,12 @@ function boot() {
       const name = (ui.nameDialogInput?.value || "").trim() || "无名侠客";
       state._playerName = name;
       if (ui.nameDialog) ui.nameDialog.hidden = true;
+      const mode = state._nameDialogMode || "postBoss";
+      state._nameDialogMode = null;
+      if (mode === "intro") {
+        render(state, ui);
+        return;
+      }
       proceedAfterName();
     });
     ui.nameDialogInput?.addEventListener("keydown", (e) => {

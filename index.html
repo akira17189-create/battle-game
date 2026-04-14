@@ -22,9 +22,6 @@
               <div id="runMeritHint" class="run-merit-hint" aria-hidden="true"></div>
             </div>
           </div>
-          <div class="top-actions">
-            <button id="btnRestart" class="btn btn-secondary" type="button">重试</button>
-          </div>
         </div>
       </header>
 
@@ -51,9 +48,9 @@
               <div id="settleLog" class="scrollbox settle-log-half"></div>
               <div class="settle-rank-half">
                 <div class="settle-rank-head">
-                  <div class="settle-rank-title">天下英雄榜</div>
-                  <div class="settle-rank-sub">第一章总战功</div>
+                  <div class="settle-rank-title">英雄榜</div>
                 </div>
+                <div id="settleRankTop3" class="settle-rank-top3" aria-label="英雄榜前三"></div>
                 <div id="settleRank" class="scrollbox settle-rank-list"></div>
               </div>
             </div>
@@ -76,6 +73,12 @@
               </div>
               <div id="resolutionSecondary" class="resolution-secondary"></div>
             </div>
+            <div id="battleMeritFxLayer" class="battle-merit-fx-layer" hidden aria-hidden="true">
+              <div id="battleMeritJudgement" class="battle-merit-judgement"></div>
+              <div id="battleMeritDelta" class="battle-merit-delta"></div>
+              <div id="battleMeritCombo" class="battle-merit-combo"></div>
+              <div id="battleMeritBurst" class="battle-merit-burst"></div>
+            </div>
 
             <div id="introOverlay" class="intro-overlay" hidden>
               <div class="intro-overlay-inner">
@@ -85,8 +88,11 @@
                   <div class="intro-sub">你的目标</div>
                   <p>完成第一章《边寨首功》。<br>在通关的前提下，尽量用更少的回合、更高的剩余血量、更少的破绽次数，拿到更高战功，并进入排行榜。</p>
                   <div class="intro-sub">天下英雄榜（本地前三）</div>
-                  <div id="introTop3" class="intro-top3" aria-label="本地排行榜前三"></div>
+                  <div id="introTop3" class="intro-top3" aria-label="英雄榜前三"></div>
                   <div class="intro-dare">你敢来挑战天下英雄榜吗？</div>
+                  <div class="intro-dare-actions">
+                    <button id="btnIntroDare" class="btn btn-offense intro-dare-btn" type="button">敢</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -110,8 +116,8 @@
             </div>
             <div id="nameDialog" class="name-dialog-overlay" hidden>
               <div class="name-dialog">
-                <div class="name-dialog-title">恭喜进入战功名人堂！</div>
-                <div class="name-dialog-sub">大人请输入昵称：</div>
+                <div id="nameDialogTitle" class="name-dialog-title">请输入大名</div>
+                <div id="nameDialogSub" class="name-dialog-sub">大人请输入昵称：</div>
                 <input id="nameDialogInput" class="name-dialog-input" type="text" maxlength="12" placeholder="最多12个字" />
                 <div class="name-dialog-actions">
                   <button id="nameDialogOk" class="btn btn-offense" type="button">确定</button>
@@ -151,7 +157,7 @@
                   <div id="intentAInCard" class="enemy-intent"></div>
                 </div>
                 <div id="enemyExecuteWrapA" class="enemy-execute-overlay" hidden>
-                  <button id="actExecuteA" type="button" class="btn btn-danger btn-execute-on-card">发现破绽！上前处决！</button>
+                  <button id="actExecuteA" type="button" class="btn btn-danger btn-execute-on-card">失衡已满！上前处决！</button>
                 </div>
               </div>
 
@@ -178,7 +184,7 @@
                   <div id="intentBInCard" class="enemy-intent"></div>
                 </div>
                 <div id="enemyExecuteWrapB" class="enemy-execute-overlay" hidden>
-                  <button id="actExecuteB" type="button" class="btn btn-danger btn-execute-on-card">发现破绽！上前处决！</button>
+                  <button id="actExecuteB" type="button" class="btn btn-danger btn-execute-on-card">失衡已满！上前处决！</button>
                 </div>
                 <div id="enemyWaitingOverlayB" class="enemy-waiting-overlay" aria-hidden="true">
                   <span class="enemy-waiting-overlay__label">未上场</span>
@@ -208,7 +214,7 @@
                   <div id="intentCInCard" class="enemy-intent"></div>
                 </div>
                 <div id="enemyExecuteWrapC" class="enemy-execute-overlay" hidden>
-                  <button id="actExecuteC" type="button" class="btn btn-danger btn-execute-on-card">发现破绽！上前处决！</button>
+                  <button id="actExecuteC" type="button" class="btn btn-danger btn-execute-on-card">失衡已满！上前处决！</button>
                 </div>
               </div>
             </div>
