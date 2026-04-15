@@ -119,8 +119,19 @@
                 </div>
               </div>
             </div>
-            <div id="nameDialog" class="name-dialog-overlay" hidden>
-              <div class="name-dialog">
+            <div
+              id="nameDialog"
+              class="name-dialog-overlay"
+              hidden
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="nameDialogTitle"
+            >
+              <div class="name-dialog-card">
+                <button type="button" id="nameDialogClose" class="name-dialog-close" aria-label="关闭">
+                  ×
+                </button>
+                <div class="name-dialog-kicker">侠客档案</div>
                 <div id="nameDialogTitle" class="name-dialog-title">请输入大名</div>
                 <div id="nameDialogSub" class="name-dialog-sub">大人请输入昵称：</div>
                 <div class="name-dialog-row">
@@ -135,7 +146,7 @@
                 <div id="nameDialogGeoHint" class="name-dialog-geo-hint" aria-live="polite"></div>
                 <input id="nameDialogInput" class="name-dialog-input" type="text" maxlength="6" placeholder="最多6个字" />
                 <div class="name-dialog-actions">
-                  <button id="nameDialogOk" class="btn btn-offense" type="button">确定</button>
+                  <button id="nameDialogOk" class="btn btn-offense name-dialog-ok" type="button">确定</button>
                 </div>
               </div>
             </div>

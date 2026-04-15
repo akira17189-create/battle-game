@@ -1370,10 +1370,21 @@ body{
   border: 1px solid rgba(255,255,255,.08);
   background: rgba(2,6,23,.26);
 }
+.intro-top3-row--vacant{
+  opacity: .72;
+}
+.intro-top3-row--vacant .intro-top3-name{
+  color: rgba(156,163,175,.95);
+  font-style: italic;
+}
 .intro-top3-empty{
   color: rgba(156,163,175,.95);
   font-size: 13px;
   padding: 6px 0 2px;
+}
+.intro-top3-loading{
+  text-align: center;
+  padding: 12px 8px;
 }
 .intro-top3-left{ display:flex; align-items:center; gap:8px; }
 .intro-top3-left .medal{
@@ -4489,206 +4500,137 @@ body.ending-slowmo .panel-hint-blink{
   background:rgba(239,68,68,.3);
 }
 
-/* 昵称输入弹窗 */
+/* 昵称输入弹窗（与成长/胜利卡同款面板 + 全屏暗角） */
 .name-dialog-overlay{
   position:fixed;
   inset:0;
   display:flex;
   align-items:center;
   justify-content:center;
-  padding: 20px;
-  background:
-    radial-gradient(circle at 18% 10%, rgba(34,211,238,.10), transparent 42%),
-    radial-gradient(circle at 82% 88%, rgba(99,102,241,.16), transparent 45%),
-    rgba(2, 6, 23, .78);
-  backdrop-filter: blur(7px);
+  padding: 16px;
+  background: rgba(2, 6, 23, .82);
+  backdrop-filter: blur(8px);
   z-index:70000;
 }
 .name-dialog-overlay[hidden]{ display:none; }
-.name-dialog{
-  width: min(760px, 95vw);
-  background:
-    linear-gradient(145deg, rgba(15,23,42,.98), rgba(9,14,33,.98));
-  border: 1px solid rgba(129,140,248,.34);
-  border-radius: 24px;
-  padding: 34px 36px 40px;
-  text-align:center;
-  box-shadow:
-    0 36px 80px rgba(2,6,23,.72),
-    inset 0 1px 0 rgba(255,255,255,.07);
+.name-dialog-card{
+  width: min(420px, 100%);
   position: relative;
+  text-align: left;
+  padding: 16px 16px 18px;
+  padding-top: 42px;
+  background: linear-gradient(180deg, rgba(30,41,59,.72), rgba(2,6,23,.42));
+  border: 1px solid rgba(250,204,21,.14);
+  border-radius: 14px;
+  box-shadow: 0 18px 48px rgba(0,0,0,.45);
   overflow: hidden;
 }
-.name-dialog::before{
-  content: "";
-  position: absolute;
-  top: -120px;
-  left: -160px;
-  width: 420px;
-  height: 260px;
-  background: radial-gradient(circle, rgba(34,211,238,.16), transparent 72%);
-  pointer-events: none;
+.name-dialog-card::before{
+  content:'';
+  position:absolute;
+  top:0; left:0; right:0;
+  height:2px;
+  background: linear-gradient(90deg, transparent, rgba(250,204,21,.5) 30%, rgba(251,191,36,.38) 70%, transparent);
 }
-.name-dialog::after{
-  content: "";
-  position: absolute;
-  right: -160px;
-  bottom: -120px;
-  width: 420px;
-  height: 260px;
-  background: radial-gradient(circle, rgba(99,102,241,.20), transparent 72%);
-  pointer-events: none;
+.name-dialog-close{
+  position:absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(15,23,42,.55);
+  color: rgba(226,232,240,.88);
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+  z-index: 2;
+}
+.name-dialog-close:hover{
+  background: rgba(124,58,237,.22);
+  border-color: rgba(167,139,250,.45);
+  color: #fff;
+}
+.name-dialog-kicker{
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .2em;
+  color: rgba(253,230,138,.82);
+  margin-bottom: 6px;
 }
 .name-dialog-title{
-  position: relative;
-  z-index: 1;
-  font-size: clamp(30px, 4.2vw, 44px);
-  line-height: 1.12;
-  font-weight: 1000;
-  letter-spacing: .03em;
-  color: #22d97e;
-  text-shadow: 0 8px 26px rgba(34,217,126,.22);
-  margin-bottom: 10px;
+  font-size: 15px;
+  font-weight: 950;
+  color: rgba(229,231,235,.98);
+  line-height: 1.35;
+  margin: 0 0 6px 0;
 }
 .name-dialog-sub{
-  position: relative;
-  z-index: 1;
-  font-size: 34px;
-  font-weight: 900;
-  color: rgba(226,232,240,.96);
-  margin-bottom: 22px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0 0 12px 0;
+  line-height: 1.45;
+}
+.name-dialog-card .name-dialog-row{
+  margin: 8px 0 10px;
+}
+.name-dialog-card .name-dialog-faction{
+  font-size: 13px;
+  padding: 6px 10px;
+}
+.name-dialog-card .faction--wei,
+.name-dialog-card .faction--shu,
+.name-dialog-card .faction--wu,
+.name-dialog-card .faction--qun{
+  font-size: 14px;
+  line-height: 1.2;
 }
 .name-dialog-input{
-  position: relative;
-  z-index: 1;
   width:100%;
-  padding: 16px 18px;
-  border:1px solid rgba(99,102,241,.45);
-  border-radius: 16px;
-  background: rgba(12,18,42,.82);
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius: 10px;
+  background: rgba(2,6,23,.35);
   color: rgba(226,232,240,.96);
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: .03em;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .04em;
   text-align:center;
   outline:none;
-  margin-bottom: 18px;
-  transition: border-color .18s, box-shadow .18s, background .18s;
+  margin-bottom: 14px;
+  transition: border-color .18s, box-shadow .18s;
 }
 .name-dialog-input:focus{
-  border-color: rgba(129,140,248,.92);
-  box-shadow:
-    0 0 0 3px rgba(99,102,241,.20),
-    0 14px 30px rgba(34,211,238,.12);
-  background: rgba(14,22,49,.92);
+  border-color: rgba(167,139,250,.55);
+  box-shadow: 0 0 0 2px rgba(124,58,237,.2);
 }
 .name-dialog-actions{
   display:flex;
-  justify-content:center;
-  position: relative;
-  z-index: 1;
-  margin-top: 10px;
+  justify-content: stretch;
+  margin-top: 4px;
 }
-.name-dialog-actions .btn-offense{
-  min-width: 280px;
-  min-height: 72px;
-  padding: 18px 34px;
-  font-size: 30px;
-  line-height: 1.1;
-  font-weight: 1000;
-  letter-spacing: .04em;
-  border-radius: 20px;
-  border: 1px solid rgba(220,38,38,.70);
-  color: rgba(254,242,242,.98);
-  background: linear-gradient(180deg, rgba(153,27,27,.95), rgba(127,29,29,.98));
-  box-shadow:
-    0 20px 46px rgba(127,29,29,.46),
-    inset 0 1px 0 rgba(255,255,255,.22);
+.name-dialog-ok{
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 950;
 }
-.name-dialog-actions .btn-offense:hover:not([disabled]){
-  transform: translateY(-1px);
-  border-color: rgba(248,113,113,.82);
-  background: linear-gradient(180deg, rgba(185,28,28,.97), rgba(153,27,27,.98));
-  box-shadow:
-    0 24px 52px rgba(153,27,27,.50),
-    inset 0 1px 0 rgba(255,255,255,.28);
-}
-.name-dialog-row{
-  justify-content: center;
-  gap: 14px;
-  margin: 12px 0 14px;
-  position: relative;
-  z-index: 1;
-}
-.name-dialog-row__label{
-  font-size: 30px;
-  font-weight: 900;
-  color: rgba(203,213,225,.94);
-  min-width: auto;
-}
-.name-dialog-factions{
-  gap: 14px;
-  justify-content: center;
-}
-.name-dialog-faction{
-  gap: 8px;
-  padding: 10px 22px;
-  border-radius: 999px;
-  border-width: 1px;
-  font-size: 22px;
-  backdrop-filter: blur(2px);
-}
-.name-dialog-faction input{
-  width: 22px;
-  height: 22px;
-}
-/* 仅用于“起名弹窗”的大字号阵营字样，避免污染排行榜/标签等位置 */
-.name-dialog .faction--wei,
-.name-dialog .faction--shu,
-.name-dialog .faction--wu,
-.name-dialog .faction--qun{
-  font-size: 40px;
-  line-height: 1;
-}
-.name-dialog-geo-hint{
-  position: relative;
-  z-index: 1;
-  margin-top: 2px;
+.name-dialog-card .name-dialog-geo-hint{
+  margin-top: 0;
   margin-bottom: 8px;
-  min-height: 1.2em;
-  font-size: 14px;
-  color: rgba(148,163,184,.88);
+  font-size: 12px;
+  color: rgba(148,163,184,.9);
+  min-height: 1.3em;
 }
-@media (max-width: 760px){
-  .name-dialog{
-    width: min(96vw, 640px);
-    padding: 24px 18px 28px;
-    border-radius: 18px;
-  }
-  .name-dialog-title{
-    font-size: 30px;
-  }
-  .name-dialog-sub{
-    font-size: 24px;
-    margin-bottom: 16px;
-  }
-  .name-dialog-row__label{
-    font-size: 22px;
-  }
-  .name-dialog .faction--wei,
-  .name-dialog .faction--shu,
-  .name-dialog .faction--wu,
-  .name-dialog .faction--qun{
-    font-size: 28px;
-  }
-  .name-dialog-input{
-    font-size: 22px;
-    padding: 12px 14px;
-  }
-  .name-dialog-actions .btn-offense{
-    min-width: 220px;
-    min-height: 60px;
-    font-size: 24px;
-    padding: 14px 24px;
+@media (max-width: 480px){
+  .name-dialog-card{
+    padding: 14px 14px 16px;
+    padding-top: 40px;
   }
 }

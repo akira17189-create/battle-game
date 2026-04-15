@@ -115,7 +115,14 @@ const SKILL_CARDS = [
   },
   { id: "T11", perk: "perk_follow_attack", title: "追身快斩", desc: "快攻命中未处于防御意图的目标时，额外 +1 失衡。", primary: "offense", extraTags: ["快攻", "压制"] },
   { id: "T12", perk: "perk_heavy_vs_staggered", title: "断脉沉击", desc: `重击命中失衡值不为 0 的目标时，额外 +${ns(1)} 伤害。`, primary: "offense", extraTags: ["重击", "失衡收割"] },
-  { id: "T13", perk: "perk_attack_vs_broken", title: "乘隙追命", desc: `对破绽目标使用快攻或重击时，额外 +${ns(1)} 伤害。`, primary: "offense", extraTags: ["破绽", "收割"] },
+  {
+    id: "T13",
+    perk: "perk_attack_vs_broken",
+    title: "乘隙追命",
+    desc: "对失衡且尚未露出破绽的目标使用快攻或重击时，额外 +1 失衡。",
+    primary: "offense",
+    extraTags: ["失衡", "压制"],
+  },
   { id: "T14", perk: "perk_kill_reduce_stagger", title: "斩阵夺势", desc: "击杀敌人后，自己失衡 -1。", primary: "tempo", extraTags: ["击杀", "失衡回复"] },
   { id: "T15", perk: "perk_interrupt_bonus", title: "截锋断势", desc: "快攻成功打断重击时，额外 +1 失衡。", primary: "offense", extraTags: ["快攻", "打断", "失衡"] },
   { id: "T16", perk: "perk_break_defense_followup", title: "逼守抢口", desc: `本回合用重击命中防御中的敌人后，下回合第一次快攻额外 +${ns(1)} 伤害。`, primary: "tempo", extraTags: ["重击", "快攻连段"] },
@@ -1603,14 +1610,15 @@ function loadChapter1MeritLeaderboard() {
 }
 
 function buildIntroTop10HtmlFromList(list) {
-  const arr = Array.isArray(list) ? list : [];
+  const arr = (Array.isArray(list) ? list : []).filter((e) => e && typeof e === "object");
   const rows = [];
   for (let i = 0; i < 10; i++) {
-    const e = arr[i] || null;
+    const e = arr[i];
     const rank = i + 1;
-    const name = escapeHtml(e?.name || "虚位以待");
-    const score = escapeHtml(String(e?.finalMerit ?? "—"));
-    const fk = normalizeFactionKey(e?.faction || "qun");
+    const vacant = !e;
+    const fk = vacant ? "qun" : normalizeFactionKey(e.faction || "qun");
+    const name = vacant ? escapeHtml("虚位以待") : escapeHtml(e?.name || "—");
+    const score = vacant ? "—" : escapeHtml(String(e?.finalMerit ?? "—"));
     const icon =
       rank === 1
         ? `<span class="medal medal--gold" aria-hidden="true"></span>`
@@ -1618,19 +1626,18 @@ function buildIntroTop10HtmlFromList(list) {
           ? `<span class="medal medal--silver" aria-hidden="true"></span>`
           : rank === 3
             ? `<span class="medal medal--bronze" aria-hidden="true"></span>`
-            : e
-              ? `<span class="intro-faction-flag intro-faction-flag--${escapeHtml(fk)}" aria-hidden="true"></span>`
-              : `<span class="intro-faction-flag intro-faction-flag--unknown" aria-hidden="true"></span>`;
-    const faction = escapeHtml(e ? factionLabel(fk) : "未知");
-    const prov = escapeHtml(String(e?.province || "").trim() || (e ? "中国" : "未知"));
+            : `<span class="intro-faction-flag intro-faction-flag--${escapeHtml(fk)}" aria-hidden="true"></span>`;
+    const faction = escapeHtml(factionLabel(fk));
+    const prov = vacant ? "—" : escapeHtml(String(e?.province || "").trim() || "—");
+    const rowCls = vacant ? "intro-top3-row intro-top3-row--vacant" : "intro-top3-row";
     rows.push(
       `
-<div class="intro-top3-row">
+<div class="${rowCls}">
   <span class="intro-top3-left">${icon}<span class="intro-top3-rank">${rank}</span></span>
   <span class="intro-top3-name">${name}</span>
   <span class="intro-top3-meta"><span class="intro-meta-pill faction-pill--${escapeHtml(fk)}"><span class="faction--${escapeHtml(fk)}">${faction}</span></span><span class="intro-meta-province">${prov}</span></span>
   <span class="intro-top3-score">${score}</span>
-  <span class="intro-top3-grade">${meritGradeSpanHtml(e?.grade)}</span>
+  <span class="intro-top3-grade">${vacant ? meritGradeSpanHtml(null) : meritGradeSpanHtml(e?.grade)}</span>
 </div>`,
     );
   }
@@ -1896,17 +1903,29 @@ function resetOnlineLeaderboardCache() {
   _onlineLeaderboardFetching = false;
 }
 function ensureOnlineLeaderboardCache(callback) {
-  if (_onlineLeaderboardCache) { callback(_onlineLeaderboardCache); return; }
+  if (_onlineLeaderboardCache !== null) {
+    callback(_onlineLeaderboardCache);
+    return;
+  }
   if (_onlineLeaderboardFetching) return;
   if (typeof OnlineLeaderboard === "undefined" || !OnlineLeaderboard.isConfigured()) return;
   _onlineLeaderboardFetching = true;
-  OnlineLeaderboard.fetchLeaderboard(30).then((data) => {
-    if (data && data.length > 0) {
-      _onlineLeaderboardCache = data;
-      callback(data);
-    }
-    _onlineLeaderboardFetching = false;
-  }).catch(() => { _onlineLeaderboardFetching = false; });
+  const fallbackLocal = () => loadChapter1MeritLeaderboard().slice(0, 30);
+  OnlineLeaderboard.fetchLeaderboard(30)
+    .then((data) => {
+      _onlineLeaderboardFetching = false;
+      if (Array.isArray(data)) {
+        _onlineLeaderboardCache = data;
+      } else {
+        _onlineLeaderboardCache = fallbackLocal();
+      }
+      callback(_onlineLeaderboardCache);
+    })
+    .catch(() => {
+      _onlineLeaderboardFetching = false;
+      _onlineLeaderboardCache = fallbackLocal();
+      callback(_onlineLeaderboardCache);
+    });
 }
 
 function buildTitleFactionRankHtml(state) {
@@ -1969,13 +1988,20 @@ function renderLocalLeaderboardToSettlePanel(ui, state) {
   }
   const meritDisp = getLiveMeritScoreForRankDisplay(ui, state);
   const localSaved = loadChapter1MeritLeaderboard().slice(0, 30);
-  // 优先使用在线数据，否则用本地数据
-  const saved = _onlineLeaderboardCache || localSaved;
-  // 首次触发异步拉取在线数据，拿到后重新渲染
-  if (!_onlineLeaderboardCache) {
-    ensureOnlineLeaderboardCache(() => {
-      renderLocalLeaderboardToSettlePanel(ui, state);
-    });
+  const onlineOk = typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured();
+  /** 已配置在线榜时：在缓存就绪前不用本机快照，避免先本地一帧再被在线覆盖（闪屏） */
+  let saved;
+  if (onlineOk) {
+    if (_onlineLeaderboardCache !== null) {
+      saved = _onlineLeaderboardCache;
+    } else {
+      saved = [];
+      ensureOnlineLeaderboardCache(() => {
+        renderLocalLeaderboardToSettlePanel(ui, state);
+      });
+    }
+  } else {
+    saved = localSaved;
   }
   const nick = (state?._playerName || "").trim() || "你";
   const reduced =
@@ -2089,6 +2115,7 @@ function resetChapter1NewGame(state) {
   state._settleLbLastMerit = null;
   state._settleLbLastRank = null;
   state._leaderboardPrimed = false;
+  state._introHeroLbDone = false;
   resetOnlineLeaderboardCache();
   if (state._liveRankRiseTimer) {
     window.clearTimeout(state._liveRankRiseTimer);
@@ -2637,10 +2664,10 @@ function applyPlayerToEnemy(state, enemyObj, playerAction, targetId) {
   if (playerAction === "attack") {
     let dmg = ns(2) + (state.player.atkBonus || 0);
     let stg = 1;
-    // T13：对破绽目标快攻额外 +1 伤害
-    if (state.perks?.includes("perk_attack_vs_broken") && e.broken) {
-      dmg += ns(1);
-      out.notes.push(`乘隙追命：对破绽目标快攻伤害 +${ns(1)}。`);
+    // T13：对失衡未破绽目标快攻额外 +1 失衡（破绽目标应处决，不再叠伤害）
+    if (state.perks?.includes("perk_attack_vs_broken") && e.stagger > 0 && !e.broken) {
+      stg += 1;
+      out.notes.push("乘隙追命：对失衡未破绽目标快攻额外失衡 +1。");
     }
     // T06：快攻命中失衡值不为 0 的目标时，额外 +1 伤害
     if (state.perks?.includes("perk_staggerstrike") && (e.broken || e.stagger > 0)) {
@@ -2711,10 +2738,10 @@ function applyPlayerToEnemy(state, enemyObj, playerAction, targetId) {
     }
     let dmg = ns(3) + (state.player.atkBonus || 0);
     let stg = 2;
-    // T13：对破绽目标重击额外 +1 伤害
-    if (state.perks?.includes("perk_attack_vs_broken") && e.broken) {
-      dmg += ns(1);
-      out.notes.push(`乘隙追命：对破绽目标重击伤害 +${ns(1)}。`);
+    // T13：对失衡未破绽目标重击额外 +1 失衡（破绽目标应处决，不再叠伤害）
+    if (state.perks?.includes("perk_attack_vs_broken") && e.stagger > 0 && !e.broken) {
+      stg += 1;
+      out.notes.push("乘隙追命：对失衡未破绽目标重击额外失衡 +1。");
     }
     // T12：重击命中失衡值不为 0 的目标时，额外 +1 伤害
     if (state.perks?.includes("perk_heavy_vs_staggered") && (e.broken || e.stagger > 0)) {
@@ -3054,6 +3081,8 @@ function buildActionButtonEffectHints(state) {
     attackLines.push(hintBonusTier(`夺势突进：战斗开始后首次快攻伤害 +${ns(1)}`, aHi++));
   if (p.includes("perk_follow_attack")) attackLines.push(hintBonusTier("追身快斩：快攻命中非防御意图目标，失衡 +1", aHi++));
   if (p.includes("perk_interrupt_bonus")) attackLines.push(hintBonusTier("截锋断势：快攻打断重击成功，失衡 +1", aHi++));
+  if (p.includes("perk_attack_vs_broken"))
+    attackLines.push(hintBonusTier("乘隙追命：对失衡未破绽目标快攻额外失衡 +1", aHi++));
   if (p.includes("perk_kill_reduce_stagger")) attackLines.push(hintBonusTier("斩阵夺势：击杀敌人后，自身失衡 -1", aHi++));
   const wrapLead = (html) => {
     const i = html.indexOf("<br>");
@@ -3072,7 +3101,7 @@ function buildActionButtonEffectHints(state) {
   if (p.includes("perk_heavy_vs_staggered"))
     heavyLines.push(hintBonusTier(`断脉沉击：重击命中失衡目标伤害 +${ns(1)}`, heavyHi++));
   if (p.includes("perk_attack_vs_broken"))
-    heavyLines.push(hintBonusTier(`乘隙追命：对破绽目标重击伤害 +${ns(1)}`, heavyHi++));
+    heavyLines.push(hintBonusTier("乘隙追命：对失衡未破绽目标重击额外失衡 +1", heavyHi++));
   if (br) heavyLines.push(hintBonusTier(`破阵：下一次重击额外+伤${ns(1)}、+失衡1`, heavyHi++));
   heavyLines.push(`场上有敌快攻意图时，你出重击也可能${pct}%被打断并改快攻结算`);
   if (broken) heavyLines.push("破绽中：重击不可用");
@@ -6215,6 +6244,8 @@ function mkInitialState() {
     _settleLbLastMerit: /** @type {number|null} */ (null),
     _settleLbLastRank: /** @type {number|null} */ (null),
     _leaderboardPrimed: false,
+    /** B1 战前 intro：天下英雄榜是否已做过首帧（在线时避免每帧先刷本地再异步覆盖） */
+    _introHeroLbDone: false,
     /** 第一章战功档案：{ retries: Record<id,count>, records: Record<id, object> } */
     meritChapter: /** @type {{ retries: Record<string, number>, records: Record<string, any> }} */ ({
       retries: {},
@@ -6425,8 +6456,6 @@ const BOSS_EXEC_PLAYER_DRAMA_BEAT_MS = 820;
 const BOSS_EXEC_PLAYER_DRAMA_PHASE = "bossExecuteDrama";
 
 const CH1_MERIT_LEADERBOARD_KEY = "mud_ch1_merit_leaderboard_v1";
-/** 仅写入一次：本地榜填充演示用机器人（丁功～丙功战功随机） */
-const CH1_MERIT_LEADERBOARD_BOT_SEED_KEY = "mud_ch1_merit_lb_bots_seeded_v1";
 const CH1_PLAYER_PROFILE_KEY = "mud_ch1_player_profile_v1";
 
 function loadPlayerProfile() {
@@ -6959,6 +6988,7 @@ function dom() {
     nameDialogFactionWu: $("nameDialogFactionWu"),
     nameDialogFactionQun: $("nameDialogFactionQun"),
     nameDialogOk: $("nameDialogOk"),
+    nameDialogClose: $("nameDialogClose"),
     btnStartBattle: $("btnStartBattle"),
     btnRetryBattle: $("btnRetryBattle"),
     preFightStartWrap: $("preFightStartWrap"),
@@ -7214,15 +7244,31 @@ function render(state, ui) {
   if (ui.introOverlay) {
     // 仅开局 B1 的战前（ready）显示；点击「开始战斗」后隐藏
     ui.introOverlay.hidden = !showIntro;
+    if (!showIntro) {
+      state._introHeroLbDone = false;
+    }
     if (showIntro && ui.introTop3) {
-      ui.introTop3.innerHTML = buildIntroTop3Html();
-      // 异步拉取在线排行覆盖本地前十
-      if (typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured()) {
-        OnlineLeaderboard.fetchLeaderboard(10).then((online) => {
-          if (online && online.length > 0 && ui.introTop3) {
-            ui.introTop3.innerHTML = _buildIntroTop3HtmlFromList(online);
-          }
-        }).catch(() => {});
+      if (!state._introHeroLbDone) {
+        state._introHeroLbDone = true;
+        const olOk = typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured();
+        if (olOk) {
+          ui.introTop3.innerHTML =
+            '<div class="intro-top3-empty intro-top3-loading" role="status">榜单加载中…</div>';
+          OnlineLeaderboard.fetchLeaderboard(10)
+            .then((online) => {
+              if (!ui.introTop3) return;
+              if (Array.isArray(online)) {
+                ui.introTop3.innerHTML = buildIntroTop10HtmlFromList(online);
+              } else {
+                ui.introTop3.innerHTML = buildIntroTop3Html();
+              }
+            })
+            .catch(() => {
+              if (ui.introTop3) ui.introTop3.innerHTML = buildIntroTop3Html();
+            });
+        } else {
+          ui.introTop3.innerHTML = buildIntroTop3Html();
+        }
       }
     }
   }
@@ -9516,7 +9562,8 @@ function boot() {
       // 同时清空在线排行榜
       if (typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured()) {
         await OnlineLeaderboard.clearLeaderboard();
-        _onlineLeaderboardCache = null;
+        resetOnlineLeaderboardCache();
+        state._introHeroLbDone = false;
       }
       renderLocalLeaderboardToSettlePanel(ui, state);
     });
@@ -9589,6 +9636,16 @@ function boot() {
       }
     });
   }
+  /** 关闭起名弹窗且不保存（intro：可再次点「我敢」；postBoss：回到胜利层） */
+  function closeNameDialogWithoutSave() {
+    if (!ui.nameDialog || ui.nameDialog.hidden) return;
+    const mode = state._nameDialogMode;
+    ui.nameDialog.hidden = true;
+    state._nameDialogMode = null;
+    if (mode === "postBoss" && ui.winOverlay) ui.winOverlay.hidden = false;
+    render(state, ui);
+  }
+
   function openNameDialog(mode) {
     if (!ui.nameDialog) return;
     state._nameDialogMode = mode;
@@ -9616,6 +9673,18 @@ function boot() {
     ui.nameDialog.hidden = false;
     ui.nameDialogInput?.focus();
   }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (!ui.nameDialog || ui.nameDialog.hidden) return;
+    e.preventDefault();
+    closeNameDialogWithoutSave();
+  });
+
+  if (ui.nameDialogClose) {
+    ui.nameDialogClose.addEventListener("click", () => closeNameDialogWithoutSave());
+  }
+
   if (ui.btnIntroDare) {
     ui.btnIntroDare.addEventListener("click", () => {
       openNameDialog("intro");
