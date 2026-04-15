@@ -233,6 +233,32 @@ function ensureR1TechOffer(state) {
   return fallback;
 }
 
+/**
+ * R3 技法卡三选一：与 R1 相同的轻约束（至少 1 进攻向 + 至少 1 非纯进攻向）
+ * draft key 使用节点 id `R3_LOOT`，与 applyGrowthOption 中按 node.id 移除候选池一致。
+ */
+function ensureR3TechOffer(state) {
+  const nodeId = "R3_LOOT";
+  state.draftOffers = state.draftOffers || {};
+  if (Array.isArray(state.draftOffers[nodeId]) && state.draftOffers[nodeId].length) return state.draftOffers[nodeId];
+
+  const pool = (state.skillDeckRemaining || []).slice();
+  const maxTry = 24;
+  for (let t = 0; t < maxTry; t++) {
+    const pick = pickRandomDistinct(pool, 3);
+    const cards = pick.map((perk) => SKILL_CARDS.find((c) => c.perk === perk)).filter(Boolean);
+    const hasOff = cards.some(cardIsOffenseLeanTech);
+    const hasOther = cards.some(cardIsNonOffenseLeanTech);
+    if (pick.length === 3 && hasOff && hasOther) {
+      state.draftOffers[nodeId] = pick;
+      return pick;
+    }
+  }
+  const fallback = pickRandomDistinct(pool, 3);
+  state.draftOffers[nodeId] = fallback;
+  return fallback;
+}
+
 function applyStatGrowth(state, kind) {
   const p = state.player;
   if (!p) return;
@@ -522,7 +548,7 @@ const CHAPTERS = {
         id: "R3_LOOT",
         type: /** @type {NodeType} */ ("R"),
         title: "第三次成长",
-        subtitle: "精英掉落",
+        subtitle: "技法三选一",
         body: "",
         objective: "",
         options: [],
@@ -1021,6 +1047,7 @@ function enqueueBattleMeritFx(state, events) {
 
 function clearBattleMeritFx(ui) {
   if (!ui?.battleMeritFxLayer) return;
+  ui.battleInfoPanel?.classList.remove("battle-info-panel--merit-fx-active");
   ui.battleMeritFxLayer.hidden = true;
   ui.battleMeritFxLayer.setAttribute("aria-hidden", "true");
   ui.battleMeritFxLayer.className = "battle-merit-fx-layer";
@@ -1032,12 +1059,30 @@ function clearBattleMeritFx(ui) {
   }
 }
 
+function syncBattleResolutionAnchor(ui) {
+  const panelRect = ui?.battleInfoPanel?.getBoundingClientRect();
+  const dividerRect = ui?.dividerAfterEnemies?.getBoundingClientRect();
+  let anchorY = null;
+  if (panelRect && dividerRect) {
+    anchorY = dividerRect.top - panelRect.top + dividerRect.height / 2;
+  } else if (panelRect) {
+    anchorY = panelRect.height * 0.5;
+  }
+  if (anchorY == null) return;
+  const px = `${Math.round(anchorY)}px`;
+  ui.battleInfoPanel?.style.setProperty("--resolution-anchor-y", px);
+  ui.resolutionLayer?.style.setProperty("--resolution-anchor-y", px);
+  ui.battleMeritFxLayer?.style.setProperty("--resolution-anchor-y", px);
+}
+
 function renderBattleMeritFx(ui, event) {
   if (!ui?.battleMeritFxLayer || !event) return;
+  syncBattleResolutionAnchor(ui);
   const layer = ui.battleMeritFxLayer;
   const ms = event.strong ? BATTLE_MERIT_FX_STRONG_MS : BATTLE_MERIT_FX_MS;
   const toneClass = `battle-merit--${event.tone || "normal"}`;
   layer.style.setProperty("--battle-merit-ms", `${ms}ms`);
+  ui.battleInfoPanel?.classList.add("battle-info-panel--merit-fx-active");
   layer.className = `battle-merit-fx-layer ${toneClass}${event.strong ? " battle-merit--strong" : ""} is-active`;
   layer.hidden = false;
   layer.setAttribute("aria-hidden", "false");
@@ -1055,7 +1100,7 @@ function renderBattleMeritFx(ui, event) {
       else if (c === 3) ui.battleMeritCombo.classList.add("is-x3");
       else if (c === 2) ui.battleMeritCombo.classList.add("is-x2");
     } else if (event.judgement === "COMBO BREAK") {
-      ui.battleMeritCombo.textContent = "COMBO BREAK";
+      ui.battleMeritCombo.textContent = "连势中断";
     } else {
       ui.battleMeritCombo.textContent = "";
     }
@@ -2171,6 +2216,7 @@ function resetChapter1NewGame(state) {
   state.visibleCombo = 0;
   state.winGrowthEmbed = false;
   state.winGrowthEmbedNodeId = null;
+  state.winGrowthPendingAdvance = null;
 }
 
 /** 章节剧情顺序（含非战斗节点）：用于战斗线路图判断「未到 / 未来」 */
@@ -2209,6 +2255,26 @@ function markRoadmapNodeDone(state, nodeId) {
   if (!nodeId) return;
   if (!state.chapterRoadmapCleared) state.chapterRoadmapCleared = {};
   state.chapterRoadmapCleared[nodeId] = true;
+}
+
+function winGrowthNextShortLabel(chapter, nextId) {
+  if (!chapter || !nextId) return "";
+  const order = CHAPTER_ROADMAP[chapter.id];
+  const step = order?.find((s) => s.id === nextId);
+  if (step?.label) return step.label;
+  const n = chapter.nodes[nextId];
+  return n?.title || String(nextId);
+}
+
+function armWinGrowthPendingAdvance(state, chapter, node, nextId) {
+  state.winGrowthPendingAdvance = {
+    chapterId: chapter.id,
+    fromNodeId: node.id,
+    nextId,
+    label: winGrowthNextShortLabel(chapter, nextId),
+  };
+  state.winGrowthEmbed = false;
+  state.winGrowthEmbedNodeId = null;
 }
 
 function renderChapterRoadmap(state, ui) {
@@ -2524,7 +2590,24 @@ function findBossExecutePlayerExecutor(state) {
   );
 }
 
+function hideBossExecPlayerDramaTextOverlay(ui) {
+  if (!ui) return;
+  const ov = ui.bossExecPlayerDramaOverlay;
+  if (ov) {
+    ov.hidden = true;
+    ov.setAttribute("aria-hidden", "true");
+  }
+  for (const id of ["bossExecPlayerDramaLine1", "bossExecPlayerDramaLine2"]) {
+    const el = ui[id];
+    if (el && "classList" in el) {
+      el.classList.remove("is-visible");
+      el.textContent = "";
+    }
+  }
+}
+
 function stripBossExecutePlayerDramaFx(ui) {
+  hideBossExecPlayerDramaTextOverlay(ui);
   ui.playerCard?.classList.remove("boss-exec-drama--stagger", "boss-exec-drama--broken", "boss-exec-drama--menace");
   for (const el of [ui.enemyCardA, ui.enemyCardB, ui.enemyCardC]) {
     el?.classList.remove("boss-exec-drama--executor");
@@ -2539,7 +2622,7 @@ function clearBossExecutePlayerDramaTimers(state) {
 }
 
 /**
- * 无论谁先打满失衡：只要本回合敌方阶段结束时你仍为破绽且场上有可处决玩家的头目，则由头目处决（分四段延时演出）。
+ * 无论谁先打满失衡：只要本回合敌方阶段结束时你仍为破绽且场上有可处决玩家的头目，则由头目处决（全屏两行预告 → 卡面动效 → 处决）。
  * @param {{ action: string, targetId: EnemyId|null, intents: Record<string, any>, details: string[], playerHpAtEnemyPhaseStartForDeathAnim: number }} payload
  */
 function runBossExecutePlayerDrama(state, ui, payload) {
@@ -2554,6 +2637,9 @@ function runBossExecutePlayerDrama(state, ui, payload) {
   const exName = executor.fighter.name;
   const exId = executor.id;
 
+  const prefaceLine1 = "你的失衡条顶至极限，虎口发麻。";
+  const prefaceLine2 = "边寨头目的目光锁住你的空门——这一刀躲不掉了。";
+
   state.phase = BOSS_EXEC_PLAYER_DRAMA_PHASE;
   state.battleLog.push(formatLineForTurn(state, action, targetId, intents, details));
   render(state, ui);
@@ -2566,10 +2652,38 @@ function runBossExecutePlayerDrama(state, ui, payload) {
     state._bossExecPlayerDramaTimers.push(t);
   };
 
-  let acc = 0;
+  arm(0, () => {
+    const ov = ui.bossExecPlayerDramaOverlay;
+    const l1 = ui.bossExecPlayerDramaLine1;
+    const l2 = ui.bossExecPlayerDramaLine2;
+    if (ov) {
+      ov.hidden = false;
+      ov.setAttribute("aria-hidden", "false");
+    }
+    if (l1) {
+      l1.textContent = prefaceLine1;
+      l1.classList.add("is-visible");
+    }
+    if (l2) {
+      l2.textContent = prefaceLine2;
+      l2.classList.remove("is-visible");
+    }
+    state.battleLog.push(`{r}${prefaceLine1}{/r}`);
+    render(state, ui);
+  });
+  arm(BOSS_EXEC_PLAYER_PREFACE_LINE2_MS, () => {
+    ui.bossExecPlayerDramaLine2?.classList.add("is-visible");
+    state.battleLog.push(`{r}${prefaceLine2}{/r}`);
+    render(state, ui);
+  });
+  arm(BOSS_EXEC_PLAYER_PREFACE_TOTAL_MS, () => {
+    hideBossExecPlayerDramaTextOverlay(ui);
+    render(state, ui);
+  });
+
+  let acc = BOSS_EXEC_PLAYER_PREFACE_TOTAL_MS;
   arm(acc, () => {
     ui.playerCard?.classList.add("boss-exec-drama--stagger");
-    state.battleLog.push("{r}你的失衡条顶至极限，虎口发麻。{/r}");
     render(state, ui);
   });
   acc += BOSS_EXEC_PLAYER_DRAMA_BEAT_MS;
@@ -2584,7 +2698,6 @@ function runBossExecutePlayerDrama(state, ui, payload) {
     ui.playerCard?.classList.add("boss-exec-drama--menace");
     const exCard = exId === "A" ? ui.enemyCardA : exId === "B" ? ui.enemyCardB : ui.enemyCardC;
     exCard?.classList.add("boss-exec-drama--executor");
-    state.battleLog.push(`{r}${exName}的目光锁住你的空门——这一刀躲不掉了。{/r}`);
     render(state, ui);
   });
   acc += BOSS_EXEC_PLAYER_DRAMA_BEAT_MS;
@@ -3110,7 +3223,6 @@ function buildActionButtonEffectHints(state) {
 
   const defendLines = [`被攻击：受伤-${ns(1)}，失衡-1`];
   defendLines.push("若本回合未受伤：回合末失衡+1");
-  if (broken) defendLines.push("你失衡：本回合防御30%失败");
   if (defB > 0) defendLines.push(hintBonusTier(`防御成长：防御时额外减伤 +${ns(defB)}`, 0));
   if (p.includes("perk_brokenfirstshield")) defendLines.push(hintBonusTier(`硬撑架势：破绽后首次受击伤害 -${ns(1)}`, 0));
   if (p.includes("perk_broken_defend_bonus"))
@@ -3133,7 +3245,6 @@ function buildActionButtonEffectHints(state) {
   if (p.includes("perk_blockrelief")) blockLines.push(hintBonusTier("借力反震：盾反成功几次，失衡减几次", 0));
   if (p.includes("perk_block_heal")) blockLines.push(hintBonusTier(`盾后回气：盾反成功后 HP+${ns(1)}`, 0));
   blockLines.push("若未受伤，盾反成功会让自己失衡+1（可叠加）");
-  if (broken) blockLines.push("你失衡：本回合盾反25%失败");
   const block = wrapLead(blockLines.join("<br>"));
 
   const restCd = state.player?.restCooldownLeft || 0;
@@ -3961,6 +4072,7 @@ function buildCardFxPlayerVsEnemySegment(state, bundle, segment, eo, o, rng) {
 /**
  * 与结算共用同一组随机数，保证对拼动画与真实结算一致。
  * @returns {{ defendFailed: boolean, blockFailed: boolean, heavyQuickInterruptSuccess: boolean, heavyBossBlockVsDefend: boolean, attackVsHeavyTargetInterrupt: boolean, restEvadeByEnemyId?: Record<string, boolean> }}
+ * defendFailed / blockFailed 恒为 false：破绽中防御与盾反不再掷失败率，与结算一致。
  */
 function rollTurnResolutionRng(state, action) {
   const evadeP = state.perks?.includes("perk_rest_evade") ? 0.7 : 0.3;
@@ -3977,8 +4089,8 @@ function rollTurnResolutionRng(state, action) {
     }
   }
   return {
-    defendFailed: action === "defend" && state.player.broken && Math.random() < 0.3,
-    blockFailed: action === "block" && state.player.broken && Math.random() < 0.25,
+    defendFailed: false,
+    blockFailed: false,
     heavyQuickInterruptSuccess:
       action === "heavy" && enemyQuickThreatensPlayerHeavy(state) && Math.random() < INTERRUPT_QUICK_VS_HEAVY,
     heavyBossBlockVsDefend: Math.random() < 0.5,
@@ -4708,14 +4820,9 @@ function buildResolutionSegments(state, bundle) {
       ];
     }
     if (pa === "defend" || pa === "block") {
-      const secCaps = resolutionPlayerCapsuleForSegment(state, pa, primary.outcomeType, primary);
-      const playerCaps =
-        secCaps.playerChipKey === "broken"
-          ? secCaps
-          : { playerText: "", playerChipKey: "none" };
       return [
         {
-          ...playerCaps,
+          ...resolutionPlayerCapsuleForSegment(state, pa, primary.outcomeType, primary),
           enemyRow: primary,
           outcome: primary.outcomeType,
           soloIntro: false,
@@ -4752,15 +4859,8 @@ function buildResolutionSegments(state, bundle) {
     }
     const segments = [];
     for (const row of actingRows) {
-      const secCaps = resolutionPlayerCapsuleForSegment(state, pa, row.outcomeType, row);
-      let playerCaps;
-      if (secCaps.playerChipKey === "broken") {
-        playerCaps = secCaps;
-      } else {
-        playerCaps = { playerText: "", playerChipKey: "none" };
-      }
       segments.push({
-        ...playerCaps,
+        ...resolutionPlayerCapsuleForSegment(state, pa, row.outcomeType, row),
         enemyRow: row,
         outcome: row.outcomeType,
         soloIntro: false,
@@ -5217,18 +5317,8 @@ function shouldCommitBattlePerResolutionSegment(bundle, segmentCount, state, seg
  */
 function setupBattleResolutionLayer(state, ui, segments) {
   if (!ui?.resolutionLayer || !segments?.length) return;
-  const panelRect = ui.battleInfoPanel?.getBoundingClientRect();
-  const dividerRect = ui.dividerAfterEnemies?.getBoundingClientRect();
-  let anchorY = null;
-  if (panelRect && dividerRect) {
-    anchorY = dividerRect.top - panelRect.top + dividerRect.height / 2;
-  } else if (panelRect) {
-    anchorY = panelRect.height * 0.5;
-  }
   cancelResolutionAnimation(ui);
-  if (anchorY != null) {
-    ui.resolutionLayer.style.setProperty("--resolution-anchor-y", `${Math.round(anchorY)}px`);
-  }
+  syncBattleResolutionAnchor(ui);
   ui.battleInfoPanel?.classList.add("is-resolving");
   ui.resolutionLayer.hidden = false;
   ui.resolutionLayer.setAttribute("aria-hidden", "false");
@@ -5906,25 +5996,11 @@ function initBattleTurnContextForResolving(state, ui, action, bundle = null) {
     rolled?.heavyQuickInterruptSuccess ??
     (action === "heavy" && enemyQuickThreatensPlayerHeavy(state) && Math.random() < INTERRUPT_QUICK_VS_HEAVY);
 
-  let defendFailedThisTurn = false;
-  let blockFailedThisTurn = false;
+  const defendFailedThisTurn = false;
+  const blockFailedThisTurn = false;
   if (action !== "execute") {
-    defendFailedThisTurn =
-      rolled?.defendFailed ?? (action === "defend" && state.player.broken && Math.random() < 0.3);
-    meritTurn.defendFailedThisTurn = !!defendFailedThisTurn;
-    if (defendFailedThisTurn) {
-      details.push("→ {r}失衡惩罚：本回合防御失败（70%）{/r}");
-    } else if (action === "defend" && state.player.broken) {
-      details.push("→ {g}失衡惩罚：本回合防御成功（70%）{/g}");
-    }
-    blockFailedThisTurn =
-      rolled?.blockFailed ?? (action === "block" && state.player.broken && Math.random() < 0.25);
-    meritTurn.blockFailedThisTurn = !!blockFailedThisTurn;
-    if (blockFailedThisTurn) {
-      details.push("→ {r}失衡惩罚：本回合盾反失败（75%）{/r}");
-    } else if (action === "block" && state.player.broken) {
-      details.push("→ {g}失衡惩罚：本回合盾反成功（75%）{/g}");
-    }
+    meritTurn.defendFailedThisTurn = false;
+    meritTurn.blockFailedThisTurn = false;
   }
 
   return {
@@ -5971,6 +6047,11 @@ function previewActionDescText(state, action) {
   return actionFlavor[action] || "—";
 }
 
+function syncPlayerCardFlavor(ui, state) {
+  if (!ui?.playerCardFlavor) return;
+  ui.playerCardFlavor.innerHTML = toRichHtml(state?._skillHoverFlavor || state?.actionDesc || "—");
+}
+
 const SKILL_HOVER_TOOLTIP_DELAY_MS = 500;
 /** @type {ReturnType<typeof setTimeout>|null} */
 let skillHoverTooltipTimer = null;
@@ -5992,11 +6073,13 @@ function ensureSkillHoverTooltipEl() {
   return el;
 }
 
-function hideSkillHoverTooltip() {
+function hideSkillHoverTooltip(state = null, ui = null) {
   if (skillHoverTooltipTimer) {
     window.clearTimeout(skillHoverTooltipTimer);
     skillHoverTooltipTimer = null;
   }
+  if (state) state._skillHoverFlavor = null;
+  if (state && ui) syncPlayerCardFlavor(ui, state);
   if (!skillHoverTooltipEl) return;
   skillHoverTooltipEl.classList.remove("is-visible");
   skillHoverTooltipEl.hidden = true;
@@ -6026,11 +6109,13 @@ function positionSkillHoverTooltip(anchor, tip) {
   tip.style.top = `${Math.round(y)}px`;
 }
 
-function showSkillHoverTooltipNow(state, anchor, action) {
+function showSkillHoverTooltipNow(state, ui, anchor, action) {
   const tip = ensureSkillHoverTooltipEl();
   skillHoverTooltipAnchor = anchor;
 
   const flavor = previewActionDescText(state, action);
+  state._skillHoverFlavor = flavor;
+  syncPlayerCardFlavor(ui, state);
   const hints = buildActionButtonEffectHints(state);
   const mech =
     action === "attack"
@@ -6046,7 +6131,6 @@ function showSkillHoverTooltipNow(state, anchor, action) {
               : "";
 
   tip.innerHTML = `
-    <div class="skill-hover-tooltip__flavor">${escapeHtml(flavor)}</div>
     <div class="skill-hover-tooltip__mech">${mech || escapeHtml("—")}</div>
   `;
 
@@ -6058,11 +6142,11 @@ function showSkillHoverTooltipNow(state, anchor, action) {
   });
 }
 
-function armSkillHoverTooltip(state, anchor, action) {
-  hideSkillHoverTooltip();
+function armSkillHoverTooltip(state, ui, anchor, action) {
+  hideSkillHoverTooltip(state, ui);
   skillHoverTooltipTimer = window.setTimeout(() => {
     skillHoverTooltipTimer = null;
-    showSkillHoverTooltipNow(state, anchor, action);
+    showSkillHoverTooltipNow(state, ui, anchor, action);
   }, SKILL_HOVER_TOOLTIP_DELAY_MS);
 }
 
@@ -6330,6 +6414,10 @@ function mkInitialState() {
     /** 战斗胜利后同屏嵌入成长翻牌（phase 仍为 win） */
     winGrowthEmbed: false,
     winGrowthEmbedNodeId: /** @type {string|null} */ (null),
+    /** 胜利内嵌成长选毕：待点击「进入下一关」再推进（R4→N4 除外，直接进 Boss 战前简报） */
+    winGrowthPendingAdvance: /** @type {{ chapterId: string, fromNodeId: string, nextId: string, label: string } | null} */ (
+      null
+    ),
   };
 }
 
@@ -6451,8 +6539,12 @@ const WIN_KILL_REVEAL_MS_EXEC = 1400;
 
 /** 胜利/失败 ending：HP/失衡条线性动画固定总时长（快慢随插值自适应，与 ending-slowmo 无关） */
 const ENDING_PHASE_METER_MS = 2000;
-/** 头目处决玩家：四段演出每段间隔（失衡满 → 破绽 → 杀意 → 处决） */
+/** 头目处决玩家：卡面动效每段间隔（失衡满 → 破绽 → 杀意 → 处决） */
 const BOSS_EXEC_PLAYER_DRAMA_BEAT_MS = 820;
+/** 全屏第二行相对第一行出现时刻；收起全屏层后再进入卡面动效 */
+const BOSS_EXEC_PLAYER_PREFACE_LINE2_MS = 1800;
+const BOSS_EXEC_PLAYER_PREFACE_AFTER_LINE2_MS = 1400;
+const BOSS_EXEC_PLAYER_PREFACE_TOTAL_MS = BOSS_EXEC_PLAYER_PREFACE_LINE2_MS + BOSS_EXEC_PLAYER_PREFACE_AFTER_LINE2_MS;
 const BOSS_EXEC_PLAYER_DRAMA_PHASE = "bossExecuteDrama";
 
 const CH1_MERIT_LEADERBOARD_KEY = "mud_ch1_merit_leaderboard_v1";
@@ -6724,7 +6816,7 @@ function buildAdviceAndHint(state) {
 
   /** @type {string[]} */
   const lines = [];
-  lines.push(`回合建议（回合 ${formatBattleTurnNumber(state.globalTurn)}）`);
+  lines.push(`这回合怎么打（回合 ${formatBattleTurnNumber(state.globalTurn)}）`);
 
   /** @type {PlayerAction[]} */
   let hintBar = [];
@@ -6737,11 +6829,11 @@ function buildAdviceAndHint(state) {
   const sortByCloserToBroken = (a, b) => stgLeftOf(a) - stgLeftOf(b);
 
   if (p.broken) {
-    lines.push("- 你处于破绽：优先「调息」稳住资源；或用「防御/盾反」保命。");
+    lines.push("- 你现在自己在破绽，先别上头；{o}调息{/o}最赚，{o}防御{/o}/{o}盾反{/o}也都能保命。");
     if (brokenTargets.length) {
-      lines.push("- 目标已破绽也不要急：你破绽中不能处决，先把自己稳住。");
+      lines.push("- 对面就算也露破绽了，你现在也收不了头，先把自己救回来再说。");
     }
-    if (p.hp <= 2) lines.push("- 你已濒死：能调息就调息，别冒险进攻。");
+    if (p.hp <= 2) lines.push("- 你这血量再贪基本就是白给，能{o}调息{/o}就{o}调息{/o}。");
     hintBar = ["rest", "defend", "block"];
     return { lines, hintBar, hintExecuteOn };
   }
@@ -6749,15 +6841,15 @@ function buildAdviceAndHint(state) {
   if (brokenTargets.length) {
     const tgt = brokenTargets.find((eo) => eo.id === state.targetId) || brokenTargets[0];
     const label = labelOf(tgt.id);
-    lines.push(`- 发现破绽：优先处决${label}（处决回合其余敌人不行动）。`);
-    if (p.hp <= 2) lines.push("- 你已濒死：如果不确定能处决到位，可先调息再找机会。");
+    lines.push(`- ${label}已经露破绽了，别墨迹，直接处决；你一出手，其他敌人这回合也插不上。`);
+    if (p.hp <= 2) lines.push("- 但你现在也快没了；要是手一抖收不掉，那就先{o}调息{/o}，别把自己送走。");
     hintExecuteOn = tgt.id;
     if (p.hp <= 2) hintBar = ["rest"];
     return { lines, hintBar, hintExecuteOn };
   }
 
   if (p.hp <= 2) {
-    lines.push("- 你已濒死：优先「调息」或「防御」，避免被连击带走。");
+    lines.push("- 你这血量已经在鬼门关门口了，这回合先保命，{o}调息{/o}或{o}防御{/o}都比硬打值。");
   }
 
   /** @type {EnemyId|null} */
@@ -6766,36 +6858,36 @@ function buildAdviceAndHint(state) {
   let targetMode = "focus";
 
   if (hasHeavy && !hasQuick) {
-    lines.push("- 本回合有重击压力：优先「盾反」争取反制。");
+    lines.push("- 对面出重击？那就上{o}盾反{/o}。{o}盾反{/o}就是专门拿来吃重击的，这回合别想太多。");
     targetMode = "none";
   } else if (hasQuick && hasHeavy) {
     const tgt = [...heavyEnemies].sort(sortByCloserToBroken)[0];
     if (tgt) {
       suggestedTargetId = tgt.id;
-      lines.push(`- 快攻与重击混合：稳妥选「防御」；想抢节奏就对重击的${labelOf(tgt.id)}用「快攻」尝试打断。`);
+      lines.push(`- 这回合是混合压制局：怕翻车就{o}防御{/o}；想抢主动，就拿{o}快攻{/o}去点${labelOf(tgt.id)}，专打它的重击前摇。`);
       targetMode = "interruptHeavy";
     } else {
-      lines.push("- 快攻与重击混合：稳妥选「防御」；想抢节奏就对重击目标用「快攻」尝试打断。");
+      lines.push("- 这回合又有快攻又有重击：求稳就{o}防御{/o}；想抢节奏，就{o}快攻{/o}去断那个重击。");
       targetMode = "none";
     }
   } else if (hasQuick) {
-    lines.push("- 本回合以快攻为主：优先「防御」减伤；若你资源充足，可「快攻」集火压失衡。");
+    lines.push("- 对面这回合快攻为主，{o}防御{/o}就是标准答案；你状态够硬的话，也能用{o}快攻{/o}硬压失衡。");
     hintBar = ["defend", "attack"];
   } else if (allDefOrAdj) {
-    lines.push("- 敌人偏保守：用「重击」或「快攻」集火一个目标，尽快打出破绽。");
+    lines.push("- 对面这回合在装孙子，别陪他演，直接选一个人狠狠干，{o}重击{/o}和{o}快攻{/o}都行。");
     hintBar = ["heavy", "attack"];
   } else {
-    lines.push("- 看意图选择：不确定就「防御」，找安全回合再进攻。");
+    lines.push("- 没把握就老老实实{o}防御{/o}，别为了逞一时之勇把节奏送出去。");
     hintBar = ["defend"];
   }
 
   if (targetMode === "interruptHeavy" && suggestedTargetId) {
-    lines.push(`- 目标建议：本回合若选择快攻，优先点选${labelOf(suggestedTargetId)}来打断重击。`);
+    lines.push(`- 要是你这回合打算{o}快攻{/o}，就盯着${labelOf(suggestedTargetId)}砍；别打错人，断重击才有意义。`);
     return { lines, hintBar: ["defend", "attack"], hintExecuteOn };
   }
 
   if (targetMode === "none") {
-    lines.push("- 目标建议：本回合动作不依赖目标（防御/盾反/调息），先保命与稳资源。");
+    lines.push("- 这回合动作不吃目标选择，重点就一句话：先把命和节奏保住。");
     const hb = hasHeavy && !hasQuick ? /** @type {PlayerAction[]} */ (["block"]) : ["defend", "attack"];
     return { lines, hintBar: hb, hintExecuteOn };
   }
@@ -6807,8 +6899,8 @@ function buildAdviceAndHint(state) {
   if (prefer && prefer.fighter.hp > 0) {
     const label = labelOf(prefer.id);
     const stgLeft = stgLeftOf(prefer);
-    if (stgLeft <= 1) lines.push(`- 目标建议：集火${label}（距离破绽很近）。`);
-    else lines.push(`- 目标建议：优先集火${label}，别来回换目标。`);
+    if (stgLeft <= 1) lines.push(`- 目标建议：就狠狠干${label}，它离破绽只差一脚。`);
+    else lines.push(`- 目标建议：这回合继续盯着${label}打，别东一刀西一刀把失衡全打散。`);
   }
 
   if (hintBar.length === 0) hintBar = ["defend"];
@@ -6920,12 +7012,22 @@ function refreshTips(state) {
 
 // 旧版顺序上场遗留：当前未使用
 
+/** 与 `.battle-combat-stage--no-enemy-row` 同步：战前 `--ready` 用 CSS 藏卡但未必设 `hidden`，须看 ready 类否则敌区仍占 220px 易挤压 VS/我方行 */
+function syncBattleCombatStageEnemySlotClass(ui) {
+  const stage = ui.battleCombatStage;
+  if (!stage || !ui.battleInfoPanel || !ui.enemyRowWrap) return;
+  const ready = ui.battleInfoPanel.classList.contains("battle-info-panel--ready");
+  const compact = ready || !!ui.enemyRowWrap.hidden;
+  stage.classList.toggle("battle-combat-stage--no-enemy-row", compact);
+}
+
 /** 仅敌我角色卡（HP/失衡 红框区域）；战前 ready 隐藏此项，保留按键与说明 */
 function setFighterSlotsVisibility(ui, visible) {
   const hide = !visible;
   if (ui.enemyRowWrap) ui.enemyRowWrap.hidden = hide;
   if (ui.dividerAfterEnemies) ui.dividerAfterEnemies.hidden = hide;
   if (ui.playerRowWrap) ui.playerRowWrap.hidden = hide;
+  syncBattleCombatStageEnemySlotClass(ui);
 }
 
 /** 战斗信息面板内：完整战斗区（非战斗节点整段隐藏） */
@@ -6964,18 +7066,23 @@ function dom() {
     battleMeritDelta: $("battleMeritDelta"),
     battleMeritCombo: $("battleMeritCombo"),
     battleMeritBurst: $("battleMeritBurst"),
+    bossExecPlayerDramaOverlay: $("bossExecPlayerDramaOverlay"),
+    bossExecPlayerDramaLine1: $("bossExecPlayerDramaLine1"),
+    bossExecPlayerDramaLine2: $("bossExecPlayerDramaLine2"),
     introOverlay: $("introOverlay"),
     introTop3: $("introTop3"),
     btnIntroDare: $("btnIntroDare"),
     btnIntroContinue: $("btnIntroContinue"),
     btnIntroNew: $("btnIntroNew"),
-    winOverlay: $("winOverlay"),
+    battleWinInline: $("battleWinInline"),
+    battleWinInlineVictory: $("battleWinInlineVictory"),
     winGrowthEmbed: $("winGrowthEmbed"),
+    battleWinInlineAdvance: $("battleWinInlineAdvance"),
+    btnWinGrowthNextBattle: $("btnWinGrowthNextBattle"),
+    winGrowthNextSubtitle: $("winGrowthNextSubtitle"),
     winGrowthTitle: $("winGrowthTitle"),
     winGrowthSubtitle: $("winGrowthSubtitle"),
     winGrowthOptions: $("winGrowthOptions"),
-    winWarehousePanel: $("winWarehousePanel"),
-    winWarehouseCards: $("winWarehouseCards"),
     btnWinContinue: $("btnWinContinue"),
     btnWinClaim: $("btnWinClaim"),
     nameDialog: $("nameDialog"),
@@ -6991,7 +7098,9 @@ function dom() {
     nameDialogClose: $("nameDialogClose"),
     btnStartBattle: $("btnStartBattle"),
     btnRetryBattle: $("btnRetryBattle"),
+    btnLoseBackToMain: $("btnLoseBackToMain"),
     preFightStartWrap: $("preFightStartWrap"),
+    battleCombatStage: $("battleCombatStage"),
     enemyRowWrap: $("enemyRowWrap"),
     dividerAfterEnemies: $("dividerAfterEnemies"),
     playerRowWrap: $("playerRowWrap"),
@@ -7012,6 +7121,7 @@ function dom() {
     playerDeadBanner: $("playerDeadBanner"),
     playerName: $("playerName"),
     playerLevel: $("playerLevel"),
+    playerCardFlavor: $("playerCardFlavor"),
     pHpBarWrap: $("pHpBarWrap"),
     pStaggerBarWrap: $("pStaggerBarWrap"),
     battleLog: $("battleLog"),
@@ -7113,7 +7223,7 @@ function renderWarehouseSummaryTable(state) {
 function renderWarehouseCardHtml(tag, title, desc, cls = "", extrasLine = "") {
   const c = cls ? ` wh-card--${escapeHtml(String(cls))}` : "";
   const ex = extrasLine ? `<div class="wh-card-extras">${escapeHtml(extrasLine)}</div>` : "";
-  return `<div class="wh-card${c}"><div class="wh-card-tag">${escapeHtml(tag)}</div>${ex}<div class="wh-card-title">${escapeHtml(title)}</div><div class="wh-card-desc">${escapeHtml(desc)}</div></div>`;
+  return `<div class="wh-card${c}">${ex}<div class="wh-card-title">${escapeHtml(title)}</div><div class="wh-card-desc">${escapeHtml(desc)}</div></div>`;
 }
 
 function renderWarehouseCards(state) {
@@ -7167,7 +7277,7 @@ function renderFlags(targetEl, fighter, isPlayer, opts = {}) {
 }
 
 function render(state, ui) {
-  if (lastSkillTipUiPhase === "fight" && state.phase !== "fight") hideSkillHoverTooltip();
+  if (lastSkillTipUiPhase === "fight" && state.phase !== "fight") hideSkillHoverTooltip(state, ui);
   lastSkillTipUiPhase = state.phase;
 
   const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
@@ -7217,10 +7327,25 @@ function render(state, ui) {
       (!!state._winKillRevealEnemyIds && state._winKillRevealEnemyIds.length > 0),
   );
   const showWinOverlayPanel =
-    state.phase === "win" && (state.winReady || state.winGrowthEmbed);
-  if (ui.winOverlay) {
+    state.phase === "win" &&
+    (state.winReady || state.winGrowthEmbed || state.winGrowthPendingAdvance);
+  if (ui.battleWinInline) {
     const isBattle = node.type === "B" || node.type === "E";
-    ui.winOverlay.hidden = !(isBattle && showWinOverlayPanel);
+    const show = isBattle && showWinOverlayPanel;
+    ui.battleWinInline.hidden = !show;
+    ui.battleWinInline.setAttribute("aria-hidden", show ? "false" : "true");
+    if (ui.battleWinInlineVictory) {
+      ui.battleWinInlineVictory.hidden =
+        !show ||
+        !state.winReady ||
+        !!state.winGrowthEmbed ||
+        !!state.winGrowthPendingAdvance;
+    }
+    if (ui.battleWinInlineAdvance) {
+      const p = state.winGrowthPendingAdvance;
+      ui.battleWinInlineAdvance.hidden = !show || !p;
+      if (ui.winGrowthNextSubtitle) ui.winGrowthNextSubtitle.textContent = (p && p.label) || "";
+    }
   }
   const showIntro = state.chapterId === "chapter1" && node.id === "B1" && state.phase === "ready" && !state.introDismissed;
   const introNeedsName = showIntro && !String(state._playerName || "").trim();
@@ -7297,9 +7422,7 @@ function render(state, ui) {
   /** 仅进入战斗后（含进行中/结算动画/胜败）才显示 HP/失衡与行动区；战前与非战斗节点一律不显示 */
   const isWinScreen = showWinOverlayPanel;
   const showCombatBody = isBattleNode && state.phase !== "ready" && !isWinScreen;
-  if (ui.winWarehousePanel) ui.winWarehousePanel.hidden = !isWinScreen;
-  if (ui.winWarehouseCards) ui.winWarehouseCards.innerHTML = renderWarehouseCards(state);
-  if (ui.tipsPanel) ui.tipsPanel.hidden = !!isWinScreen;
+  if (ui.tipsPanel) ui.tipsPanel.hidden = false;
   // 「开始战斗」槽位：战中用不可见占位保持与战前相同文档流高度，使按键/相克/新手绝对位置一致
   if (ui.preFightStartWrap) {
     const winScreen = isWinScreen;
@@ -7316,8 +7439,10 @@ function render(state, ui) {
   }
   if (ui.btnStartBattle) ui.btnStartBattle.hidden = !(isBattleNode && state.phase === "ready" && !showIntro);
   if (ui.btnRetryBattle) ui.btnRetryBattle.hidden = !(isBattleNode && state.phase === "lose");
+  if (ui.btnLoseBackToMain) ui.btnLoseBackToMain.hidden = !(isBattleNode && state.phase === "lose");
   if (ui.battleInfoPanel) ui.battleInfoPanel.classList.toggle("battle-info-panel--ready", inReady);
   if (ui.battleInfoPanel) ui.battleInfoPanel.classList.toggle("battle-info-panel--intro-title", !!showIntro);
+  syncBattleCombatStageEnemySlotClass(ui);
   // B1：乙位未上场时缩小其卡片
   if (ui.battleInfoPanel) {
     const eoBHere = state.enemies.find((x) => x.id === "B");
@@ -7339,15 +7464,11 @@ function render(state, ui) {
   // 必须在可能 early-return 的成长分支之前同步，否则非战斗/成长界面仍会露出占位血条
   if (!inReady) {
     setCombatBodyVisibility(ui, showCombatBody);
-    // 成长界面：保留下方卡片仓库/新手提示；胜利界面改由胜利层专属仓库展示
-    if (showGrowth) {
+    // 成长 / 胜利内嵌选卡：保留下方卡片仓库与新手提示（选卡飞入仓库动画目标）
+    if (showGrowth || isWinScreen) {
       if (ui.actionsWrap) ui.actionsWrap.hidden = false;
       if (ui.dividerBeforeBelowActions) ui.dividerBeforeBelowActions.hidden = false;
       if (ui.belowActionsWrap) ui.belowActionsWrap.hidden = false;
-    } else if (isWinScreen) {
-      if (ui.actionsWrap) ui.actionsWrap.hidden = false;
-      if (ui.dividerBeforeBelowActions) ui.dividerBeforeBelowActions.hidden = true;
-      if (ui.belowActionsWrap) ui.belowActionsWrap.hidden = true;
     }
   }
 
@@ -7355,7 +7476,7 @@ function render(state, ui) {
   ui.battleInfoPanel?.classList.remove("growth-r3-continue");
   // resolving 时 VS 条由 .is-resolving 样式隐藏（visibility 占位，见 style.css），此处勿设 hidden
 
-  // 领取奖励后：下一节点为 R 时在胜利弹层下方直接展示成长翻牌（不切全屏 growth）
+  // 领取奖励后：下一节点为 R 时在战斗区内嵌层直接展示成长翻牌（不切全屏 growth）
   if (
     state.phase === "win" &&
     state.winGrowthEmbed &&
@@ -7372,7 +7493,9 @@ function render(state, ui) {
       ui.winGrowthSubtitle.textContent = gNode.subtitle || "";
       ui.winGrowthOptions.innerHTML = "";
       const rPick = buildRGrowthPickOptions(state, gNode);
-      renderGrowthAsCards(state, ui, chapter, gNode, rPick || [], ui.winGrowthOptions);
+      renderGrowthAsCards(state, ui, chapter, gNode, rPick || [], ui.winGrowthOptions, {
+        winInlinePick: true,
+      });
       return;
     }
     state.winGrowthEmbed = false;
@@ -7782,6 +7905,7 @@ function render(state, ui) {
 
   // action description (rich tokens: {g}/{r}/{o})
   ui.actionDesc.innerHTML = toRichHtml(state.actionDesc || "—");
+  syncPlayerCardFlavor(ui, state);
 
   // tips
   ui.tips.innerHTML = toRichHtml((state.tips || []).join("\n") || "—");
@@ -7815,9 +7939,8 @@ function render(state, ui) {
   const pendExec = state._pendingMultiEnemyResolution;
   const execOnlyPend = !!(pendExec && state.phase === "fight");
   const pendExecId = pendExec?.pauseEnemyId;
-  // 进入破绽时，按键上保留成功概率提示（这是战斗界面唯一保留的概率数值）
-  const baseDefendLabel = playerBroken ? "防御（70%）" : "防御";
-  const baseBlockLabel = playerBroken ? "盾反（75%）" : "盾反";
+  const baseDefendLabel = "防御";
+  const baseBlockLabel = "盾反";
   const enhSources = getActionEnhancementSources(state);
   /** @param {HTMLButtonElement|null} btn @param {string} base @param {string[]} sources */
   function applyCombatBtnEnhance(btn, base, sources) {
@@ -7907,6 +8030,7 @@ function render(state, ui) {
 function gotoNode(state, ui, chapterId, nodeId) {
   state.winGrowthEmbed = false;
   state.winGrowthEmbedNodeId = null;
+  state.winGrowthPendingAdvance = null;
   state.battleMeritFxQueue = [];
   state.battleMeritFxPlaying = false;
   state.visibleCombo = 0;
@@ -8013,6 +8137,7 @@ function deploySequentialSecondIfNeeded(state, details) {
 function startBattleFromNode(state, node) {
   state.winGrowthEmbed = false;
   state.winGrowthEmbedNodeId = null;
+  state.winGrowthPendingAdvance = null;
   state.battleMeritFxQueue = [];
   state.battleMeritFxPlaying = false;
   state.visibleCombo = 0;
@@ -8417,7 +8542,7 @@ function finish(state, ui, outcome) {
   state.battleLog.push("{r}你倒下了。{/r}");
   state.settleLog.push("{r}结算：战斗失败{/r}");
   state.settleLog.push("奖励：无。");
-  state.settleLog.push("可点击「重试本战」，重新开始这一场战斗。");
+  state.settleLog.push("可点击「重试本战」立即再战，或「回到主界面」返回标题。");
 }
 
 /** 与 style 中调息动画时长一致 */
@@ -8527,7 +8652,8 @@ function triggerDeathBlowFx(ui) {
   window.setTimeout(() => card.classList.remove("death-blow"), ENDING_PHASE_METER_MS + 120);
 }
 
-function applyGrowthOption(state, ui, chapter, node, opt) {
+function applyGrowthOption(state, ui, chapter, node, opt, advOpts) {
+  const deferNav = !!(advOpts && advOpts.deferNavigation);
   if (node.id === "HOOK" && opt.id === "restart") {
     resetChapter1NewGame(state);
     gotoNode(state, ui, chapter.id, opt.next || "N0");
@@ -8608,6 +8734,11 @@ function applyGrowthOption(state, ui, chapter, node, opt) {
     const idx = flow.indexOf(node.id);
     const nextId = idx >= 0 && idx < flow.length - 1 ? flow[idx + 1] : null;
     if (nextId) {
+      if (deferNav) {
+        armWinGrowthPendingAdvance(state, chapter, node, nextId);
+        render(state, ui);
+        return;
+      }
       markRoadmapNodeDone(state, node.id);
       const nextNode = chapter.nodes[nextId];
       if (nextNode && (nextNode.type === "B" || nextNode.type === "E")) {
@@ -8625,7 +8756,20 @@ function applyGrowthOption(state, ui, chapter, node, opt) {
     return;
   }
 
-  if (opt.next) markRoadmapNodeDone(state, node.id);
+  if (opt.next) {
+    if (deferNav) {
+      // R4 内嵌选毕后下一节点为 N4：N4 已有「迎击Boss」简报，不再插一层「进入下一关」
+      if (node.id === "R4_DRAFT" && opt.next === "N4") {
+        markRoadmapNodeDone(state, node.id);
+        gotoNode(state, ui, chapter.id, "N4");
+        return;
+      }
+      armWinGrowthPendingAdvance(state, chapter, node, opt.next);
+      render(state, ui);
+      return;
+    }
+    markRoadmapNodeDone(state, node.id);
+  }
 
   // 成长选项：若下一节点为战斗，则直接开战（跳过“开始战斗”按钮）
   const nextNode = chapter.nodes[opt.next] || chapter.nodes[chapter.startNodeId];
@@ -8672,29 +8816,20 @@ function buildRGrowthPickOptions(state, node) {
       }));
   }
   if (node.id === "R3_LOOT") {
-    const loot = ensureR3Loot(state);
-    const unclaimed = (loot.drops || []).filter((d) => !loot.taken?.[d.id]);
-    const opts = [];
-    if (unclaimed.length >= 2) {
-      opts.push({
-        id: "take_all",
-        title: "全部领取",
-        desc: unclaimed.map((d) => `${d.title}（${d.desc}）`).join("；"),
-        _equipAll: unclaimed,
-        kicker: "装备",
-      });
-    } else {
-      for (const d of unclaimed) {
-        opts.push({
-          id: `take_${d.id}`,
-          title: `拾取：${d.title}`,
-          desc: d.desc,
-          _equip: d,
-          kicker: "装备",
-        });
-      }
-    }
-    return opts;
+    const offer = ensureR3TechOffer(state);
+    return offer.map((perk) => {
+      const c = perkCardById(perk);
+      return {
+        id: perk,
+        title: c.title,
+        desc: c.desc,
+        perk,
+        kicker: techTagKickerForPerk(perk),
+        tagLine: techExtraTagsLine(c),
+        cardClass: `pick-card--${techTagCssForPerk(perk)}`,
+        next: "B3",
+      };
+    });
   }
   if (node.id === "R4_DRAFT") {
     const techOffer = ensureDraftOffer(state, "R4_TECH", state.skillDeckRemaining || [], 2);
@@ -8733,11 +8868,13 @@ function buildRGrowthPickOptions(state, node) {
   return null;
 }
 
-function renderGrowthAsCards(state, ui, chapter, node, opts, optionsMount) {
+function renderGrowthAsCards(state, ui, chapter, node, opts, optionsMount, pickOpts) {
   const mount = optionsMount || ui.nodeOptions;
   if (!mount) return;
+  const winInlinePick = !!(pickOpts && pickOpts.winInlinePick);
   const grid = document.createElement("div");
   grid.className = "pick-grid";
+  if (winInlinePick) grid.classList.add("pick-grid--win-inline");
   grid.dataset.nodeId = node.id;
   mount.appendChild(grid);
 
@@ -8771,26 +8908,40 @@ function renderGrowthAsCards(state, ui, chapter, node, opts, optionsMount) {
       </div>
     `;
     card.addEventListener("click", () => {
+      if (winInlinePick) {
+        if (!state.growthRevealed?.[node.id]) return;
+        if (wrap.dataset.flyBusy === "1") return;
+        wrap.dataset.flyBusy = "1";
+        animateCardToWarehouse(card, ui, () => {
+          state._warehouseNewCard = true;
+          state.growthPickId[node.id] = null;
+          applyGrowthOption(state, ui, chapter, node, opt, { deferNavigation: true });
+        });
+        return;
+      }
       state.growthPickId[node.id] = opt.id;
       render(state, ui);
     });
 
-    const confirmBtn = document.createElement("button");
-    confirmBtn.type = "button";
-    confirmBtn.className = "btn btn-offense pick-card-confirm";
-    confirmBtn.textContent = "确认选择";
-    confirmBtn.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      ev.preventDefault();
-      state.growthPickId[node.id] = null;
-      animateCardToWarehouse(card, ui, () => {
-        state._warehouseNewCard = true;
-        applyGrowthOption(state, ui, chapter, node, opt);
+    if (!winInlinePick) {
+      const confirmBtn = document.createElement("button");
+      confirmBtn.type = "button";
+      confirmBtn.className = "btn btn-offense pick-card-confirm";
+      confirmBtn.textContent = "确认选择";
+      confirmBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+        state.growthPickId[node.id] = null;
+        animateCardToWarehouse(card, ui, () => {
+          state._warehouseNewCard = true;
+          applyGrowthOption(state, ui, chapter, node, opt);
+        });
       });
-    });
-
-    wrap.appendChild(card);
-    wrap.appendChild(confirmBtn);
+      wrap.appendChild(card);
+      wrap.appendChild(confirmBtn);
+    } else {
+      wrap.appendChild(card);
+    }
     grid.appendChild(wrap);
   }
 
@@ -9074,26 +9225,10 @@ function onPlayerAction(state, ui, action, opts = {}) {
   if (action === "execute") {
     details.push("→ 处决回合：其余敌人本回合未介入。");
   } else {
-    let defendFailedThisTurn = false;
-    let blockFailedThisTurn = false;
-    // 新规则：失衡状态下防御有 30% 概率失败（每回合判一次）
-    defendFailedThisTurn =
-      rolled?.defendFailed ?? (action === "defend" && state.player.broken && Math.random() < 0.3);
-    meritTurn.defendFailedThisTurn = !!defendFailedThisTurn;
-    if (defendFailedThisTurn) {
-      details.push("→ {r}失衡惩罚：本回合防御失败（70%）{/r}");
-    } else if (action === "defend" && state.player.broken) {
-      details.push("→ {g}失衡惩罚：本回合防御成功（70%）{/g}");
-    }
-    // 新规则：失衡状态下盾反有 25% 概率失败（每回合判一次）
-    blockFailedThisTurn =
-      rolled?.blockFailed ?? (action === "block" && state.player.broken && Math.random() < 0.25);
-    meritTurn.blockFailedThisTurn = !!blockFailedThisTurn;
-    if (blockFailedThisTurn) {
-      details.push("→ {r}失衡惩罚：本回合盾反失败（75%）{/r}");
-    } else if (action === "block" && state.player.broken) {
-      details.push("→ {g}失衡惩罚：本回合盾反成功（75%）{/g}");
-    }
+    const defendFailedThisTurn = false;
+    const blockFailedThisTurn = false;
+    meritTurn.defendFailedThisTurn = false;
+    meritTurn.blockFailedThisTurn = false;
     // 同步结算：先锁定本回合会出手的敌人集合，再逐个结算并叠加结果
     const playerHpAtEnemyPhaseStart = state.player.hp;
     playerHpAtEnemyPhaseStartForDeathAnim = playerHpAtEnemyPhaseStart;
@@ -9642,7 +9777,7 @@ function boot() {
     const mode = state._nameDialogMode;
     ui.nameDialog.hidden = true;
     state._nameDialogMode = null;
-    if (mode === "postBoss" && ui.winOverlay) ui.winOverlay.hidden = false;
+    if (mode === "postBoss" && ui.battleWinInline) ui.battleWinInline.hidden = false;
     render(state, ui);
   }
 
@@ -9720,7 +9855,7 @@ function boot() {
   if (ui.btnWinClaim) {
     ui.btnWinClaim.addEventListener("click", () => {
       // 隐藏胜利弹层，弹出昵称输入框
-      if (ui.winOverlay) ui.winOverlay.hidden = true;
+      if (ui.battleWinInline) ui.battleWinInline.hidden = true;
       openNameDialog("postBoss");
     });
   }
@@ -9793,26 +9928,45 @@ function boot() {
       const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
       const node = chapter.nodes[state.nodeId] || chapter.nodes[chapter.startNodeId];
       const isBattle = node.type === "B" || node.type === "E";
-      if (!isBattle) return;
+      if (!isBattle || state.phase !== "lose") return;
+      state.introDismissed = true;
       gotoNode(state, ui, chapter.id, node.id);
+      try {
+        startBattleFromNode(state, node);
+      } catch (e) {
+        const msg = e && typeof e === "object" && "message" in e ? String(e.message) : String(e);
+        state.settleLog.push(`{r}开始战斗失败：${msg}{/r}`);
+      }
+      render(state, ui);
     });
   }
-  if (ui.btnGrowthNextBattle) {
-    ui.btnGrowthNextBattle.addEventListener("click", () => {
+  if (ui.btnLoseBackToMain) {
+    ui.btnLoseBackToMain.addEventListener("click", () => {
       const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
-      const growthNodeId =
-        state.winGrowthEmbed && state.winGrowthEmbedNodeId ? state.winGrowthEmbedNodeId : state.nodeId;
-      const node = chapter.nodes[growthNodeId] || chapter.nodes[chapter.startNodeId];
-      const phaseOk = state.phase === "node" || (state.phase === "win" && state.winGrowthEmbed);
-      if (!phaseOk || node.id !== "R3_LOOT") return;
-      const loot = ensureR3Loot(state);
-      if (!loot.drops?.length || !loot.drops.every((d) => loot.taken?.[d.id])) return;
-      applyGrowthOption(state, ui, chapter, node, {
-        id: "continue",
-        title: "进入下一场战斗",
-        desc: "",
-        next: "B3",
-      });
+      if (state.phase !== "lose") return;
+      cancelResolutionAnimation(ui);
+      state.pendingRetryBattleNodeId = null;
+      state.battleSnapshot = null;
+      state.introDismissed = false;
+      gotoNode(state, ui, chapter.id, chapter.startNodeId);
+    });
+  }
+  if (ui.btnWinGrowthNextBattle) {
+    ui.btnWinGrowthNextBattle.addEventListener("click", () => {
+      const p = state.winGrowthPendingAdvance;
+      if (!p || state.phase !== "win") return;
+      state.winGrowthPendingAdvance = null;
+      const chapter = CHAPTERS[p.chapterId] || CHAPTERS.chapter1;
+      const nextNode = chapter.nodes[p.nextId] || chapter.nodes[chapter.startNodeId];
+      markRoadmapNodeDone(state, p.fromNodeId);
+      if (nextNode && (nextNode.type === "B" || nextNode.type === "E")) {
+        state.chapterId = chapter.id;
+        state.nodeId = nextNode.id;
+        startBattleFromNode(state, nextNode);
+      } else if (p.nextId) {
+        gotoNode(state, ui, chapter.id, p.nextId);
+      }
+      render(state, ui);
     });
   }
   if (ui.btnStartBattle) {
@@ -9857,27 +10011,27 @@ function boot() {
   ];
   for (const [btn, action] of skillHoverBinds) {
     if (!btn) continue;
-    btn.addEventListener("mouseenter", () => armSkillHoverTooltip(state, btn, action));
-    btn.addEventListener("focus", () => armSkillHoverTooltip(state, btn, action));
-    btn.addEventListener("mouseleave", () => hideSkillHoverTooltip());
-    btn.addEventListener("blur", () => hideSkillHoverTooltip());
+    btn.addEventListener("mouseenter", () => armSkillHoverTooltip(state, ui, btn, action));
+    btn.addEventListener("focus", () => armSkillHoverTooltip(state, ui, btn, action));
+    btn.addEventListener("mouseleave", () => hideSkillHoverTooltip(state, ui));
+    btn.addEventListener("blur", () => hideSkillHoverTooltip(state, ui));
   }
 
   // 滚动/缩放/点击别处时收起 tooltip（避免“粘”在屏幕上）
   window.addEventListener(
     "scroll",
     () => {
-      hideSkillHoverTooltip();
+      hideSkillHoverTooltip(state, ui);
     },
     true,
   );
-  window.addEventListener("resize", () => hideSkillHoverTooltip(), { passive: true });
+  window.addEventListener("resize", () => hideSkillHoverTooltip(state, ui), { passive: true });
   document.addEventListener("pointerdown", (e) => {
     const t = e.target;
     if (!(t instanceof Element)) return;
     if (t.closest(".skill-hover-tooltip")) return;
     if (t.closest(".skill-icon")) return;
-    hideSkillHoverTooltip();
+    hideSkillHoverTooltip(state, ui);
   });
   function bindExecuteOnCard(btn, id) {
     btn.addEventListener("click", (ev) => {

@@ -98,27 +98,6 @@
               </div>
             </div>
 
-            <div id="winOverlay" class="win-overlay" hidden>
-              <div class="win-overlay-inner">
-                <div class="win-card">
-                  <div class="win-accent-bar"></div>
-                  <div class="win-kicker">VICTORY</div>
-                  <div class="win-text">战斗胜利</div>
-                  <div class="win-divider"></div>
-                  <button id="btnWinContinue" class="btn win-claim" type="button">领取奖励</button>
-                  <button id="btnWinClaim" class="btn win-claim" type="button">进入战功名人堂</button>
-                </div>
-                <div id="winWarehousePanel" class="win-warehouse-panel" hidden>
-                  <div class="win-warehouse-title">卡片仓库</div>
-                  <div id="winWarehouseCards" class="win-warehouse-cards"></div>
-                </div>
-                <div id="winGrowthEmbed" class="win-growth-embed" hidden>
-                  <div class="win-growth-title" id="winGrowthTitle"></div>
-                  <div class="win-growth-sub" id="winGrowthSubtitle"></div>
-                  <div id="winGrowthOptions" class="win-growth-options node-options"></div>
-                </div>
-              </div>
-            </div>
             <div
               id="nameDialog"
               class="name-dialog-overlay"
@@ -159,6 +138,8 @@
               </div>
             </div>
 
+            <div id="battleCombatMain" class="battle-combat-main">
+              <div id="battleCombatStage" class="battle-combat-stage">
             <div id="enemyRowWrap" class="enemy-row">
               <div id="enemyCardA" class="fighter-card enemy-card" role="button" tabindex="0" aria-label="选择目标：守卫刀兵甲">
                 <div id="enemyRestFxOverlayA" class="rest-fx-overlay" aria-hidden="true"></div>
@@ -277,6 +258,7 @@
                   </div>
                 </div>
                 <div id="pFlags" class="flags"></div>
+                <div id="playerCardFlavor" class="player-card-flavor">—</div>
               </div>
               <section class="mini-panel skill-icons-panel" aria-label="技能">
                 <div class="mini-title">技能</div>
@@ -301,6 +283,7 @@
             <div id="preFightStartWrap" class="pre-fight-start" hidden>
               <button id="btnStartBattle" class="btn btn-offense pre-fight-start-btn" type="button">开始战斗</button>
               <button id="btnRetryBattle" class="btn btn-danger pre-fight-start-btn" type="button" hidden>重试本战</button>
+              <button id="btnLoseBackToMain" class="btn btn-secondary pre-fight-start-btn" type="button" hidden>回到主界面</button>
             </div>
 
             <div id="actionsWrap" class="actions">
@@ -326,6 +309,31 @@
               </div>
             </div>
 
+            <div id="battleWinInline" class="battle-win-inline" hidden aria-hidden="true">
+              <div id="battleWinInlineVictory" class="battle-win-inline-victory" hidden>
+                <div class="win-card battle-win-inline-card">
+                  <div class="win-accent-bar"></div>
+                  <div class="win-kicker">VICTORY</div>
+                  <div class="win-text">战斗胜利</div>
+                  <div class="win-divider"></div>
+                  <button id="btnWinContinue" class="btn win-claim" type="button">领取奖励</button>
+                  <button id="btnWinClaim" class="btn win-claim" type="button" hidden>进入战功名人堂</button>
+                </div>
+              </div>
+              <div id="winGrowthEmbed" class="win-growth-embed battle-win-inline-growth" hidden>
+                <div class="win-growth-title" id="winGrowthTitle"></div>
+                <div class="win-growth-sub" id="winGrowthSubtitle"></div>
+                <div id="winGrowthOptions" class="win-growth-options node-options"></div>
+              </div>
+              <div id="battleWinInlineAdvance" class="battle-win-inline-advance" hidden>
+                <button id="btnWinGrowthNextBattle" type="button" class="btn btn-offense battle-win-inline-advance-btn">
+                  进入下一关
+                </button>
+                <div id="winGrowthNextSubtitle" class="battle-win-inline-advance-sub" aria-live="polite"></div>
+              </div>
+            </div>
+              </div>
+
             <div id="dividerBeforeBelowActions" class="panel-divider"></div>
             <div id="belowActionsWrap" class="below-actions">
               <section class="mini-panel">
@@ -343,9 +351,24 @@
                 <div id="tips" class="scrollbox mini"></div>
               </section>
             </div>
+            </div>
           </section>
         </section>
       </main>
+
+      <!-- 固定在全屏最上层，勿放在 #battleInfoPanel 内，否则会参与 flex 子项布局、易与 backdrop-filter 叠层干扰战斗区 -->
+      <div
+        id="bossExecPlayerDramaOverlay"
+        class="boss-exec-player-drama-overlay"
+        hidden
+        aria-hidden="true"
+        aria-label="头目处决预告"
+      >
+        <div class="boss-exec-player-drama-inner">
+          <p class="boss-exec-player-drama-line boss-exec-player-drama-line--1" id="bossExecPlayerDramaLine1"></p>
+          <p class="boss-exec-player-drama-line boss-exec-player-drama-line--2" id="bossExecPlayerDramaLine2"></p>
+        </div>
+      </div>
     </div>
 
     <div id="godModeBar" class="god-mode-bar">

@@ -546,6 +546,160 @@ body{
 .battle-info-panel > .panel-header{
   flex-shrink: 0;
 }
+/* 主战斗列：敌我 VS、技能与底部仓库/提示同属一列，便于胜利态只盖住上方交战区 */
+.battle-combat-main{
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.battle-combat-stage{
+  position: relative;
+  /* 网格 + 固定敌区槽高：VS/双端线相对舞台顶部的纵向位置恒定，不随下方仓库、提示、战前条等变高而整体上移
+     默认按「有敌卡」排版；勿仅用 :has() 定义行高——不支持 :has 时整段规则失效会导致敌区塌缩、VS/我方整体上移 */
+  display: grid;
+  grid-template-columns: 1fr;
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-rows:
+    var(--battle-enemy-slot-h, 220px)
+    auto
+    auto
+    minmax(140px, auto)
+    auto
+    auto
+    auto;
+}
+/* 战前/成长等：敌卡整块隐藏时不占 220px 空带（由 main.js 切换 .battle-combat-stage--no-enemy-row） */
+.battle-combat-stage.battle-combat-stage--no-enemy-row{
+  grid-template-rows:
+    0px
+    0px
+    auto
+    minmax(120px, 1fr)
+    auto
+    auto
+    auto;
+}
+.battle-combat-stage > #enemyRowWrap{
+  grid-row: 1;
+  grid-column: 1;
+  align-self: end;
+  min-height: 0;
+  max-height: var(--battle-enemy-slot-h, 220px);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.battle-combat-stage > #dividerAfterEnemies{
+  grid-row: 2;
+  grid-column: 1;
+  align-self: center;
+}
+.battle-combat-stage > #actionDesc{
+  grid-row: 3;
+  grid-column: 1;
+}
+.battle-combat-stage > #playerRowWrap{
+  grid-row: 4;
+  grid-column: 1;
+  min-height: 0;
+}
+.battle-combat-stage > #growthContinueBar{
+  grid-row: 5;
+  grid-column: 1;
+}
+.battle-combat-stage > #preFightStartWrap{
+  grid-row: 6;
+  grid-column: 1;
+}
+.battle-combat-stage > #actionsWrap{
+  grid-row: 7;
+  grid-column: 1;
+}
+/* 当玩家区隐藏（如战前/标题/成长某些态）时，仍由底部条自己贴底 */
+.battle-combat-main:has(.battle-combat-stage #playerRowWrap[hidden]) > #dividerBeforeBelowActions:not([hidden]){
+  margin-top: auto;
+}
+.battle-combat-main:has(.battle-combat-stage #playerRowWrap[hidden]) > #dividerBeforeBelowActions[hidden] + #belowActionsWrap{
+  margin-top: auto;
+}
+/* 胜利/成长：盖住交战区（不含底部卡片仓库与新手提示） */
+.battle-win-inline{
+  position: absolute;
+  inset: 0;
+  z-index: 24;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 12px 10px 16px;
+  box-sizing: border-box;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  background: linear-gradient(180deg, rgba(15,23,42,.96) 0%, rgba(2,6,23,.94) 55%, rgba(15,23,42,.92) 100%);
+  border-radius: 0 0 12px 12px;
+  pointer-events: auto;
+}
+.battle-win-inline[hidden]{ display: none !important; }
+/* 避免作为第 8 个网格子项插入隐式行，把 VS/我方区整体上顶；全幅叠在舞台内由 absolute + inset 实现 */
+.battle-combat-stage > .battle-win-inline{
+  grid-column: 1;
+  grid-row: 1 / -1;
+  justify-self: stretch;
+  align-self: stretch;
+  width: 100%;
+  min-height: 0;
+}
+.battle-win-inline-victory{
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  flex-shrink: 0;
+}
+.battle-win-inline-victory[hidden]{ display: none !important; }
+.battle-win-inline-card{
+  margin: 0 auto;
+}
+.battle-win-inline-growth{
+  width: 100%;
+  max-width: 100%;
+  margin-top: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.battle-win-inline-growth[hidden]{ display: none !important; }
+.battle-win-inline-growth .win-growth-options.node-options{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.battle-win-inline-advance{
+  width: 100%;
+  max-width: 400px;
+  margin: auto auto clamp(28px, 10vh, 100px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.battle-win-inline-advance[hidden]{ display: none !important; }
+.battle-win-inline-advance-btn{
+  min-width: 220px;
+  padding: 14px 18px;
+  font-size: 16px;
+  font-weight: 950;
+}
+.battle-win-inline-advance-sub{
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  color: rgba(253,230,138,.95);
+  text-shadow: 0 0 14px rgba(251,191,36,.28);
+}
 
 /* 结算前可视化播报层：主交锋 + 副交锋 */
 .resolution-layer{
@@ -617,7 +771,8 @@ body{
   animation: battleMeritDeltaFloat var(--battle-merit-ms, 720ms) ease-out both;
 }
 .battle-merit-combo{
-  margin-top: -44px;
+  /* 负 margin 越大，COMBO 越在判词上方，避免与「破绽」等大字重叠 */
+  margin-top: -26px;
   font-size: clamp(14px, 2.3vw, 28px);
   font-weight: 1000;
   letter-spacing: .08em;
@@ -675,10 +830,10 @@ body{
   100%{ opacity: 0; transform: translate(-50%, -16px); }
 }
 @keyframes battleMeritComboPop{
-  0%{ opacity: 0; transform: translate(-50%, -58px) scale(.86); }
-  18%{ opacity: 1; transform: translate(-50%, -52px) scale(1); }
-  72%{ opacity: 1; transform: translate(-50%, -56px) scale(1); }
-  100%{ opacity: 0; transform: translate(-50%, -62px) scale(1); }
+  0%{ opacity: 0; transform: translate(-50%, -52px) scale(.86); }
+  18%{ opacity: 1; transform: translate(-50%, -46px) scale(1); }
+  72%{ opacity: 1; transform: translate(-50%, -48px) scale(1); }
+  100%{ opacity: 0; transform: translate(-50%, -54px) scale(1); }
 }
 .resolution-primary{
   position: absolute;
@@ -695,6 +850,11 @@ body{
 /* 对撞动画时隐藏 VS 线但保留占位（勿 display:none，否则我方卡与加成面板上移） */
 .battle-info-panel.is-resolving #dividerAfterEnemies{
   visibility: hidden;
+  pointer-events: none;
+}
+/* 战功得分弹层出现时：隐藏 VS 字与线，避免与「得势」等叠字（类名由 main.js 在战功弹层显示期间切换） */
+.battle-info-panel.battle-info-panel--merit-fx-active .battle-combat-stage > #dividerAfterEnemies{
+  opacity: 0;
   pointer-events: none;
 }
 .resolution-capsule{
@@ -730,22 +890,7 @@ body{
 .resolution-layer.is-active.resolution-layer--clash .resolution-capsule--enemy{
   animation: resolutionFromRight .32s cubic-bezier(.2,.9,.2,1) both;
 }
-/* 碰撞段：我方「占位 none」与敌方守势意图不参与飞入，避免防御/盾反药丸像对攻一样对撞 */
-.resolution-layer.is-active.resolution-layer--clash .resolution-capsule--player.battle-clash-chip--none{
-  animation: none !important;
-  opacity: 0 !important;
-  transform: none !important;
-  filter: none !important;
-  pointer-events: none;
-}
-.resolution-layer.is-active.resolution-layer--clash .resolution-capsule--enemy.intent-defend,
-.resolution-layer.is-active.resolution-layer--clash .resolution-capsule--enemy.intent-block{
-  animation: none !important;
-  opacity: 0 !important;
-  transform: none !important;
-  filter: none !important;
-  pointer-events: none;
-}
+/* 碰撞段：防御/盾反胶囊也参与展示，便于看清双方当前交锋关系 */
 /* 对撞层玩家侧：与主行动栏同色（快攻浅红 / 重击深红 / 防御蓝 / 盾反黄 / 调息绿） */
 .resolution-capsule--player.battle-clash-chip--quick{
   color: rgba(254,226,231,.98);
@@ -1069,11 +1214,6 @@ body{
     transform: none !important;
     opacity: 1 !important;
     filter: none !important;
-  }
-  .resolution-layer.is-active.resolution-layer--clash .resolution-capsule--player.battle-clash-chip--none,
-  .resolution-layer.is-active.resolution-layer--clash .resolution-capsule--enemy.intent-defend,
-  .resolution-layer.is-active.resolution-layer--clash .resolution-capsule--enemy.intent-block{
-    opacity: 0 !important;
   }
 }
 
@@ -1707,16 +1847,23 @@ body{
   padding: 16px 16px 6px 16px;
   border-top: 1px solid rgba(255,255,255,.06);
   display:flex;
+  flex-wrap: wrap;
+  gap: 10px;
   justify-content:center;
   align-items:center;
   box-sizing:border-box;
   min-height: 5.75rem;
   flex-shrink: 0;
 }
+/* 战中占位：仅保留 DOM 槽位，不占可视高度，避免「我/技能」与卡片仓库之间大块留白 */
 .pre-fight-start.pre-fight-start--placeholder{
   visibility: hidden;
   pointer-events: none;
   user-select: none;
+  min-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-top: none;
 }
 .pre-fight-start[hidden]{ display:none; }
 .pre-fight-start-btn{
@@ -1770,7 +1917,7 @@ body{
   color: rgba(229,231,235,.88);
 }
 
-/* 第三次成长：装备领完后，蒙版只占上方标题区；下方露出我方卡片与总加成 + 进入战斗按钮 */
+/* 预留：内嵌成长 + 底部「继续战斗」条时的版面（当前 R3 已改为技法三选一，与 R1 同流程） */
 .battle-info-panel.growth-r3-continue{
   display:flex;
   flex-direction:column;
@@ -2250,6 +2397,27 @@ body{
   grid-template-columns: 1fr 1fr;
   gap:12px;
   flex-shrink: 0;
+  align-items: stretch;
+  /* 卡片区与新手提示区同高：约两排卡片（每排 3 张） */
+  --below-panels-content-min-h: 200px;
+}
+.below-actions .mini-panel{
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.below-actions .mini-panel > .mini-title{
+  flex-shrink: 0;
+}
+.below-actions .warehouse-cards--only{
+  flex: 1 1 auto;
+  min-height: var(--below-panels-content-min-h);
+  max-height: none;
+}
+.below-actions #tipsPanel .scrollbox.mini{
+  flex: 1 1 auto;
+  min-height: var(--below-panels-content-min-h);
+  max-height: none;
 }
 .below-actions[hidden]{ display:none; }
 .mini-panel{
@@ -2337,57 +2505,136 @@ body{
   flex-wrap:wrap;
   gap:8px;
 }
+/* 战斗页卡片仓库：每排 3 张，区域至少容纳两排 */
+.warehouse-cards--only .wh-grid{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  grid-auto-rows: minmax(78px, auto);
+  align-content: start;
+}
+.warehouse-cards--only .wh-card{
+  width: auto;
+  min-width: 0;
+}
 .wh-card{
   flex: 0 0 auto;
   width: calc(50% - 4px);
   min-width: 100px;
-  background: linear-gradient(180deg, rgba(17,24,39,.88), rgba(2,6,23,.82));
-  border:1px solid rgba(255,255,255,.10);
-  border-radius: 10px;
-  padding:8px 10px;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(255,255,255,.08), transparent 42%),
+    linear-gradient(180deg, rgba(20,28,45,.96), rgba(8,14,28,.94));
+  border:1px solid rgba(148,163,184,.18);
+  border-radius: 14px;
+  padding:12px 12px 11px;
   box-sizing:border-box;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    0 10px 22px rgba(2,6,23,.22);
 }
 .wh-card.wh-card--offense{
-  border-color: rgba(239,68,68,.22);
-  box-shadow: 0 0 0 1px rgba(239,68,68,.10) inset;
+  border-color: rgba(239,68,68,.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    inset 0 0 0 1px rgba(239,68,68,.08),
+    0 10px 22px rgba(2,6,23,.22);
 }
 .wh-card.wh-card--defense{
-  border-color: rgba(59,130,246,.22);
-  box-shadow: 0 0 0 1px rgba(59,130,246,.10) inset;
+  border-color: rgba(59,130,246,.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    inset 0 0 0 1px rgba(59,130,246,.08),
+    0 10px 22px rgba(2,6,23,.22);
 }
 .wh-card.wh-card--sustain{
-  border-color: rgba(34,197,94,.22);
-  box-shadow: 0 0 0 1px rgba(34,197,94,.10) inset;
+  border-color: rgba(34,197,94,.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    inset 0 0 0 1px rgba(34,197,94,.08),
+    0 10px 22px rgba(2,6,23,.22);
 }
 .wh-card.wh-card--tempo{
-  border-color: rgba(245,158,11,.22);
-  box-shadow: 0 0 0 1px rgba(245,158,11,.10) inset;
+  border-color: rgba(245,158,11,.30);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    inset 0 0 0 1px rgba(245,158,11,.08),
+    0 10px 22px rgba(2,6,23,.22);
 }
-.wh-card-tag{
-  font-size:9px;
-  font-weight:800;
-  letter-spacing:.06em;
-  color: var(--muted);
-  text-transform:uppercase;
-  margin-bottom:2px;
+.wh-card.wh-card--equip{
+  border-color: rgba(125,211,252,.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    inset 0 0 0 1px rgba(125,211,252,.08),
+    0 10px 22px rgba(2,6,23,.22);
+}
+.wh-card.wh-card--attr{
+  border-color: rgba(167,139,250,.30);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    inset 0 0 0 1px rgba(167,139,250,.08),
+    0 10px 22px rgba(2,6,23,.22);
+}
+.wh-card.wh-card--orange{
+  border-color: rgba(251,191,36,.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.06),
+    inset 0 0 0 1px rgba(251,191,36,.12),
+    0 12px 24px rgba(120,53,15,.18);
+}
+.wh-card::before{
+  content:"";
+  position:absolute;
+  left:12px;
+  right:12px;
+  top:0;
+  height:2px;
+  border-radius:0 0 999px 999px;
+  background: linear-gradient(90deg, rgba(148,163,184,.16), rgba(226,232,240,.7), rgba(148,163,184,.16));
+  opacity:.88;
+}
+.wh-card.wh-card--offense::before{
+  background: linear-gradient(90deg, rgba(239,68,68,.15), rgba(251,113,133,.88), rgba(239,68,68,.15));
+}
+.wh-card.wh-card--defense::before{
+  background: linear-gradient(90deg, rgba(59,130,246,.15), rgba(96,165,250,.88), rgba(59,130,246,.15));
+}
+.wh-card.wh-card--sustain::before{
+  background: linear-gradient(90deg, rgba(34,197,94,.15), rgba(74,222,128,.88), rgba(34,197,94,.15));
+}
+.wh-card.wh-card--tempo::before{
+  background: linear-gradient(90deg, rgba(245,158,11,.15), rgba(251,191,36,.88), rgba(245,158,11,.15));
+}
+.wh-card.wh-card--equip::before{
+  background: linear-gradient(90deg, rgba(56,189,248,.15), rgba(125,211,252,.9), rgba(56,189,248,.15));
+}
+.wh-card.wh-card--attr::before{
+  background: linear-gradient(90deg, rgba(139,92,246,.15), rgba(196,181,253,.9), rgba(139,92,246,.15));
+}
+.wh-card.wh-card--orange::before{
+  background: linear-gradient(90deg, rgba(245,158,11,.18), rgba(253,224,71,.95), rgba(245,158,11,.18));
 }
 .wh-card-extras{
-  font-size:9px;
-  line-height: 1.35;
-  color: rgba(148,163,184,.92);
-  margin: 0 0 4px 0;
+  font-size:10px;
+  line-height: 1.45;
+  color: rgba(148,163,184,.95);
+  margin: 0 0 8px 0;
   white-space: normal;
+  font-weight: 700;
 }
 .wh-card-title{
-  font-size:12px;
-  font-weight:900;
-  color: rgba(229,231,235,.95);
-  margin-bottom:3px;
+  font-size:15px;
+  line-height: 1.2;
+  font-weight:1000;
+  color: rgba(248,250,252,.98);
+  margin-bottom:7px;
+  letter-spacing: .01em;
 }
 .wh-card-desc{
-  font-size:10px;
-  line-height:1.5;
-  color: rgba(229,231,235,.7);
+  font-size:11px;
+  line-height:1.6;
+  color: rgba(226,232,240,.8);
 }
 .wh-empty{
   color: var(--muted);
@@ -2401,17 +2648,17 @@ body{
   from{ opacity:0; transform:translateY(-10px) scale(.92) }
   to{ opacity:1; transform:translateY(0) scale(1) }
 }
-.warehouse-cards--only{
-  max-height: 22vh;
-}
 .player-summary-panel{
   height: 100%;
 }
 
 .skill-icons-panel{
+  display: flex;
+  flex-direction: column;
   height: 100%;
 }
 .skill-icons{
+  flex: 1 1 auto;
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
@@ -2502,6 +2749,21 @@ body{
   border:1px solid rgba(255,255,255,.06);
   border-radius: 12px;
   padding:12px;
+}
+#playerCard.fighter-card{
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.player-card-flavor{
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  color:#bbf7d0;
+  font-family:var(--mono);
+  font-size:12px;
+  line-height: 1.6;
+  min-height: 2.6em;
 }
 
 /* —— 卡片结果动画层（对撞结果字之后）：低于玩家破绽/死亡条，低于敌人处决蒙版（处决可点） */
@@ -3606,12 +3868,7 @@ body{
 }
 
 .action-desc{
-  padding:10px 16px 0 16px;
-  color:#bbf7d0;
-  font-family:var(--mono);
-  font-size:12px;
-  flex-shrink: 0;
-  min-height: 1.6em;
+  display:none;
 }
 
 .skill-hover-tooltip{
@@ -3650,6 +3907,7 @@ body{
   display:grid;
   grid-template-columns: 1fr 1fr;
   gap:12px;
+  align-items: stretch;
   flex-shrink: 0;
   min-height: 140px;
 }
@@ -4185,12 +4443,12 @@ body.ending-slowmo .panel-hint-blink{
   flex-shrink: 0;
 }
 
-/* 敌我之间：双端线 + 中央 VS，强调对抗 */
+/* 敌我之间：双端线 + 中央 VS，强调对抗（纵向位置由 .battle-combat-stage 第 2 行网格固定） */
 .battle-vs-divider{
   display:flex;
   align-items:center;
   gap:14px;
-  margin: 14px 14px 12px;
+  margin: 0 14px;
   height: 32px;
   flex-shrink: 0;
 }
@@ -4404,6 +4662,54 @@ body.ending-slowmo .panel-hint-blink{
   .enemy-row{grid-template-columns: 1fr; }
   .player-row{grid-template-columns: 1fr; }
   .below-actions{grid-template-columns: 1fr; }
+}
+
+/* 头目处决玩家：全屏两行预告文案（先于卡面动效）
+   注意：不可在根选择器写 display:flex，否则会盖掉 [hidden] 的 display:none，刷新后遮罩常亮挡操作 */
+.boss-exec-player-drama-overlay{
+  position: fixed;
+  inset: 0;
+  z-index: 20050;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  box-sizing: border-box;
+  background: rgba(4, 8, 14, 0.82);
+  pointer-events: none;
+  backdrop-filter: blur(3px);
+}
+.boss-exec-player-drama-overlay:not([hidden]){
+  display: flex;
+}
+.boss-exec-player-drama-inner{
+  max-width: 36em;
+  width: 100%;
+  text-align: center;
+}
+.boss-exec-player-drama-line{
+  margin: 0.55em 0;
+  font-size: clamp(1.05rem, 2.8vw, 1.42rem);
+  line-height: 1.58;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(248, 250, 252, 0.96);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.88);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+.boss-exec-player-drama-line--2{
+  color: rgba(254, 202, 202, 0.98);
+}
+.boss-exec-player-drama-line.is-visible{
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce){
+  .boss-exec-player-drama-line{
+    transition: none;
+  }
 }
 
 /* 头目处决玩家：四段演出（失衡满 → 破绽 → 杀意 → 处决） */
