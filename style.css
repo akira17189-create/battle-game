@@ -4300,6 +4300,44 @@ body.ending-slowmo .panel-hint-blink{
   font-style: italic;
   line-height: 1.45;
 }
+.merit-hero-verdict{
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: linear-gradient(145deg, rgba(88,28,135,.22), rgba(15,23,42,.55));
+  border: 1px solid rgba(167,139,250,.28);
+}
+.merit-hero-line{
+  margin: 0 0 10px 0;
+  font-size: 15px;
+  font-weight: 900;
+  color: rgba(253,230,138,.98);
+  line-height: 1.45;
+  text-shadow: 0 0 18px rgba(234,179,8,.2);
+}
+.merit-hero-explain{
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  color: rgba(226,232,240,.92);
+  line-height: 1.55;
+}
+.merit-hero-poem{
+  margin: 0;
+  padding: 10px 0 0 0;
+  border-top: 1px solid rgba(255,255,255,.08);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.65;
+  color: rgba(187,247,208,.9);
+}
+.merit-hero-poem-line{
+  margin: 2px 0;
+}
+.merit-hero-secondary{
+  margin: 12px 0 0 0;
+  font-size: 12px;
+  color: rgba(148,163,184,.95);
+}
 .merit-report-section{
   margin-top: 12px;
 }

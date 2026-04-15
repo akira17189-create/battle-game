@@ -1093,6 +1093,7 @@ function applyTurnMeritResult(state, ui, ctx, turnPack) {
   state.chapterMeritLog = state.chapterMeritLog || [];
   state.turnMeritLog.push(rec);
   state.chapterMeritLog.push(rec);
+  recordHeroProfileFromTurnRecord(state, rec);
   state.settleLog.push(formatTurnMeritBreakdownLines(rec));
 
   // 更新上下文（连势/失手链/下一回合标志）
@@ -1214,6 +1215,13 @@ function computeChapterMerit(state) {
     gradeLine = "勉强建功，仍需磨练。";
   }
 
+  const chapterHeroProfile = finalizeChapterHeroProfile(state, {
+    final_merit_score,
+    total_turn_count: totalTurnCount,
+  });
+  const heroArchetype = computeHeroArchetype(chapterHeroProfile);
+  const heroVerdict = buildHeroVerdictFromArchetype(heroArchetype);
+
   return {
     final_merit_score,
     // 兼容旧字段名：结算页展示用
@@ -1223,17 +1231,356 @@ function computeChapterMerit(state) {
     gradeLine,
     total_turn_count: totalTurnCount,
     total_death_retry,
+    heroVerdict,
+    _heroArchetype: heroArchetype,
   };
+}
+
+/** @returns {ReturnType<typeof createEmptyChapterHeroProfile>} */
+function createEmptyChapterHeroProfile() {
+  return {
+    actions: { attack: 0, heavy: 0, defend: 0, block: 0, rest: 0, execute: 0 },
+    outcomes: {
+      attackHit: 0,
+      heavyHit: 0,
+      counterHeavy: 0,
+      interruptHeavy: 0,
+      enemyBroken: 0,
+      selfBroken: 0,
+      gotHitQuick: 0,
+      gotHitHeavy: 0,
+      blockFailVsQuick: 0,
+      restHit: 0,
+    },
+    special: {
+      lowHpHit: 0,
+      lowHpExecute: 0,
+      multiEnemyBreak: 0,
+      multiEnemyExecute: 0,
+      bossExecuteTaken: 0,
+      executeNormal: 0,
+      executeElite: 0,
+      executeBoss: 0,
+    },
+    totals: {
+      totalTurns: 0,
+      totalBattles: 0,
+      maxComboReached: 0,
+      finalMerit: 0,
+    },
+  };
+}
+
+function ensureChapterHeroProfile(state) {
+  if (!state.chapterHeroProfile) state.chapterHeroProfile = createEmptyChapterHeroProfile();
+  return state.chapterHeroProfile;
+}
+
+/**
+ * 从单回合战功记录累计武魂侧写（不含战后整备条等非交手回合）。
+ * 动作次数与 meta.action 对齐；处决仅在成功处决（execute_* 正向事件）时记一次。
+ */
+function recordHeroProfileFromTurnRecord(state, rec) {
+  if (state.chapterId !== "chapter1" || !rec || rec.meta?.victoryRestoration) return;
+  const prof = ensureChapterHeroProfile(state);
+  const act = rec.meta?.action;
+  if (act === "attack" || act === "heavy" || act === "defend" || act === "block" || act === "rest") {
+    prof.actions[act] += 1;
+  } else if (act === "execute") {
+    const pos = rec.positiveEvents || [];
+    if (pos.some((e) => ["execute_normal", "execute_elite", "execute_boss"].includes(e.code))) {
+      prof.actions.execute += 1;
+    }
+  }
+
+  const countEvent = (code, n = 1) => {
+    const o = prof.outcomes;
+    const s = prof.special;
+    switch (code) {
+      case "attack_hit":
+        o.attackHit += n;
+        break;
+      case "heavy_hit":
+        o.heavyHit += n;
+        break;
+      case "counter_heavy":
+        o.counterHeavy += n;
+        break;
+      case "interrupt_heavy":
+        o.interruptHeavy += n;
+        break;
+      case "enemy_broken":
+        o.enemyBroken += n;
+        break;
+      case "self_broken":
+        o.selfBroken += n;
+        break;
+      case "got_hit_quick":
+        o.gotHitQuick += n;
+        break;
+      case "got_hit_heavy":
+        o.gotHitHeavy += n;
+        break;
+      case "block_fail_vs_quick":
+        o.blockFailVsQuick += n;
+        break;
+      case "rest_hit":
+        o.restHit += n;
+        break;
+      case "lowhp_hit_bonus":
+        s.lowHpHit += n;
+        break;
+      case "lowhp_execute_bonus":
+        s.lowHpExecute += n;
+        break;
+      case "multi_enemy_break_bonus":
+        s.multiEnemyBreak += n;
+        break;
+      case "multi_enemy_execute_bonus":
+        s.multiEnemyExecute += n;
+        break;
+      case "boss_execute_taken":
+        s.bossExecuteTaken += n;
+        break;
+      case "execute_normal":
+        s.executeNormal += n;
+        break;
+      case "execute_elite":
+        s.executeElite += n;
+        break;
+      case "execute_boss":
+        s.executeBoss += n;
+        break;
+      default:
+        break;
+    }
+  };
+
+  for (const e of rec.positiveEvents || []) countEvent(e.code, 1);
+  for (const e of rec.negativeEvents || []) countEvent(e.code, 1);
+}
+
+/** 章节结算前写入 totals（连势峰值取自本章逐回合记录的 momentumAfter） */
+function finalizeChapterHeroProfile(state, report) {
+  const prof = ensureChapterHeroProfile(state);
+  const logs = Array.isArray(state.chapterMeritLog) ? state.chapterMeritLog : [];
+  let maxM = 0;
+  for (const r of logs) {
+    if (r?.meta?.victoryRestoration) continue;
+    const m = Number(r?.momentumAfter);
+    if (Number.isFinite(m)) maxM = Math.max(maxM, m);
+  }
+  prof.totals.totalTurns = report.total_turn_count || 0;
+  prof.totals.totalBattles = Object.keys(state.meritChapter?.records || {}).length;
+  prof.totals.maxComboReached = maxM;
+  prof.totals.finalMerit = report.final_merit_score || 0;
+  return prof;
+}
+
+const HERO_ARCHETYPES = [
+  {
+    id: "dianwei",
+    name: "典韦",
+    title: "古之恶来",
+    line: "莫不成，大人便是古之恶来——典韦？",
+    explain:
+      "此战之中，你守势沉稳，临敌不乱，尤擅正面硬接与反制，最似典韦当阵之风。",
+    poem: ["铁甲横身风不动，单刀立处万人惊。", "阵前若问谁堪恃，许下犹传恶来名。"],
+    score: (profile) =>
+      profile.actions.defend * 3 +
+      profile.actions.block * 2 +
+      profile.outcomes.counterHeavy * 5 +
+      profile.actions.rest * -1 +
+      profile.outcomes.selfBroken * -4,
+    tieBreak: (profile) =>
+      profile.actions.defend * 300 +
+      profile.actions.block * 200 +
+      profile.outcomes.counterHeavy * 500 -
+      profile.actions.rest * 120 -
+      profile.outcomes.selfBroken * 400,
+  },
+  {
+    id: "zhaoyun",
+    name: "赵云",
+    title: "长坂坡前七进七出之将",
+    line: "莫不成，大人便是长坂坡前七进七出之将——赵云？",
+    explain: "此战之中，你出手迅捷，断势凌厉，连势不断，最似赵子龙冲阵之姿。",
+    poem: ["银锋一点穿风雪，百战回身胆气寒。", "若教长坂重开阵，白马仍应护汉关。"],
+    score: (profile) =>
+      profile.actions.attack * 3 +
+      profile.outcomes.interruptHeavy * 5 +
+      profile.special.multiEnemyBreak * 4 +
+      profile.totals.maxComboReached * 8 +
+      profile.outcomes.selfBroken * -3,
+    tieBreak: (profile) =>
+      profile.actions.attack * 300 +
+      profile.outcomes.interruptHeavy * 500 +
+      profile.special.multiEnemyBreak * 400 +
+      profile.totals.maxComboReached * 800 -
+      profile.outcomes.selfBroken * 350,
+  },
+  {
+    id: "guanyu",
+    name: "关羽",
+    title: "云长偃月",
+    line: "莫不成，大人竟有云长偃月之势？",
+    explain: "此战之中，你沉击制胜，破势之后一刀收束，最似关云长临阵断敌。",
+    poem: ["偃月一沉山岳动，青锋未落敌魂惊。", "若论阵上收人命，千古仍推关将军。"],
+    score: (profile) =>
+      profile.actions.heavy * 3 +
+      profile.outcomes.heavyHit * 4 +
+      profile.outcomes.enemyBroken * 5 +
+      profile.special.executeNormal * 3 +
+      profile.special.executeElite * 5 +
+      profile.special.executeBoss * 10,
+    tieBreak: (profile) =>
+      profile.actions.heavy * 300 +
+      profile.outcomes.heavyHit * 400 +
+      profile.outcomes.enemyBroken * 500 +
+      profile.special.executeNormal * 300 +
+      profile.special.executeElite * 500 +
+      profile.special.executeBoss * 1000,
+  },
+  {
+    id: "zhangfei",
+    name: "张飞",
+    title: "燕人张翼德",
+    line: "莫不成，大人这一身悍气，竟似燕人张翼德？",
+    explain: "此战之中，你以猛势压敌，不惧换血，愈战愈凶，最似张飞临阵之勇。",
+    poem: ["怒喝能教山岳裂，横矛直取万人心。", "桥头若再扬声起，江北犹闻虎将吟。"],
+    score: (profile) =>
+      profile.outcomes.attackHit * 2 +
+      profile.outcomes.heavyHit * 3 +
+      profile.outcomes.enemyBroken * 4 +
+      profile.outcomes.gotHitQuick * 1 +
+      profile.outcomes.gotHitHeavy * 1 +
+      profile.actions.rest * -2,
+    tieBreak: (profile) =>
+      profile.outcomes.attackHit * 200 +
+      profile.outcomes.heavyHit * 300 +
+      profile.outcomes.enemyBroken * 400 +
+      profile.outcomes.gotHitQuick * 100 +
+      profile.outcomes.gotHitHeavy * 100 -
+      profile.actions.rest * 220,
+  },
+  {
+    id: "huangzhong",
+    name: "黄忠",
+    title: "老将军黄汉升",
+    line: "莫不成，大人竟有老将军黄汉升之沉稳？",
+    explain: "此战之中，你进退有度，久战不乱，残局收人尤见老练，最似黄忠之风。",
+    poem: ["白首临阵心如铁，晚来刀下见精魂。", "莫言老将难争锋，一战犹能定乾坤。"],
+    score: (profile) =>
+      profile.totals.finalMerit / 50 +
+      profile.outcomes.selfBroken * -3 +
+      profile.special.bossExecuteTaken * -8 +
+      profile.special.executeElite * 3 +
+      profile.special.executeBoss * 6,
+    tieBreak: (profile) =>
+      profile.totals.finalMerit * 2 -
+      profile.special.bossExecuteTaken * 800 -
+      profile.outcomes.selfBroken * 300 +
+      profile.special.executeElite * 300 +
+      profile.special.executeBoss * 600,
+  },
+  {
+    id: "lvbu",
+    name: "吕布",
+    title: "飞将",
+    line: "莫不成，大人竟有飞将临阵之威——吕布？",
+    explain: "此战之中，你锋芒极盛，敢以高险搏高功，最似飞将吕布纵马杀阵。",
+    poem: ["赤影一来群胆裂，方天未举阵先空。", "人间若问谁无敌，马上当年是吕公。"],
+    score: (profile) =>
+      profile.totals.maxComboReached * 10 +
+      profile.special.executeBoss * 12 +
+      profile.special.lowHpExecute * 8 +
+      profile.outcomes.selfBroken * -1 +
+      profile.outcomes.gotHitHeavy * -1,
+    tieBreak: (profile) =>
+      profile.totals.maxComboReached * 1000 +
+      profile.special.executeBoss * 1200 +
+      profile.special.lowHpExecute * 800 -
+      profile.outcomes.selfBroken * 100 -
+      profile.outcomes.gotHitHeavy * 100,
+  },
+];
+
+function computeHeroArchetype(profile) {
+  const ranked = HERO_ARCHETYPES.map((h) => ({
+    id: h.id,
+    name: h.name,
+    title: h.title,
+    line: h.line,
+    explain: h.explain,
+    poem: h.poem,
+    scoreValue: h.score(profile),
+    tieBreakValue: h.tieBreak(profile),
+  })).sort((a, b) => {
+    if (b.scoreValue !== a.scoreValue) return b.scoreValue - a.scoreValue;
+    if (b.tieBreakValue !== a.tieBreakValue) return b.tieBreakValue - a.tieBreakValue;
+    return String(a.id).localeCompare(String(b.id));
+  });
+  return {
+    primary: ranked[0] || null,
+    secondary: ranked[1] || null,
+    ranked,
+  };
+}
+
+function buildHeroVerdictFromArchetype(archetype) {
+  const p = archetype?.primary;
+  const s = archetype?.secondary;
+  if (!p) {
+    return {
+      heroPrimaryName: "",
+      heroPrimaryTitle: "",
+      heroPrimaryLine: "",
+      heroExplain: "",
+      heroPoem: /** @type {string[]} */ ([]),
+      heroSecondaryName: "",
+      heroSecondaryTitle: "",
+    };
+  }
+  return {
+    heroPrimaryName: p.name,
+    heroPrimaryTitle: p.title,
+    heroPrimaryLine: p.line,
+    heroExplain: p.explain,
+    heroPoem: p.poem.slice(),
+    heroSecondaryName: s?.name || "",
+    heroSecondaryTitle: s?.title || "",
+  };
+}
+
+function buildMeritHeroVerdictHtml(v) {
+  if (!v || !v.heroPrimaryLine) return "";
+  const poem = (v.heroPoem || [])
+    .map((ln) => `<div class="merit-hero-poem-line">${escapeHtml(ln)}</div>`)
+    .join("");
+  const sub =
+    v.heroSecondaryName && v.heroSecondaryTitle
+      ? `<p class="merit-hero-secondary">次倾向：${escapeHtml(v.heroSecondaryName)}（${escapeHtml(v.heroSecondaryTitle)}）</p>`
+      : "";
+  return `
+<div class="merit-report-section merit-hero-verdict">
+  <div class="merit-report-kicker">武魂判辞</div>
+  <p class="merit-hero-line">${escapeHtml(v.heroPrimaryLine)}</p>
+  <p class="merit-hero-explain">${escapeHtml(v.heroExplain)}</p>
+  <div class="merit-hero-poem" aria-label="赞诗">${poem}</div>
+  ${sub}
+</div>`;
 }
 
 function buildMeritReportHtml(report) {
   const r = report;
+  const heroBlock = buildMeritHeroVerdictHtml(r.heroVerdict);
   return `
 <div class="merit-report-head">
   <p class="merit-report-total">第一章总战功：<strong>${r.final_merit_score}</strong></p>
   <p class="merit-report-grade">战功评级：${meritGradeSpanHtml(r.grade)}</p>
   <p class="merit-report-flavor">${escapeHtml(r.gradeLine)}</p>
 </div>
+${heroBlock}
 <div class="merit-report-section">
   <div class="merit-report-kicker">分项明细</div>
   <ul class="merit-report-list">
@@ -1417,12 +1764,15 @@ function ensureChapter1LeaderboardRecord(state) {
   if (state.chapterId !== "chapter1" || state._leaderboardSavedForThisRun) return;
   state._leaderboardSavedForThisRun = true;
   const report = computeChapterMerit(state);
+  const heroPrimaryId = report._heroArchetype?.primary?.id || "";
   const list = loadChapter1MeritLeaderboard();
   list.push({
     name: (state._playerName || "").trim() || "无名侠客",
     at: Date.now(),
     finalMerit: report.final_merit_score,
     grade: report.grade,
+    heroId: heroPrimaryId,
+    heroName: report.heroVerdict?.heroPrimaryName || "",
     runSum: state.runMeritScore ?? 0,
     retries: report.total_death_retry,
     faction: normalizeFactionKey(state._playerFaction || "qun"),
@@ -1764,6 +2114,9 @@ function resetChapter1NewGame(state) {
   state.merit = 0;
   state.runMeritScore = 0;
   state.meritChapter = { retries: {}, records: {} };
+  state.chapterHeroProfile = createEmptyChapterHeroProfile();
+  state.turnMeritLog = [];
+  state.chapterMeritLog = [];
   state.lootR3 = null;
   state.orangeLoot = null;
   state.support = null;
@@ -5839,6 +6192,7 @@ function mkInitialState() {
     turnMeritLog: /** @type {any[]} */ ([]),
     /** 第一章全局逐回合战功记录 */
     chapterMeritLog: /** @type {any[]} */ ([]),
+    chapterHeroProfile: createEmptyChapterHeroProfile(),
     _leaderboardSavedForThisRun: false,
     _playerName: prof?.name || "",
     _playerFaction: prof?.faction || "qun",
