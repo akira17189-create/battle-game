@@ -85,7 +85,7 @@
                 <div class="intro-body">
                   <p>这是一款三国题材的 MUD / 文字战斗原型，核心玩法是根据敌人的意图，在“快攻、重击、防御、盾反、调息”之间做选择，通过打出失衡与处决赢下战斗。</p>
                   <div class="intro-sub">你的目标</div>
-                  <p>完成第一章《边寨首功》。<br>在通关的前提下，尽量用更少的回合、更高的剩余血量、更少的破绽次数，拿到更高战功，并进入排行榜。</p>
+                  <p>在通关的前提下，尽量用更少的回合、更高的剩余血量、更少的破绽次数，拿到更高战功，并进入排行榜。</p>
                   <div class="intro-sub">天下英雄榜（前十）</div>
                   <div id="introTop3" class="intro-top3" aria-label="英雄榜前十"></div>
                   <div class="intro-dare">你敢来挑战天下英雄榜吗？</div>
@@ -310,26 +310,33 @@
             </div>
 
             <div id="battleWinInline" class="battle-win-inline" hidden aria-hidden="true">
-              <div id="battleWinInlineVictory" class="battle-win-inline-victory" hidden>
-                <div class="win-card battle-win-inline-card">
-                  <div class="win-accent-bar"></div>
-                  <div class="win-kicker">VICTORY</div>
-                  <div class="win-text">战斗胜利</div>
-                  <div class="win-divider"></div>
-                  <button id="btnWinContinue" class="btn win-claim" type="button">领取奖励</button>
-                  <button id="btnWinClaim" class="btn win-claim" type="button" hidden>进入战功名人堂</button>
+              <div class="battle-win-inline-shell">
+                <div id="battleWinInlineVictory" class="battle-win-inline-victory" hidden>
+                  <div class="win-card battle-win-inline-card">
+                    <div class="win-accent-bar"></div>
+                    <div class="win-kicker">VICTORY</div>
+                    <div class="win-text">战斗胜利</div>
+                    <div class="win-divider"></div>
+                    <button id="btnWinContinue" class="btn win-claim" type="button">领取奖励</button>
+                    <button id="btnWinClaim" class="btn win-claim" type="button" hidden>进入战功名人堂</button>
+                  </div>
                 </div>
-              </div>
-              <div id="winGrowthEmbed" class="win-growth-embed battle-win-inline-growth" hidden>
-                <div class="win-growth-title" id="winGrowthTitle"></div>
-                <div class="win-growth-sub" id="winGrowthSubtitle"></div>
-                <div id="winGrowthOptions" class="win-growth-options node-options"></div>
-              </div>
-              <div id="battleWinInlineAdvance" class="battle-win-inline-advance" hidden>
-                <button id="btnWinGrowthNextBattle" type="button" class="btn btn-offense battle-win-inline-advance-btn">
-                  进入下一关
-                </button>
-                <div id="winGrowthNextSubtitle" class="battle-win-inline-advance-sub" aria-live="polite"></div>
+                <div id="winGrowthEmbed" class="win-growth-embed battle-win-inline-growth" hidden>
+                  <div class="win-growth-title" id="winGrowthTitle"></div>
+                  <div class="win-growth-sub" id="winGrowthSubtitle"></div>
+                  <div id="winGrowthOptions" class="win-growth-options node-options"></div>
+                </div>
+                <div id="battleWinInlineAdvance" class="battle-win-inline-advance" hidden>
+                  <button
+                    id="btnWinGrowthNextBattle"
+                    type="button"
+                    class="btn btn-offense battle-win-inline-advance-btn"
+                    disabled
+                  >
+                    进入下一关
+                  </button>
+                  <div id="winGrowthNextSubtitle" class="battle-win-inline-advance-sub" aria-live="polite"></div>
+                </div>
               </div>
             </div>
               </div>

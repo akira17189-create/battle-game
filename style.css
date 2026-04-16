@@ -14,7 +14,8 @@
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   /* 战斗信息面板：战前/战中统一最小高度，避免隐藏卡片区后整体被压扁 */
-  --battle-info-panel-min-h: clamp(620px, 76vh, 920px);
+  --battle-info-panel-min-h: 820px;
+  --battle-enemy-slot-h: 296px;
   /* 技能按键悬浮说明：高于战斗区内卡片/提示等；全屏蒙层再高于说明 */
   --z-skill-tooltip: 50000;
   --z-modal-overlay: 60000;
@@ -31,6 +32,31 @@ body{
               radial-gradient(900px 700px at 90% 30%, rgba(34,197,94,.12), transparent 55%),
               var(--bg);
   color:var(--text);
+}
+/* 全局滚动条：与页面背景同色系，不做高对比跳色 */
+html{
+  scrollbar-width: thin;
+  scrollbar-color: rgba(31,45,73,.78) rgba(11,15,20,.92);
+}
+*::-webkit-scrollbar{
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track{
+  background: rgba(11,15,20,.92);
+  border: 1px solid rgba(23,33,54,.6);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb{
+  background: linear-gradient(180deg, rgba(36,52,82,.92), rgba(24,36,60,.9));
+  border: 1px solid rgba(74,96,132,.42);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover{
+  background: linear-gradient(180deg, rgba(46,67,102,.94), rgba(32,47,77,.92));
+}
+*::-webkit-scrollbar-corner{
+  background: rgba(11,15,20,.92);
 }
 
 .app{
@@ -531,17 +557,28 @@ body{
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
+  height: var(--battle-info-panel-min-h);
   min-height: var(--battle-info-panel-min-h);
+  max-height: var(--battle-info-panel-min-h);
 }
 /* 标题界面：不要强制战斗区最小高度，避免「我敢」下方大块空白；由左栏高度拉伸对齐 */
 .battle-info-panel.battle-info-panel--intro-title{
-  min-height: 0;
-  flex: 1 1 auto;
+  height: calc(var(--battle-info-panel-min-h) + 60px);
+  min-height: calc(var(--battle-info-panel-min-h) + 60px);
+  max-height: calc(var(--battle-info-panel-min-h) + 60px);
+  flex: 0 0 auto;
 }
 .battle-info-panel.battle-info-panel--intro-title.battle-info-panel--ready .intro-overlay{
   flex: 1 1 auto;
   min-height: 0;
   margin-bottom: 0;
+}
+/* 仅主界面 ready + intro 态隐藏战斗主区，避免下半区出现空白占位 */
+.battle-info-panel.battle-info-panel--intro-title.battle-info-panel--ready #battleCombatMain{
+  display: none !important;
+}
+.battle-info-panel.battle-info-panel--intro-title.battle-info-panel--ready > .panel-header{
+  display: none !important;
 }
 .battle-info-panel > .panel-header{
   flex-shrink: 0;
@@ -564,32 +601,31 @@ body{
   min-height: 0;
   grid-template-rows:
     var(--battle-enemy-slot-h, 220px)
-    auto
+    minmax(46px, auto)
     auto
     minmax(140px, auto)
     auto
-    auto
+    minmax(88px, auto)
     auto;
 }
-/* 战前/成长等：敌卡整块隐藏时不占 220px 空带（由 main.js 切换 .battle-combat-stage--no-enemy-row） */
+/* 战前/成长等：保持轨道占位稳定，不再把敌区/VS 压成 0 高 */
 .battle-combat-stage.battle-combat-stage--no-enemy-row{
   grid-template-rows:
-    0px
-    0px
+    var(--battle-enemy-slot-h, 220px)
+    minmax(46px, auto)
     auto
-    minmax(120px, 1fr)
+    minmax(140px, auto)
     auto
-    auto
+    minmax(88px, auto)
     auto;
 }
 .battle-combat-stage > #enemyRowWrap{
   grid-row: 1;
   grid-column: 1;
-  align-self: end;
-  min-height: 0;
+  align-self: start;
+  min-height: var(--battle-enemy-slot-h, 220px);
   max-height: var(--battle-enemy-slot-h, 220px);
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
 }
 .battle-combat-stage > #dividerAfterEnemies{
   grid-row: 2;
@@ -603,7 +639,7 @@ body{
 .battle-combat-stage > #playerRowWrap{
   grid-row: 4;
   grid-column: 1;
-  min-height: 0;
+  min-height: 140px;
 }
 .battle-combat-stage > #growthContinueBar{
   grid-row: 5;
@@ -616,6 +652,73 @@ body{
 .battle-combat-stage > #actionsWrap{
   grid-row: 7;
   grid-column: 1;
+}
+/* 进入战斗后：固定 5 行结构
+   1 敌人卡片 2 VS 3 我+技能 4 功能按键 5 仓库+新手提示 */
+.battle-info-panel.battle-info-panel--combat-fixed .battle-combat-stage{
+  flex: 0 0 auto;
+  overflow: hidden;
+  grid-template-rows:
+    var(--battle-enemy-slot-h, 220px)
+    minmax(46px, 46px)
+    minmax(168px, auto)
+    minmax(104px, 104px) !important;
+}
+.battle-info-panel.battle-info-panel--combat-fixed .battle-combat-stage.battle-combat-stage--no-enemy-row{
+  grid-template-rows:
+    var(--battle-enemy-slot-h, 220px)
+    minmax(46px, 46px)
+    minmax(168px, auto)
+    minmax(104px, 104px) !important;
+}
+.battle-info-panel.battle-info-panel--combat-fixed .battle-combat-stage > #enemyRowWrap{ grid-row: 1; }
+.battle-info-panel.battle-info-panel--combat-fixed .battle-combat-stage > #dividerAfterEnemies{ grid-row: 2; }
+.battle-info-panel.battle-info-panel--combat-fixed .battle-combat-stage > #playerRowWrap{ grid-row: 3; min-height: 168px; }
+.battle-info-panel.battle-info-panel--combat-fixed .battle-combat-stage > #preFightStartWrap{
+  grid-row: 4;
+  display:flex !important;
+  min-height: 104px;
+  visibility: visible;
+  opacity: 1;
+  border: 0;
+  background: transparent;
+  margin-bottom: 10px;
+}
+.battle-info-panel.battle-info-panel--combat-fixed .battle-combat-stage > #preFightStartWrap[hidden],
+.battle-info-panel.battle-info-panel--combat-fixed .battle-combat-stage > #preFightStartWrap.pre-fight-start--placeholder{
+  display:flex !important;
+  visibility: hidden;
+  opacity: 0;
+}
+/* 第4行（功能按键槽）与第5行（仓库+提示）强制分轨，避免重叠 */
+.battle-info-panel.battle-info-panel--combat-fixed .battle-combat-main > #dividerBeforeBelowActions{
+  display: block !important;
+  visibility: visible !important;
+  margin-top: 18px !important;
+}
+.battle-info-panel.battle-info-panel--combat-fixed .battle-combat-main > #belowActionsWrap{
+  margin-top: -50px !important;
+}
+/* 战斗态右侧框体相应拉长，给第4/5行足够空间 */
+.battle-info-panel.battle-info-panel--combat-fixed{
+  height: calc(var(--battle-info-panel-min-h) + 120px);
+  min-height: calc(var(--battle-info-panel-min-h) + 120px);
+  max-height: calc(var(--battle-info-panel-min-h) + 120px);
+}
+/* 战斗固定五行下，彻底移除旧说明行“—”的残留 */
+.battle-info-panel.battle-info-panel--combat-fixed .battle-combat-stage > #actionDesc{
+  display: none !important;
+  visibility: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  height: 0 !important;
+}
+/* 进入战斗后不再让旧轨道元素参与布局 */
+.battle-info-panel.battle-info-panel--combat-fixed .battle-combat-stage > #actionDesc,
+.battle-info-panel.battle-info-panel--combat-fixed .battle-combat-stage > #growthContinueBar,
+.battle-info-panel.battle-info-panel--combat-fixed .battle-combat-stage > #actionsWrap{
+  display: none !important;
 }
 /* 当玩家区隐藏（如战前/标题/成长某些态）时，仍由底部条自己贴底 */
 .battle-combat-main:has(.battle-combat-stage #playerRowWrap[hidden]) > #dividerBeforeBelowActions:not([hidden]){
@@ -632,66 +735,131 @@ body{
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding: 12px 10px 16px;
+  justify-content: center;
+  gap: 0;
+  padding: 12px 16px;
   box-sizing: border-box;
-  overflow: auto;
+  overflow: visible;
   -webkit-overflow-scrolling: touch;
-  background: linear-gradient(180deg, rgba(15,23,42,.96) 0%, rgba(2,6,23,.94) 55%, rgba(15,23,42,.92) 100%);
+  background: transparent;
   border-radius: 0 0 12px 12px;
-  pointer-events: auto;
+  pointer-events: none;
 }
 .battle-win-inline[hidden]{ display: none !important; }
-/* 避免作为第 8 个网格子项插入隐式行，把 VS/我方区整体上顶；全幅叠在舞台内由 absolute + inset 实现 */
+/* 网格子项必须拉伸满格，否则 justify-self:center 会把层宽收成「内容宽度」，弹窗会异常窄 */
 .battle-combat-stage > .battle-win-inline{
   grid-column: 1;
   grid-row: 1 / -1;
   justify-self: stretch;
   align-self: stretch;
   width: 100%;
+  min-width: 0;
   min-height: 0;
+}
+/* 单一浮窗外壳：胜利标题 + 三选一 + 进入下一关 共用一层边框与阴影 */
+.battle-win-inline-shell{
+  width: min(100%, 960px);
+  max-width: 960px;
+  margin: 0 auto;
+  flex-shrink: 0;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border-radius: 16px;
+  border: 1px solid rgba(250,204,21,.22);
+  background: linear-gradient(180deg, rgba(30,41,59,.92), rgba(15,23,42,.94) 45%, rgba(2,6,23,.92));
+  box-shadow: 0 28px 70px rgba(0,0,0,.55);
+  overflow: hidden;
 }
 .battle-win-inline-victory{
   width: 100%;
-  max-width: 420px;
-  margin: 0 auto;
+  margin: 0;
   flex-shrink: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 .battle-win-inline-victory[hidden]{ display: none !important; }
+.battle-win-inline-victory .win-card{
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 20px 20px 12px;
+  animation: none;
+}
 .battle-win-inline-card{
   margin: 0 auto;
+  max-width: 100%;
 }
 .battle-win-inline-growth{
   width: 100%;
-  max-width: 100%;
-  margin-top: 4px;
-  flex: 1 1 auto;
-  min-height: 0;
+  margin: 0;
+  flex: 0 0 auto;
+  min-height: auto;
   display: flex;
   flex-direction: column;
+  padding: 12px 18px 18px;
+  border-radius: 0;
+  border: 0;
+  border-top: 1px solid rgba(255,255,255,.08);
+  background: transparent;
+  box-shadow: none;
+}
+.battle-win-inline-victory[hidden] + .battle-win-inline-growth{
+  border-top: 0;
 }
 .battle-win-inline-growth[hidden]{ display: none !important; }
+/* 与 .win-growth-embed 同元素：去掉第二层「独立窗口」皮肤，只保留壳体 */
+.battle-win-inline-shell .win-growth-embed.battle-win-inline-growth{
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+.battle-win-inline-shell .win-growth-embed.battle-win-inline-growth::before{
+  display: none;
+}
 .battle-win-inline-growth .win-growth-options.node-options{
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow: visible;
 }
 .battle-win-inline-advance{
   width: 100%;
-  max-width: 400px;
-  margin: auto auto clamp(28px, 10vh, 100px);
+  margin: 0;
+  padding: 12px 18px 18px;
+  border: 0;
+  border-top: 1px solid rgba(255,255,255,.08);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+  box-sizing: border-box;
+  /* 与可见态按钮+副标题占位一致，避免选卡后高度变化 */
+  min-height: 118px;
 }
 .battle-win-inline-advance[hidden]{ display: none !important; }
+/* 已占位、尚未可点：保留布局，隐藏交互与视觉 */
+.battle-win-inline-advance--waiting .battle-win-inline-advance-btn,
+.battle-win-inline-advance--waiting .battle-win-inline-advance-sub{
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+}
 .battle-win-inline-advance-btn{
   min-width: 220px;
   padding: 14px 18px;
   font-size: 16px;
   font-weight: 950;
+  flex-shrink: 0;
 }
 .battle-win-inline-advance-sub{
   font-size: 15px;
@@ -699,6 +867,8 @@ body{
   letter-spacing: .12em;
   color: rgba(253,230,138,.95);
   text-shadow: 0 0 14px rgba(251,191,36,.28);
+  min-height: 1.35em;
+  text-align: center;
 }
 
 /* 结算前可视化播报层：主交锋 + 副交锋 */
@@ -1242,7 +1412,7 @@ body{
 .battle-info-panel.battle-info-panel--ready #enemyRowWrap,
 .battle-info-panel.battle-info-panel--ready #dividerAfterEnemies,
 .battle-info-panel.battle-info-panel--ready #playerRowWrap{
-  display: none;
+  visibility: hidden;
   pointer-events: none;
 }
 
@@ -1484,8 +1654,8 @@ body{
 }
 .intro-body{
   color: rgba(229,231,235,.92);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.7;
 }
 .intro-body p{ margin: 0 0 10px; }
 .intro-sub{
@@ -1857,13 +2027,16 @@ body{
 }
 /* 战中占位：仅保留 DOM 槽位，不占可视高度，避免「我/技能」与卡片仓库之间大块留白 */
 .pre-fight-start.pre-fight-start--placeholder{
-  visibility: hidden;
+  visibility: visible;
+  opacity: .55;
   pointer-events: none;
   user-select: none;
-  min-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  border-top: none;
+  border-top: 1px dashed rgba(255,255,255,.16);
+  border-bottom: 1px dashed rgba(255,255,255,.10);
+  background: linear-gradient(180deg, rgba(30,41,59,.26), rgba(15,23,42,.22));
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 .pre-fight-start[hidden]{ display:none; }
 .pre-fight-start-btn{
@@ -2247,7 +2420,7 @@ body{
 .panel-subtitle{color:var(--muted); font-size:12px}
 
 /* legacy log layout (kept for compatibility; new UI uses .scrollbox) */
-.panel-log{display:flex; flex-direction:column; min-height:70vh}
+.panel-log{display:flex; flex-direction:column; min-height:0}
 .log{
   padding:14px 16px;
   overflow:auto;
@@ -2349,16 +2522,17 @@ body{
 
 .left-col{
   display:grid;
-  grid-template-rows: 1fr 2fr;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 2fr);
   gap:14px;
-  /* 左栏三块高度与右侧战斗面板保持一致，并固定比例 */
-  height: var(--battle-info-panel-min-h);
-  min-height: var(--battle-info-panel-min-h);
-  max-height: var(--battle-info-panel-min-h);
+  /* 与右侧同一网格轨道拉伸：总高度始终跟战斗信息齐平，不再写死 820 */
+  height: 100%;
+  min-height: 0;
+  max-height: none;
 }
 .left-col > .panel{
   display: flex;
   flex-direction: column;
+  height: 100%;
   min-height: 0;
 }
 .left-col > .panel > .panel-header{
@@ -2378,7 +2552,7 @@ body{
 }
 
 .scrollbox{
-  max-height: 28vh;
+  max-height: none;
   overflow:auto;
   padding:12px 16px;
   font-family:var(--mono);
@@ -2394,12 +2568,15 @@ body{
 .below-actions{
   padding:12px 16px 16px 16px;
   display:grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 3fr 2fr;
   gap:12px;
   flex-shrink: 0;
   align-items: stretch;
   /* 卡片区与新手提示区同高：约两排卡片（每排 3 张） */
   --below-panels-content-min-h: 200px;
+}
+.below-actions.below-actions--tips-collapsed{
+  grid-template-columns: 4fr 1fr;
 }
 .below-actions .mini-panel{
   display: flex;
@@ -2419,7 +2596,33 @@ body{
   min-height: var(--below-panels-content-min-h);
   max-height: none;
 }
-.below-actions[hidden]{ display:none; }
+.tips-panel--collapsed{
+  opacity: .9;
+}
+.tips-panel--collapsed .mini-title{
+  padding-bottom: 6px;
+}
+.tips-panel--collapsed .scrollbox.mini{
+  min-height: 42px;
+  max-height: 42px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  overflow: hidden;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tips-panel--collapsed .scrollbox.mini .line{
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.below-actions[hidden]{
+  display:grid;
+  visibility:hidden;
+  pointer-events:none;
+}
 .mini-panel{
   background: rgba(0,0,0,.14);
   border:1px solid rgba(255,255,255,.06);
@@ -2460,7 +2663,7 @@ body{
   accent-color: var(--accent, #c9a227);
 }
 .scrollbox.mini{
-  max-height: 18vh;
+  max-height: none;
   padding:10px 12px;
   font-size:12px;
   line-height:1.6;
@@ -2475,7 +2678,7 @@ body{
 .player-summary{
   padding:10px 12px;
   overflow:auto;
-  max-height: 18vh;
+  max-height: none;
   min-height: 0;
 }
 .player-summary table{
@@ -2681,6 +2884,42 @@ body{
   color: rgba(229,231,235,.92);
   user-select: none;
   cursor: pointer;
+  position: relative;
+  transform: translateY(0);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.22),
+    inset 0 -1px 0 rgba(0,0,0,.28),
+    0 3px 0 rgba(0,0,0,.34),
+    0 8px 14px rgba(0,0,0,.24);
+  transition: transform .08s ease, box-shadow .12s ease, filter .12s ease;
+}
+.skill-icon::before{
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 2px;
+  height: 38%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,0));
+  pointer-events: none;
+}
+.skill-icon:hover:not([disabled]){
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.26),
+    inset 0 -1px 0 rgba(0,0,0,.30),
+    0 4px 0 rgba(0,0,0,.34),
+    0 10px 16px rgba(0,0,0,.28);
+  filter: saturate(1.03);
+}
+.skill-icon:active:not([disabled]){
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.18),
+    inset 0 -1px 0 rgba(0,0,0,.26),
+    0 1px 0 rgba(0,0,0,.34),
+    0 3px 8px rgba(0,0,0,.22);
 }
 .skill-icon--attack{
   border-color: rgba(251,113,133,.35);
@@ -2735,12 +2974,24 @@ body{
 .enemy-row{
   padding:14px 16px;
   display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  align-items: start;
   gap:12px;
   flex-shrink: 0;
   min-height: 160px;
 }
+/* 边寨头目 + 亲兵：头目占两格，第三格为亲兵 */
+.enemy-row.enemy-row--boss-wide #enemyCardA.enemy-card.is-boss{
+  grid-column: 1 / span 2;
+}
+.enemy-row.enemy-row--boss-wide #enemyCardB.enemy-card:not([hidden]){
+  grid-column: 3;
+}
 .enemy-row[hidden]{ display:none; }
+/* 不再预留第三敌位：隐藏即不渲染 */
+#enemyCardC[hidden]{
+  display:none !important;
+}
 
 .fighter-card{
   position: relative;
@@ -3658,6 +3909,22 @@ body{
   border-color: rgba(239,68,68,.30);
   box-shadow: 0 0 0 1px rgba(239,68,68,.12);
 }
+.enemy-row.enemy-row--boss-wide #enemyCardA.enemy-card.is-boss{
+  min-height: 188px;
+  padding: 14px 16px;
+  border-width: 2px;
+  border-color: rgba(239,68,68,.42);
+  background:
+    linear-gradient(135deg, rgba(239,68,68,.10) 0%, rgba(0,0,0,.22) 42%, rgba(127,29,29,.12) 100%);
+  box-shadow:
+    0 0 0 1px rgba(250,204,21,.12),
+    0 18px 44px rgba(0,0,0,.38),
+    inset 0 1px 0 rgba(255,255,255,.06);
+}
+.enemy-row.enemy-row--boss-wide #enemyCardA.enemy-card.is-boss .card-title{
+  font-size: 1.08em;
+  letter-spacing: .04em;
+}
 .enemy-card.is-boss .card-title{
   color: rgba(248,113,113,.98);
   text-shadow: 0 0 16px rgba(239,68,68,.30);
@@ -3781,6 +4048,9 @@ body{
 }
 .enemy-intent .intent-delta{
   font-size: 12px;
+}
+.enemy-intent .intent-flavor{
+  display:none;
 }
 .intent-pill.intent-quick{
   color: rgba(254,226,231,.98);
@@ -3912,6 +4182,30 @@ body{
   min-height: 140px;
 }
 .player-row[hidden]{ display:none; }
+.battle-combat-stage > #enemyRowWrap[hidden]{
+  display:grid !important;
+  visibility:hidden;
+  pointer-events:none;
+}
+.battle-combat-stage > #dividerAfterEnemies[hidden]{
+  display:grid !important;
+  visibility:hidden;
+  pointer-events:none;
+}
+.battle-combat-stage > #playerRowWrap[hidden]{
+  display:grid !important;
+  visibility:hidden;
+  pointer-events:none;
+}
+.battle-combat-stage > #preFightStartWrap[hidden]{
+  display:flex !important;
+  visibility:hidden;
+  pointer-events:none;
+}
+.battle-combat-main > #dividerBeforeBelowActions[hidden]{
+  display:block !important;
+  visibility:hidden;
+}
 
 .btn{
   appearance:none;
@@ -4451,6 +4745,7 @@ body.ending-slowmo .panel-hint-blink{
   margin: 0 14px;
   height: 32px;
   flex-shrink: 0;
+  transform: translateY(-30px);
 }
 .battle-vs-divider[hidden]{ display:none; }
 .battle-vs-divider__line{
@@ -4649,7 +4944,7 @@ body.ending-slowmo .panel-hint-blink{
 
 @media (max-width: 980px){
   :root{
-    --battle-info-panel-min-h: clamp(520px, 68vh, 900px);
+    --battle-info-panel-min-h: auto;
   }
   .main{grid-template-columns: 1fr; }
   .left-col{
@@ -4657,9 +4952,16 @@ body.ending-slowmo .panel-hint-blink{
     min-height: 0;
     max-height: none;
   }
-  .panel-log{min-height:62vh}
+  .panel-log{min-height:0}
   .actions{grid-template-columns: 1fr 1fr; }
-  .enemy-row{grid-template-columns: 1fr; }
+  .enemy-row{
+    display:grid;
+    grid-template-columns: 1fr;
+  }
+  .enemy-row.enemy-row--boss-wide #enemyCardA.enemy-card.is-boss,
+  .enemy-row.enemy-row--boss-wide #enemyCardB.enemy-card:not([hidden]){
+    grid-column: auto;
+  }
   .player-row{grid-template-columns: 1fr; }
   .below-actions{grid-template-columns: 1fr; }
 }

@@ -186,12 +186,25 @@ function removeMany(arr, toRemove) {
 }
 
 function pickRandomDistinct(arr, n) {
-  const a = arr.slice();
+  const uniq = [...new Set((arr || []).filter(Boolean))];
+  const a = uniq.slice();
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a.slice(0, Math.max(0, Math.min(n, a.length)));
+}
+
+/** 技法池：去重 + 排除已入手 perk，避免三选一里出现重复或已拥有卡 */
+function skillDraftPool(state) {
+  const owned = new Set(state.perks || []);
+  return [...new Set((state.skillDeckRemaining || []).filter((x) => x && !owned.has(x)))];
+}
+
+/** 属性卡池：已选过的属性卡不再进入后续成长选项 */
+function attrDraftPool(state) {
+  const taken = state._pickedAttrCardIds || {};
+  return ATTR_CARDS.map((c) => c.id).filter((id) => !taken[id]);
 }
 
 function perkCardById(perk) {
@@ -216,7 +229,7 @@ function ensureR1TechOffer(state) {
   state.draftOffers = state.draftOffers || {};
   if (Array.isArray(state.draftOffers[nodeId]) && state.draftOffers[nodeId].length) return state.draftOffers[nodeId];
 
-  const pool = (state.skillDeckRemaining || []).slice();
+  const pool = skillDraftPool(state);
   const maxTry = 24;
   for (let t = 0; t < maxTry; t++) {
     const pick = pickRandomDistinct(pool, 3);
@@ -242,7 +255,7 @@ function ensureR3TechOffer(state) {
   state.draftOffers = state.draftOffers || {};
   if (Array.isArray(state.draftOffers[nodeId]) && state.draftOffers[nodeId].length) return state.draftOffers[nodeId];
 
-  const pool = (state.skillDeckRemaining || []).slice();
+  const pool = skillDraftPool(state);
   const maxTry = 24;
   for (let t = 0; t < maxTry; t++) {
     const pick = pickRandomDistinct(pool, 3);
@@ -2081,10 +2094,11 @@ function renderLocalLeaderboardToSettlePanel(ui, state) {
   const meritMoved =
     !!state && state._settleLbLastMerit != null && state._settleLbLastMerit !== meritDisp;
   const rankMoved = !!state && state._settleLbLastRank != null && state._settleLbLastRank !== liveRank;
+  const forceFollow = !!state?._forceSettleRankFollow;
   /** 战功/名次变化或名次上升时跟随本局行（innerHTML 会重置 scrollTop，须在同一帧末再定位） */
-  const needsFollow = !!(state && liveRank > 0 && (firstListPaint || meritMoved || rankMoved || improved));
+  const needsFollow = !!(state && liveRank > 0 && (firstListPaint || meritMoved || rankMoved || improved || forceFollow));
   const followSmooth =
-    !firstListPaint && !reduced && (meritMoved || rankMoved || improved);
+    !firstListPaint && !reduced && (meritMoved || rankMoved || improved) && !forceFollow;
 
   const prevScrollTop = box.scrollTop;
   box.innerHTML = html;
@@ -2114,6 +2128,7 @@ function renderLocalLeaderboardToSettlePanel(ui, state) {
         requestAnimationFrame(() => {
           if (needsFollow) {
             scrollSettleRankListToLiveRow(box, followSmooth);
+            if (state) state._forceSettleRankFollow = false;
           } else {
             const max = Math.max(0, box.scrollHeight - box.clientHeight);
             box.scrollTop = Math.min(max, prevScrollTop);
@@ -2181,8 +2196,9 @@ function resetChapter1NewGame(state) {
   p.executeHealBonus = 0;
   p.restCooldownLeft = 0;
   state.perks = [];
-  state.skillDeckRemaining = (state.skillDeckAll || SKILL_CARDS.map((c) => c.perk)).slice();
+  state.skillDeckRemaining = [...new Set((state.skillDeckAll || SKILL_CARDS.map((c) => c.perk)).slice())];
   state.draftOffers = {};
+  state._pickedAttrCardIds = {};
   state.merit = 0;
   state.runMeritScore = 0;
   state.meritChapter = { retries: {}, records: {} };
@@ -2273,8 +2289,6 @@ function armWinGrowthPendingAdvance(state, chapter, node, nextId) {
     nextId,
     label: winGrowthNextShortLabel(chapter, nextId),
   };
-  state.winGrowthEmbed = false;
-  state.winGrowthEmbedNodeId = null;
 }
 
 function renderChapterRoadmap(state, ui) {
@@ -6293,8 +6307,10 @@ function mkInitialState() {
     nodeId: "N0",
     perks: /** @type {string[]} */ ([]),
     skillDeckAll: SKILL_CARDS.map((c) => c.perk),
-    skillDeckRemaining: SKILL_CARDS.map((c) => c.perk),
+    skillDeckRemaining: [...new Set(SKILL_CARDS.map((c) => c.perk))],
     draftOffers: /** @type {Record<string, string[]>} */ ({}),
+    /** 本章已选过的属性卡 id（A_ATK 等），避免 R2/R4 再次出现同一张属性卡 */
+    _pickedAttrCardIds: /** @type {Record<string, boolean>} */ ({}),
     support: /** @type {string|null} */ (null),
     supportUses: /** @type {Record<string, number>} */ ({}),
     merit: 0,
@@ -7326,6 +7342,17 @@ function render(state, ui) {
       state.phase === "endingLose" ||
       (!!state._winKillRevealEnemyIds && state._winKillRevealEnemyIds.length > 0),
   );
+  // 战斗胜利后：若下一节点是成长(R)，直接弹出三选一奖励，不再点「领取奖励」
+  if (state.phase === "win" && state.winReady && !state.winGrowthEmbed && state.pendingWinNextNodeId) {
+    const nextNode = chapter.nodes[state.pendingWinNextNodeId];
+    if (nextNode && nextNode.type === "R") {
+      markRoadmapNodeDone(state, state.nodeId);
+      state.winReady = true;
+      state.winGrowthEmbed = true;
+      state.winGrowthEmbedNodeId = state.pendingWinNextNodeId;
+      state.pendingWinNextNodeId = null;
+    }
+  }
   const showWinOverlayPanel =
     state.phase === "win" &&
     (state.winReady || state.winGrowthEmbed || state.winGrowthPendingAdvance);
@@ -7337,13 +7364,16 @@ function render(state, ui) {
     if (ui.battleWinInlineVictory) {
       ui.battleWinInlineVictory.hidden =
         !show ||
-        !state.winReady ||
-        !!state.winGrowthEmbed ||
-        !!state.winGrowthPendingAdvance;
+        (!state.winReady && !state.winGrowthEmbed);
     }
     if (ui.battleWinInlineAdvance) {
       const p = state.winGrowthPendingAdvance;
-      ui.battleWinInlineAdvance.hidden = !show || !p;
+      // 内嵌三选一：底部「进入下一关」槽位先占位，选卡后再显示按钮，避免版面跳动
+      const reserveAdvanceRow = show && (!!state.winGrowthEmbed || !!p);
+      ui.battleWinInlineAdvance.hidden = !reserveAdvanceRow;
+      ui.battleWinInlineAdvance.classList.toggle("battle-win-inline-advance--waiting", reserveAdvanceRow && !p);
+      ui.battleWinInlineAdvance.classList.toggle("battle-win-inline-advance--ready", !!p);
+      if (ui.btnWinGrowthNextBattle) ui.btnWinGrowthNextBattle.disabled = !p;
       if (ui.winGrowthNextSubtitle) ui.winGrowthNextSubtitle.textContent = (p && p.label) || "";
     }
   }
@@ -7411,7 +7441,7 @@ function render(state, ui) {
   }
   if (ui.btnWinContinue) {
     const isBattle = node.type === "B" || node.type === "E";
-    const showWinBtn = isBattle && state.phase === "win" && state.winReady;
+    const showWinBtn = isBattle && state.phase === "win" && state.winReady && !state.winGrowthEmbed;
     ui.btnWinContinue.hidden = !showWinBtn;
     ui.btnWinContinue.textContent = showWinBtn && node.id === "BOSS" ? "通关结算" : "领取奖励";
   }
@@ -7423,6 +7453,9 @@ function render(state, ui) {
   const isWinScreen = showWinOverlayPanel;
   const showCombatBody = isBattleNode && state.phase !== "ready" && !isWinScreen;
   if (ui.tipsPanel) ui.tipsPanel.hidden = false;
+  const beginnerOn = isBeginnerModeEnabled(ui);
+  ui.belowActionsWrap?.classList.toggle("below-actions--tips-collapsed", !beginnerOn);
+  ui.tipsPanel?.classList.toggle("tips-panel--collapsed", !beginnerOn);
   // 「开始战斗」槽位：战中用不可见占位保持与战前相同文档流高度，使按键/相克/新手绝对位置一致
   if (ui.preFightStartWrap) {
     const winScreen = isWinScreen;
@@ -7442,6 +7475,7 @@ function render(state, ui) {
   if (ui.btnLoseBackToMain) ui.btnLoseBackToMain.hidden = !(isBattleNode && state.phase === "lose");
   if (ui.battleInfoPanel) ui.battleInfoPanel.classList.toggle("battle-info-panel--ready", inReady);
   if (ui.battleInfoPanel) ui.battleInfoPanel.classList.toggle("battle-info-panel--intro-title", !!showIntro);
+  if (ui.battleInfoPanel) ui.battleInfoPanel.classList.toggle("battle-info-panel--combat-fixed", isBattleNode && !showIntro);
   syncBattleCombatStageEnemySlotClass(ui);
   // B1：乙位未上场时缩小其卡片
   if (ui.battleInfoPanel) {
@@ -7634,6 +7668,13 @@ function render(state, ui) {
   const eoCFight = state.enemies.find((x) => x.id === "C");
   const hasThird = !!eoCFight;
   if (ui.enemyCardC) ui.enemyCardC.hidden = !hasThird;
+  /** 边寨头目战：头目卡占敌区两格宽度，亲兵占第三格 */
+  if (ui.enemyRowWrap) {
+    ui.enemyRowWrap.classList.toggle(
+      "enemy-row--boss-wide",
+      !!(eoAFight && eoBFight && !eoCFight && eoAFight.archetype === "boss"),
+    );
+  }
 
   // pre-fight：不显示敌我 HP/失衡 卡；保留「开始战斗」、招式键、键下说明、相克速查与新手提示
   if (inReady) {
@@ -7864,20 +7905,16 @@ function render(state, ui) {
           eoAFight.fighter.broken
             ? "破绽"
             : htmlIntentPillWithHint(eoAFight)
-        }${intentDeltaHtml(state, eoAFight)}<span class="intent-flavor">${escapeHtml(
-          eoAFight.fighter.broken ? INTENT_TEXT.broken : intentDisplayText("A", eoAFight.intent, eoAFight),
-        )}</span>`;
+        }${intentDeltaHtml(state, eoAFight)}`;
   ui.intentBInCard.innerHTML = eoBFight.waitingToEnter
-    ? `意图：未上场｜${escapeHtml(eoBFight.fighter.name)}在侧翼压阵，尚未上前。`
+    ? "意图：未上场"
     : eoBFight.fighter.hp <= 0 && !state._winKillRevealEnemyIds?.includes("B")
       ? "意图：乙已倒下"
       : `意图：${
           eoBFight.fighter.broken
             ? "破绽"
             : htmlIntentPillWithHint(eoBFight)
-        }${intentDeltaHtml(state, eoBFight)}<span class="intent-flavor">${escapeHtml(
-          eoBFight.fighter.broken ? INTENT_TEXT.broken : intentDisplayText("B", eoBFight.intent, eoBFight),
-        )}</span>`;
+        }${intentDeltaHtml(state, eoBFight)}`;
   if (ui.intentCInCard && eoCFight) {
     const eC = eoCFight.fighter;
     ui.intentCInCard.innerHTML =
@@ -7887,9 +7924,7 @@ function render(state, ui) {
             eC.broken
               ? "破绽"
               : htmlIntentPillWithHint(eoCFight)
-          }${intentDeltaHtml(state, eoCFight)}<span class="intent-flavor">${escapeHtml(
-            eC.broken ? INTENT_TEXT.broken : intentDisplayText("C", eoCFight.intent, eoCFight),
-          )}</span>`;
+          }${intentDeltaHtml(state, eoCFight)}`;
   }
 
   // 总加成汇总 UI 已移除：改为技能图标面板
@@ -8135,6 +8170,8 @@ function deploySequentialSecondIfNeeded(state, details) {
 }
 
 function startBattleFromNode(state, node) {
+  // 进入战斗后，左侧天下排行榜强制定位到本局名次一帧
+  state._forceSettleRankFollow = true;
   state.winGrowthEmbed = false;
   state.winGrowthEmbedNodeId = null;
   state.winGrowthPendingAdvance = null;
@@ -8687,7 +8724,11 @@ function applyGrowthOption(state, ui, chapter, node, opt, advOpts) {
     state.settleLog.push(`成长：${opt.title}。`);
     state._attrGrowthLog = state._attrGrowthLog || [];
     const ac = ATTR_CARDS.find((x) => x._stat === opt._stat);
-    if (ac) state._attrGrowthLog.push({ title: ac.title, desc: ac.desc });
+    if (ac) {
+      state._attrGrowthLog.push({ title: ac.title, desc: ac.desc });
+      state._pickedAttrCardIds = state._pickedAttrCardIds || {};
+      state._pickedAttrCardIds[ac.id] = true;
+    }
   }
   if (opt._equipAll) {
     const loot = ensureR3Loot(state);
@@ -8758,12 +8799,6 @@ function applyGrowthOption(state, ui, chapter, node, opt, advOpts) {
 
   if (opt.next) {
     if (deferNav) {
-      // R4 内嵌选毕后下一节点为 N4：N4 已有「迎击Boss」简报，不再插一层「进入下一关」
-      if (node.id === "R4_DRAFT" && opt.next === "N4") {
-        markRoadmapNodeDone(state, node.id);
-        gotoNode(state, ui, chapter.id, "N4");
-        return;
-      }
       armWinGrowthPendingAdvance(state, chapter, node, opt.next);
       render(state, ui);
       return;
@@ -8802,7 +8837,7 @@ function buildRGrowthPickOptions(state, node) {
     });
   }
   if (node.id === "R2_STAT") {
-    const offer = ensureDraftOffer(state, "R2_STAT", ATTR_CARDS.map((x) => x.id), 3);
+    const offer = ensureDraftOffer(state, "R2_STAT", attrDraftPool(state), 3);
     return offer
       .map((id) => ATTR_CARDS.find((x) => x.id === id))
       .filter(Boolean)
@@ -8832,8 +8867,8 @@ function buildRGrowthPickOptions(state, node) {
     });
   }
   if (node.id === "R4_DRAFT") {
-    const techOffer = ensureDraftOffer(state, "R4_TECH", state.skillDeckRemaining || [], 2);
-    const attrOffer = ensureDraftOffer(state, "R4_ATTR", ATTR_CARDS.map((x) => x.id), 1);
+    const techOffer = ensureDraftOffer(state, "R4_TECH", skillDraftPool(state), 2);
+    const attrOffer = ensureDraftOffer(state, "R4_ATTR", attrDraftPool(state), 1);
     const merged = [...techOffer, ...attrOffer];
     return merged
       .map((k) => {
