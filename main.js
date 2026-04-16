@@ -2777,17 +2777,6 @@ function applyPlayerToEnemy(state, enemyObj, playerAction, targetId) {
   if (targetId !== enemyObj.id) return out;
   const hpBefore = e.hp;
 
-  // 无敌秒杀：测试模式
-  if (window._godMode && (playerAction === "attack" || playerAction === "heavy")) {
-    out.eDmg = e.hp;
-    e.hp = 0;
-    out.eStg = e.staggerThreshold;
-    e.stagger = e.staggerThreshold;
-    e.broken = true;
-    out.notes.push("测试秒杀：一击必杀！");
-    return out;
-  }
-
   if (playerAction === "attack") {
     let dmg = ns(2) + (state.player.atkBonus || 0);
     let stg = 1;
@@ -2962,9 +2951,6 @@ function resolveEnemyAgainstPlayer(
   if (enemyObj.waitingToEnter) return out;
   /* 破绽中敌人本回合不对玩家出手（与敌方阶段 actingEnemies 过滤一致） */
   if (e.broken) return out;
-
-  // 无敌秒杀：测试模式 — 敌人攻击无效
-  if (window._godMode) return out;
 
   // 可处决玩家的头目：本段不另出手；回合末统一由头目处决演出（无论谁先打满失衡）
   if (enemyObj.canExecutePlayer && p.broken && playerHpAtEnemyPhaseStart > 0) {
@@ -4318,7 +4304,6 @@ function previewRawDamageToPlayerFromEnemyWhenAttacking(state, enemyObj, playerA
   const p = state.player;
   const e = enemyObj.fighter;
   const intent = enemyObj.intent;
-  if (window._godMode) return 0;
   if (enemyObj.waitingToEnter || e.hp <= 0 || p.hp <= 0) return 0;
   /* 破绽中敌人本回合不出手，与 actingEnemies 过滤一致；否则「换血」预览会误带我方受击 */
   if (e.broken) return 0;
@@ -9696,46 +9681,6 @@ function boot() {
     ui.beginnerModeToggle.addEventListener("change", () => {
       localStorage.setItem(BEGINNER_MODE_LS_KEY, ui.beginnerModeToggle.checked ? "1" : "0");
       render(state, ui);
-    });
-  }
-
-  // 无敌秒杀：测试开关
-  window._godMode = false;
-  const godToggle = document.getElementById("godModeToggle");
-  if (godToggle) {
-    godToggle.addEventListener("change", () => {
-      window._godMode = godToggle.checked;
-    });
-  }
-
-  // 备份排行榜按钮
-  const btnBackupLB = document.getElementById("btnBackupLeaderboard");
-  if (btnBackupLB) {
-    btnBackupLB.addEventListener("click", async () => {
-      btnBackupLB.textContent = "备份中...";
-      btnBackupLB.disabled = true;
-      const ok = typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured()
-        ? await OnlineLeaderboard.backupLeaderboard()
-        : false;
-      btnBackupLB.textContent = ok ? "备份成功 ✓" : "备份失败";
-      btnBackupLB.disabled = false;
-      setTimeout(() => { btnBackupLB.textContent = "备份排行榜"; }, 2000);
-    });
-  }
-
-  // 清空排行榜按钮
-  const btnClearLB = document.getElementById("btnClearLeaderboard");
-  if (btnClearLB) {
-    btnClearLB.addEventListener("click", async () => {
-      if (!confirm("确定要清空排行榜吗？此操作不可恢复，建议先备份！")) return;
-      localStorage.removeItem(CH1_MERIT_LEADERBOARD_KEY);
-      // 同时清空在线排行榜
-      if (typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured()) {
-        await OnlineLeaderboard.clearLeaderboard();
-        resetOnlineLeaderboardCache();
-        state._introHeroLbDone = false;
-      }
-      renderLocalLeaderboardToSettlePanel(ui, state);
     });
   }
 

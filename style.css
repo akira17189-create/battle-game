@@ -5060,54 +5060,6 @@ body.ending-slowmo .panel-hint-blink{
   }
 }
 
-/* 测试：无敌秒杀 */
-.god-mode-bar{
-  position:fixed;
-  bottom:0;
-  left:0;
-  right:0;
-  display:flex;
-  justify-content:center;
-  padding:10px;
-  background:rgba(11,15,20,.92);
-  border-top:1px solid rgba(239,68,68,.3);
-  z-index:99999;
-}
-.god-mode-label{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  cursor:pointer;
-  font-size:14px;
-  color:#ef4444;
-  font-weight:600;
-  user-select:none;
-}
-.god-mode-label input[type="checkbox"]{
-  width:18px;
-  height:18px;
-  accent-color:#ef4444;
-  cursor:pointer;
-}
-.god-mode-label input[type="checkbox"]:checked + span{
-  color:#22c55e;
-  text-shadow:0 0 8px rgba(34,197,94,.5);
-}
-.god-mode-btn{
-  padding:6px 14px;
-  border:1px solid rgba(239,68,68,.5);
-  border-radius:8px;
-  background:rgba(239,68,68,.15);
-  color:#ef4444;
-  font-size:13px;
-  font-weight:600;
-  cursor:pointer;
-  transition:background .15s;
-}
-.god-mode-btn:hover{
-  background:rgba(239,68,68,.3);
-}
-
 /* 昵称输入弹窗（与成长/胜利卡同款面板 + 全屏暗角） */
 .name-dialog-overlay{
   position:fixed;
