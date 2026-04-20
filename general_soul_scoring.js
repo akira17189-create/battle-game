@@ -464,22 +464,14 @@
   /** 总战功 ≥ 此值时进入 Lv8 天命之魂池（不查 105） */
   const DESTINY_MERIT_SCORE_MIN = 100000;
 
-  /** 主行为 → 天命之魂（固定 7 人） */
+  /** 主行为 → 天命之魂（仅 7 条行为有 Lv8 天命池；与「行为概览」一致） */
   const BEHAVIOR_TO_DESTINY_SOUL = {
     疾袭先登: "霍去病",
     破军重斩: "项羽",
     铁壁守御: "岳飞",
-    反锋夺势: "孙武",
-    养气持久: "姜子牙",
     乘隙收命: "白起",
-    连锋成势: "霍去病",
-    死地回天: "项羽",
-    乱阵周旋: "韩信",
-    血战压命: "白起",
-    不伤而胜: "岳飞",
     持局定军: "孙武",
     奇兵诡势: "韩信",
-    厚积骤发: "姜子牙",
     中军主宰: "姜子牙",
   };
 
@@ -747,8 +739,8 @@
     const tiebreakDiffersFromSort =
       winnerScoreEqualsGlobalMax && tiedTop.length > 1 && sortFirstIfTieByRaw !== winner;
 
-    if (Number(fm) >= DESTINY_MERIT_SCORE_MIN) {
-      const destinyName = BEHAVIOR_TO_DESTINY_SOUL[winner] || "姜子牙";
+    if (Number(fm) >= DESTINY_MERIT_SCORE_MIN && BEHAVIOR_TO_DESTINY_SOUL[winner]) {
+      const destinyName = BEHAVIOR_TO_DESTINY_SOUL[winner];
       const behaviorStageNameDest = (stageMap && stageMap.Lv7) || "";
       const heroVerdict = buildDestinyHeroVerdict(winner, behaviorStageNameDest, fm, destinyName);
       const lines = [

@@ -1258,7 +1258,8 @@ function updateMeritContextAfterTurn(ctx, pack, record) {
   ctx.lastTurnNoDamage = pack.damageTakenThisTurn === 0;
   ctx.lastTurnHadHit = !!pack.hadPlayerHit;
   ctx.justRecoveredFromBroken = !!pack.justRecoveredFromBrokenNext;
-  ctx.turnIndex += 1;
+  // 处决不计入「回合」：战功回合序号与限回合判负均不因此推进
+  if (pack.action !== "execute") ctx.turnIndex += 1;
 
   const dMerit = record.turnMeritDelta || 0;
   const act = pack.action;
@@ -3371,7 +3372,7 @@ const BASE_TIPS = [
   "- 破绽：持续约一回合；回合结束强制解除（失衡清零）。破绽中不能快攻/重击/处决，但可以调息、防御或盾反（防御/盾反仍可能失败）。",
   "",
   "【关键交互】",
-  "- 处决：只对破绽敌人；按钮会出现在该敌人卡片上。处决为「追加出手」：本段只有你出手，其余敌人不行动；回合钟只推进半回合（0.5），与完整回合区分。",
+  "- 处决：只对破绽敌人；按钮会出现在该敌人卡片上。处决为「追加收束」：本段只有你出手，其余敌人不行动；**不计入回合**（回合数、限回合与调息/侦察倒计时均不因处决推进）。",
   "- 调息：HP+20、失衡-1（破绽中也可用）；使用后进入 3 回合冷却；本回合若被快攻/重击，30% 完全闪避（免伤）。技法「听风卸势」可将该概率提升至 70%。之后敌人照常行动。",
   `- 打断：快攻对重击有 ${Math.round(INTERRUPT_QUICK_VS_HEAVY * 100)}% 概率打断。任一方被打断时，本回合对该目标的出手改按「快攻」结算伤害与失衡（通用规则）；敌方快攻仍会照常打到你。`,
   "",
@@ -4135,7 +4136,7 @@ function resolveEnemyAgainstPlayer(
   return out;
 }
 
-/** 战报/提示用回合号：支持处决仅推进半回合（globalTurn 可为 x.5） */
+/** 战报/提示用回合号（历史存档或旧局可能仍有半回合小数，仍做展示兼容） */
 function formatBattleTurnNumber(gt) {
   const n = typeof gt === "number" && !Number.isNaN(gt) ? gt : Number(gt) || 1;
   if (Number.isInteger(n)) return String(n);
@@ -4143,11 +4144,11 @@ function formatBattleTurnNumber(gt) {
   return Number.isInteger(h) ? String(h) : h.toFixed(1).replace(/\.0$/, "");
 }
 
-/** 玩家行动结束后推进回合钟：处决为追加出手且其余敌不行动，只算 0.5 回合 */
+/** 玩家行动结束后推进回合钟：处决为追加收束，不计入回合，也不推进调息/侦察倒计时 */
 function advanceBattleTurnAfterPlayerAction(state, action, opts = {}) {
   if (opts.skipTurnClockAdvance) return;
-  if (action === "execute") state.globalTurn += 0.5;
-  else state.globalTurn += 1;
+  if (action === "execute") return;
+  state.globalTurn += 1;
   if ((state.player.restCooldownLeft || 0) > 0) state.player.restCooldownLeft -= 1;
   if (action === "rest") state.player.restCooldownLeft = REST_COOLDOWN_TURNS;
   if (state.battleBuffs?.scoutTurnsLeft > 0) state.battleBuffs.scoutTurnsLeft -= 1;
@@ -6417,7 +6418,7 @@ async function resumePendingMultiEnemyResolution(state, ui) {
     });
   }
 
-  // finalize 因 skip 未推进原行动整回合；处决已在 onPlayerAction 推进 0.5 并递减调息/侦察各一次，此处只补 globalTurn +1，勿再调 advance（避免调息扣两次）
+  // finalize 因 skip 未推进原行动整回合；中途插入的处决不计入回合钟；此处补本回合主行动结束时的 +1，勿再调 advance（避免调息扣两次）
   state.globalTurn += 1;
 
   refreshTips(state);
@@ -6596,7 +6597,7 @@ function applyBattleTurnResolutionSegment(state, ui, turnCtx, bundle, segments, 
 
 /**
  * 多段对拼收尾：敌方阶段后的共通逻辑 + 回合末（战功、胜负、推进）。
- * @param {{ skipTurnClockAdvance?: boolean }} [opts] 处决插入后续播时，回合时钟已在 onPlayerAction 处推进，此处勿重复。
+ * @param {{ skipTurnClockAdvance?: boolean }} [opts] 为 true 时不推进回合钟（分段提交时由续播收尾等处统一 +1；处决本身不计入回合）。
  */
 function finalizeBattleTurnAfterResolutionSegments(state, ui, bundle, turnCtx, opts = {}) {
   const action = bundle.playerAction;
@@ -10756,7 +10757,7 @@ function onPlayerAction(state, ui, action, opts = {}) {
 
   pushMeterFloatsAndAdvanceSnap(state, ui, meterFloatSnap);
 
-  // 敌人行动：甲乙同步（处决为追加回合：本回合其余敌人不行动）
+  // 敌人行动：甲乙同步（处决为追加收束：本回合其余敌人不行动）
   let damageTakenThisTurn = 0;
     let anyBlockSuccess = false;
     let blockSuccessCount = 0;
@@ -11164,7 +11165,7 @@ function onPlayerAction(state, ui, action, opts = {}) {
   // 供「稳势回斩」使用：记录本回合是否未受伤
   state._noDamageLastTurn = damageTakenThisTurn === 0;
 
-  /** 多段对撞中途暂停去处决：续播前勿 refreshIntents，甲/乙仍保持本回合意图，与剩余盾反段碰撞；回合钟仍按处决推进 */
+  /** 多段对撞中途暂停去处决：续播前勿 refreshIntents，甲/乙仍保持本回合意图，与剩余盾反段碰撞；处决不计入回合钟 */
   const willResumePendingAfterExecute =
     action === "execute" &&
     state._pendingMultiEnemyResolution &&
