@@ -94,8 +94,7 @@ const OnlineLeaderboard = (() => {
   async function fetchLeaderboard(limit = 30) {
     if (!isConfigured()) return null;
     try {
-      /* 表需含 hero_name（text，可空）；未建列时请先在 Supabase 添加，否则本请求会失败并走本地榜降级 */
-      const url = `${SUPABASE_URL}/rest/v1/leaderboard?select=name,final_merit,grade,run_sum,retries,province,city,hero_name,created_at&order=final_merit.desc&limit=${limit}`;
+      const url = `${SUPABASE_URL}/rest/v1/leaderboard?select=name,final_merit,grade,run_sum,retries,province,city,created_at&order=final_merit.desc&limit=${limit}`;
       const res = await fetch(url, { headers: headers() });
       if (!res.ok) return null;
       const data = await res.json();
@@ -109,7 +108,7 @@ const OnlineLeaderboard = (() => {
         retries: row.retries,
         province: row.province || "",
         city: row.city || "",
-        heroName: row.hero_name || "",
+        heroName: "",
       }));
     } catch {
       return null;
@@ -126,7 +125,6 @@ const OnlineLeaderboard = (() => {
     try {
       const url = `${SUPABASE_URL}/rest/v1/leaderboard`;
       const body = {
-        /* 与前端 clamp 一致：至多 6 汉字 + 12 字母，总长码位不超过 24 */
         name: String(record.name || "无名侠客").slice(0, 24),
         final_merit: record.finalMerit || 0,
         grade: record.grade || "",
@@ -134,9 +132,6 @@ const OnlineLeaderboard = (() => {
         retries: record.retries || 0,
         province: "",
         city: "",
-        hero_name: String(record.heroName || "")
-          .trim()
-          .slice(0, 24),
       };
       const res = await fetch(url, {
         method: "POST",
