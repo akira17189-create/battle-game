@@ -21,6 +21,15 @@
   --z-modal-overlay: 60000;
   /* 顶部累计战功悬浮框：全局最高，避免被任意面板遮挡 */
   --z-run-merit-hint: 120000;
+  /* 战功评级 7 档：统一动效基准（由 .grade-* 覆盖强弱） */
+  --grade-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --grade-border-width: 2px;
+  --grade-glow-size: 18px;
+  --grade-particle-opacity: 0.18;
+  --grade-sheen-speed: 3.6s;
+  --grade-breathe-speed: 2.8s;
+  --grade-burst-scale: 1.06;
+  --grade-icon-opacity: 0.16;
 }
 
 *{box-sizing:border-box}
@@ -146,6 +155,37 @@ html{
   font-variant-numeric: tabular-nums;
   transition: transform .15s ease, color .15s ease;
 }
+.run-merit-widget--tick{
+  animation: run-merit-widget-tick 0.45s ease-out 1;
+}
+.run-merit-widget--death-penalty-flash{
+  overflow: visible;
+}
+.run-merit-widget--death-penalty-flash::after{
+  content: attr(data-penalty-delta);
+  position: absolute;
+  right: -4px;
+  top: -8px;
+  font-size: 22px;
+  font-weight: 1000;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: #fecaca;
+  text-shadow: 0 0 14px rgba(248,113,113,.45);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: run-merit-penalty-delta-pop 0.4s ease-out 1;
+}
+@keyframes run-merit-penalty-delta-pop{
+  0%{ opacity: 0; transform: translateY(6px) scale(0.92); }
+  45%{ opacity: 1; transform: translateY(0) scale(1.06); }
+  100%{ opacity: 1; transform: translateY(-3px) scale(1); }
+}
+@keyframes run-merit-widget-tick{
+  0%{ transform: translateX(-10px) scale(1); filter: brightness(1); }
+  35%{ transform: translateX(-10px) scale(1.05); filter: brightness(1.12); }
+  100%{ transform: translateX(-10px) scale(1); filter: brightness(1); }
+}
 
 .run-merit-hint{
   position: absolute;
@@ -248,6 +288,50 @@ html{
   border: 1px dashed rgba(250,204,21,.5) !important;
   background: linear-gradient(90deg, rgba(234,179,8,.16), rgba(30,41,59,.4)) !important;
   box-shadow: inset 0 0 0 1px rgba(250,204,21,.1), 0 0 20px rgba(234,179,8,.08);
+}
+.rank-row--live-preview.rank-row--grade-tier-up{
+  animation: meritLbGradeTierUp 1.15s ease-out 1;
+}
+@keyframes meritLbGradeTierUp{
+  0%{
+    box-shadow: inset 0 0 0 1px rgba(250,204,21,.15), 0 0 0 rgba(253,224,71,0);
+    filter: brightness(1);
+  }
+  35%{
+    box-shadow: inset 0 0 0 2px rgba(254,249,195,.55), 0 0 28px rgba(250,204,21,.45);
+    filter: brightness(1.12);
+  }
+  100%{
+    box-shadow: inset 0 0 0 1px rgba(250,204,21,.1), 0 0 20px rgba(234,179,8,.08);
+    filter: brightness(1);
+  }
+}
+
+.merit-grade-upgrade-banner{
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  margin: 0 0 8px;
+  padding: 10px 14px;
+  text-align: center;
+  font-weight: 900;
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  color: #eafbff;
+  text-shadow: 0 0 20px rgba(142, 219, 255, 0.48);
+  background: linear-gradient(90deg, transparent, rgba(142, 219, 255, 0.2), transparent);
+  border-bottom: 1px solid rgba(190, 235, 255, 0.42);
+  transform: translateY(-8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
+}
+.merit-grade-upgrade-banner.is-visible{
+  transform: translateY(0);
+  opacity: 1;
+}
+.merit-grade-upgrade-banner[hidden]{
+  display: none !important;
 }
 .rank-row--live-preview .rank-score{
   color: #fef08a;
@@ -583,6 +667,977 @@ html{
 .battle-info-panel > .panel-header{
   flex-shrink: 0;
 }
+
+/* 战功关：阵前形势标题下固定展示本战回合；战功飞点汇入右上角军功簿 */
+.ending-merit-ticker{
+  flex-shrink: 0;
+  margin: 0 14px 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: linear-gradient(135deg, rgba(24, 20, 14, 0.92), rgba(36, 30, 22, 0.88));
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: rgba(245, 236, 214, 0.92);
+}
+.ending-merit-ticker[hidden]{
+  display: none !important;
+}
+.ending-merit-ticker__row{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.ending-merit-ticker__label{
+  color: rgba(200, 186, 160, 0.85);
+  font-size: 12px;
+}
+/* 固定宽：飞线起点取锚盒中心，避免「3/10→10/10」改宽时跳动 */
+.ending-merit-ticker__val-wrap{
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 4.5rem;
+  flex-shrink: 0;
+}
+.ending-merit-ticker__val{
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #f0e6c8;
+  text-shadow: 0 0 12px rgba(212, 175, 55, 0.35);
+}
+
+/* 第一章通关 S1：标题下内嵌胜利条 + 结算；隐藏上方交战格，保留战法卷 / 军前提要 */
+/* 须覆盖下方 display:flex，否则 [hidden] 在部分浏览器中不生效，通关块会叠在首页 intro 上 */
+.chapter-settle-stack[hidden]{
+  display: none !important;
+}
+.chapter-settle-stack--early{
+  padding-top: 6px;
+  gap: 8px;
+}
+.chapter-settle-stack--early .chapter-settle-victory-card{
+  padding: 8px 12px 10px;
+}
+.chapter-settle-stack--early .win-kicker{
+  margin-bottom: 2px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+}
+.chapter-settle-stack--early .win-text{
+  font-size: clamp(15px, 2.6vw, 17px);
+  letter-spacing: 0.1em;
+}
+.chapter-settle-stack{
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 12px 14px;
+  border-bottom: 1px solid rgba(148,163,184,.12);
+  background: linear-gradient(180deg, rgba(15,23,42,.88), rgba(15,23,42,.55));
+  transition: border-color 0.28s ease, box-shadow 0.28s ease, background 0.28s ease;
+}
+/* 战功 7 档挂载在 stack 上时：整段结算区继承金属/鎏光主题（与 .grade-* 变量一致） */
+.chapter-settle-stack:is(
+  .grade-shenjiang,.grade-feijiang,.grade-mingjiang,.grade-xiaojiang,
+  .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
+  .grade-tianming
+){
+  border-bottom: 1px solid color-mix(in srgb, var(--grade-main) 26%, rgba(15,23,42,.85));
+  background:
+    var(--grade-pattern),
+    linear-gradient(188deg, color-mix(in srgb, var(--grade-deep) 48%, #0b1220) 0%, rgba(15,23,42,.76) 58%, rgba(2,6,23,.55) 100%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--grade-sub) 10%, transparent),
+    var(--grade-glow);
+}
+.chapter-settle-victory-card{
+  position: relative;
+  border-radius: 14px;
+  padding: 16px 18px 18px;
+  text-align: center;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(34,197,94,.16), transparent 52%),
+    linear-gradient(185deg, rgba(30,41,59,.96), rgba(15,23,42,.9));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 12px 32px rgba(0,0,0,.38);
+  overflow: hidden;
+}
+.chapter-settle-stack:is(
+  .grade-shenjiang,.grade-feijiang,.grade-mingjiang,.grade-xiaojiang,
+  .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
+  .grade-tianming
+) .chapter-settle-victory-card{
+  background:
+    radial-gradient(120% 95% at 50% -8%, color-mix(in srgb, var(--grade-main) 22%, transparent), transparent 55%),
+    linear-gradient(188deg, color-mix(in srgb, var(--grade-deep) 42%, #0f172a), rgba(15,23,42,.93));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--grade-sub) 14%, transparent),
+    0 14px 38px rgba(0,0,0,.4),
+    var(--grade-glow);
+}
+.chapter-settle-stack:is(
+  .grade-shenjiang,.grade-feijiang,.grade-mingjiang,.grade-xiaojiang,
+  .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
+  .grade-tianming
+) .win-accent-bar{
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--grade-main) 70%, transparent) 35%,
+    var(--grade-sub) 50%,
+    color-mix(in srgb, var(--grade-main) 65%, transparent) 72%,
+    transparent 100%
+  );
+  opacity: 0.95;
+}
+.chapter-settle-stack:is(
+  .grade-shenjiang,.grade-feijiang,.grade-mingjiang,.grade-xiaojiang,
+  .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
+  .grade-tianming
+) .win-kicker{
+  color: color-mix(in srgb, var(--grade-main) 72%, rgba(226,232,240,.95));
+}
+.chapter-settle-stack:is(
+  .grade-shenjiang,.grade-feijiang,.grade-mingjiang,.grade-xiaojiang,
+  .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
+  .grade-tianming
+) .win-text{
+  color: var(--grade-sub);
+  text-shadow: 0 0 22px color-mix(in srgb, var(--grade-main) 28%, transparent);
+}
+/* 战功 + 得分：整卡外框（单行横排：左档评 / 右得分） */
+.chapter-settle-merit-card{
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  padding: 12px 14px 14px;
+  border-radius: 14px;
+  text-align: left;
+  background: color-mix(in srgb, var(--grade-main) 7%, rgba(0,0,0,.28));
+  border: 1px solid color-mix(in srgb, var(--grade-main) 26%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--grade-sub) 9%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--grade-deep) 35%, transparent);
+}
+.chapter-settle-stack:not(:is(
+  .grade-shenjiang,.grade-feijiang,.grade-mingjiang,.grade-xiaojiang,
+  .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
+  .grade-tianming
+)) .chapter-settle-merit-card{
+  background: rgba(0,0,0,.22);
+  border-color: rgba(148,163,184,.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+.chapter-settle-merit-card__score-row{
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px 12px;
+  flex-wrap: nowrap;
+  flex: 1 1 200px;
+  min-width: min(100%, 220px);
+  margin-top: 0;
+  padding-top: 0;
+  padding-left: 12px;
+  border-top: none;
+  border-left: 1px solid color-mix(in srgb, var(--grade-main) 22%, transparent);
+}
+.chapter-settle-stack:not(:is(
+  .grade-shenjiang,.grade-feijiang,.grade-mingjiang,.grade-xiaojiang,
+  .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
+  .grade-tianming
+)) .chapter-settle-merit-card__score-row{
+  border-left-color: rgba(148,163,184,.16);
+}
+@media (max-width: 520px){
+  .chapter-settle-merit-card__score-row{
+    flex: 1 1 100%;
+    min-width: 0;
+    padding-left: 0;
+    border-left: none;
+    padding-top: 10px;
+    margin-top: 2px;
+    border-top: 1px solid color-mix(in srgb, var(--grade-main) 20%, transparent);
+    justify-content: space-between;
+  }
+  .chapter-settle-stack:not(:is(
+    .grade-shenjiang,.grade-feijiang,.grade-mingjiang,.grade-xiaojiang,
+    .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
+    .grade-tianming
+  )) .chapter-settle-merit-card__score-row{
+    border-top-color: rgba(148,163,184,.14);
+  }
+}
+/* 战功评级（内嵌于卡内：不再单独套一层盒子） */
+.chapter-settle-merit-hero{
+  min-height: 1px;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.chapter-settle-merit-grade-block{
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 0;
+  border-radius: 0;
+  text-align: left;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.chapter-settle-merit-grade-kicker{
+  flex: 0 0 100%;
+  margin: 0 0 -2px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: rgba(148,163,184,.92);
+}
+.chapter-settle-merit-card .chapter-settle-merit-grade-block{
+  text-align: left;
+}
+.chapter-settle-merit-grade-display{
+  display: block;
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: clamp(34px, 8vw, 48px);
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  line-height: 1.12;
+  color: var(--grade-main);
+  text-shadow:
+    0 2px 0 color-mix(in srgb, var(--grade-deep) 55%, transparent),
+    0 0 28px color-mix(in srgb, var(--grade-main) 38%, transparent);
+}
+.chapter-settle-merit-card .chapter-settle-merit-grade-display{
+  font-size: clamp(22px, 5.2vw, 34px);
+  letter-spacing: 0.1em;
+}
+.chapter-settle-merit-grade-display.merit-grade--unknown{
+  font-size: clamp(28px, 6vw, 38px);
+  letter-spacing: 0.08em;
+  color: rgba(148,163,184,.96);
+  text-shadow: none;
+}
+.chapter-settle-merit-card .chapter-settle-merit-grade-display.merit-grade--unknown{
+  font-size: clamp(20px, 4.5vw, 28px);
+}
+/* 战将档：芽绿铭牌，初成可战（与 --grade-zhanjiang 同步） */
+.chapter-settle-stack.grade-zhanjiang .chapter-settle-merit-grade-display.grade-zhanjiang{
+  display: inline-block;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0.12em 0.36em 0.16em;
+  border-radius: 12px;
+  background: linear-gradient(
+    168deg,
+    color-mix(in srgb, var(--grade-deep) 90%, #041208),
+    color-mix(in srgb, var(--grade-deep) 74%, #0c3020)
+  );
+  border: 1px solid color-mix(in srgb, var(--grade-main) 45%, rgba(216, 255, 231, 0.38));
+  color: var(--grade-sub);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--grade-deep) 88%, #000);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--grade-main) 32%, transparent),
+    0 4px 16px rgba(0, 0, 0, 0.38);
+}
+.chapter-settle-merit-grade-flavor{
+  margin: 0;
+  padding: 0 2px 0 0;
+  flex: 1 1 120px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 650;
+  font-style: italic;
+  color: var(--grade-sub);
+  opacity: 0.94;
+}
+.chapter-settle-merit-card .chapter-settle-merit-grade-flavor{
+  font-size: 12px;
+  line-height: 1.45;
+}
+.chapter-settle-stack:not(:is(
+  .grade-shenjiang,.grade-feijiang,.grade-mingjiang,.grade-xiaojiang,
+  .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
+  .grade-tianming
+)) .chapter-settle-merit-grade-flavor{
+  color: rgba(203,213,225,.88);
+}
+.chapter-settle-stack.grade-zhanjiang
+  .chapter-settle-merit-card
+  .chapter-settle-merit-grade-display.grade-zhanjiang{
+  margin-left: 0;
+  margin-right: 0;
+}
+.chapter-settle-score-block{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.chapter-settle-score-hint{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  max-width: 46ch;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  line-height: 1.45;
+  color: rgba(203,213,225,.86);
+}
+.chapter-settle-score-hint-primary{
+  display: block;
+}
+.chapter-settle-score-hint-bonus{
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(253,230,138,.88);
+  line-height: 1.4;
+}
+.chapter-settle-stack:is(
+  .grade-shenjiang,.grade-feijiang,.grade-mingjiang,.grade-xiaojiang,
+  .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
+  .grade-tianming
+) .chapter-settle-score-hint{
+  color: color-mix(in srgb, var(--grade-sub) 82%, rgba(226,232,240,.95));
+}
+.chapter-settle-stack:is(
+  .grade-shenjiang,.grade-feijiang,.grade-mingjiang,.grade-xiaojiang,
+  .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
+  .grade-tianming
+) .chapter-settle-score-hint-bonus{
+  color: color-mix(in srgb, var(--grade-sub) 78%, rgba(253,230,138,.95));
+}
+/* 固定锚盒宽度 + 居中：读数位数变化时几何中心不随对齐方式漂移（飞线取中心点） */
+.chapter-settle-score-fly-anchor{
+  --settle-score-anchor-w: clamp(6.5rem, 24vw, 9rem);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  width: var(--settle-score-anchor-w);
+  min-width: var(--settle-score-anchor-w);
+  max-width: var(--settle-score-anchor-w);
+  flex: 0 0 var(--settle-score-anchor-w);
+}
+.chapter-settle-merit-card__score-row .chapter-settle-score-val{
+  flex: 0 0 auto;
+  padding-top: 1px;
+}
+.chapter-settle-merit-card__score-row .chapter-settle-score-fly-anchor{
+  align-self: center;
+}
+.chapter-settle-body{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chapter-settle-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.chapter-settle-label{
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(226,232,240,.88);
+  letter-spacing: .08em;
+}
+.chapter-settle-score-val{
+  font-family: var(--mono);
+  font-size: clamp(20px, 3.2vw, 26px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: rgba(253,224,71,.98);
+  text-shadow: 0 2px 14px rgba(0,0,0,.45);
+}
+.merit-fly-particle{
+  position: fixed;
+  z-index: 10050;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: left, top, transform, opacity;
+  background: radial-gradient(circle at 30% 26%, #ffffff, #fff7c2 38%, #fbbf24 72%, #ea580c 100%);
+  box-shadow:
+    0 0 8px rgba(254,252,232,.98),
+    0 0 18px rgba(250,204,21,.75),
+    0 0 28px rgba(245,158,11,.38);
+  transition:
+    left var(--merit-fly-dur, 272ms) cubic-bezier(0.2, 1, 0.32, 1),
+    top var(--merit-fly-dur, 272ms) cubic-bezier(0.2, 1, 0.32, 1),
+    opacity 110ms ease-out,
+    transform 150ms cubic-bezier(0.28, 1.2, 0.42, 1);
+}
+/* 三颗连发：中间略亮，两侧略虚，加分更轻快 */
+.merit-fly-particle--seq.merit-fly-particle--i0{
+  filter: brightness(1.05) saturate(1.05);
+}
+.merit-fly-particle--seq.merit-fly-particle--i1{
+  filter: brightness(1.14) saturate(1.08);
+  box-shadow:
+    0 0 9px rgba(255,255,255,.95),
+    0 0 20px rgba(253,224,71,.88),
+    0 0 32px rgba(251,191,36,.42);
+}
+.merit-fly-particle--seq.merit-fly-particle--i2{
+  filter: brightness(1.06) saturate(1.04);
+}
+.chapter-settle-hero{
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(0,0,0,.2);
+  border: 1px solid rgba(148,163,184,.22);
+}
+.chapter-settle-hero.chapter-settle-soul-layer{
+  border-color: color-mix(in srgb, var(--grade-main) 20%, rgba(148,163,184,.22));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--grade-main) 6%, transparent), rgba(0,0,0,.18));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--grade-sub) 6%, transparent);
+}
+.chapter-settle-stack:not(:is(
+  .grade-shenjiang,.grade-feijiang,.grade-mingjiang,.grade-xiaojiang,
+  .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
+  .grade-tianming
+)) .chapter-settle-hero.chapter-settle-soul-layer{
+  border-color: rgba(148,163,184,.22);
+  background: rgba(0,0,0,.2);
+  box-shadow: none;
+}
+.chapter-settle-soul-layer-kicker{
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  color: color-mix(in srgb, var(--grade-main) 50%, rgba(226,232,240,.85));
+  margin: 0 0 10px;
+}
+.chapter-settle-soul-layer .soul-showcase{
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(15,23,42,.35);
+}
+.soul-showcase-row{
+  margin: 0 0 6px;
+  font-size: clamp(14px, 2.4vw, 16px);
+  line-height: 1.45;
+  color: rgba(254,252,232,.96);
+}
+.soul-showcase-row--hero{
+  margin-bottom: 0;
+}
+.soul-showcase-k{
+  display: inline-block;
+  min-width: 3.2em;
+  margin-right: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: rgba(148,163,184,.95);
+}
+.chapter-settle-soul-layer-head{
+  margin-bottom: 4px;
+}
+.chapter-settle-hero-kicker{
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  color: rgba(251,191,36,.95);
+  margin-bottom: 8px;
+}
+.chapter-settle-hero-line{
+  font-size: 15px;
+  font-weight: 900;
+  color: rgba(254,252,232,.96);
+  margin: 0 0 6px;
+  line-height: 1.45;
+}
+.chapter-settle-hero-name{
+  font-size: 13px;
+  color: rgba(203,213,225,.9);
+  margin: 0 0 8px;
+}
+.chapter-settle-hero-explain{
+  font-size: 13px;
+  color: rgba(148,163,184,.95);
+  margin: 0;
+  line-height: 1.55;
+}
+.chapter-settle-hero-empty{
+  margin: 0;
+  font-size: 13px;
+  color: rgba(148,163,184,.72);
+}
+.chapter-settle-soul-hero{
+  font-size: clamp(18px, 2.8vw, 22px);
+  font-weight: 900;
+  color: rgba(254,243,199,.98);
+  margin: 0 0 6px;
+}
+.chapter-settle-soul-trait{
+  font-size: 12px;
+  color: rgba(167,243,208,.92);
+  margin: 0 0 8px;
+}
+/* 武魂鉴语：仅判气句用金，其余为史笔/评语色 */
+.chapter-settle-soul-qi{
+  font-size: 13px;
+  font-weight: 850;
+  color: rgba(250,204,21,.96);
+  letter-spacing: 0.04em;
+  margin: 0 0 8px;
+  line-height: 1.45;
+  text-shadow: 0 0 18px rgba(234,179,8,.18);
+}
+.chapter-settle-soul-behavior{
+  margin: 0 0 6px;
+  font-size: clamp(15px, 2.6vw, 17px);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: rgba(254,252,232,.96);
+  line-height: 1.4;
+}
+/* 与上方「主行为」轴文案一致时弱化，避免与武将名抢权重 */
+.chapter-settle-soul-behavior--echo{
+  font-size: clamp(12px, 2vw, 13px);
+  font-weight: 650;
+  color: rgba(148,163,184,.88);
+  letter-spacing: 0.03em;
+}
+.chapter-settle-soul-anchor{
+  font-size: 12px;
+  font-weight: 650;
+  color: rgba(203,213,225,.93);
+  margin: 0 0 8px;
+  line-height: 1.55;
+  letter-spacing: 0.02em;
+}
+.chapter-settle-soul-resemble{
+  font-size: 12px;
+  font-weight: 750;
+  color: rgba(226,232,240,.94);
+  margin: 0 0 10px;
+  line-height: 1.55;
+  letter-spacing: 0.03em;
+}
+.chapter-settle-soul-eval--note{
+  font-size: 11px;
+  color: rgba(148,163,184,.78);
+  font-style: italic;
+}
+.chapter-settle-soul-hook{
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(250,204,21,.95);
+  letter-spacing: 0.02em;
+  margin: 0 0 6px;
+  line-height: 1.45;
+}
+.chapter-settle-soul-trait-one{
+  font-size: 12px;
+  color: rgba(226,232,240,.92);
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+.chapter-settle-soul-eval{
+  font-size: 12px;
+  color: rgba(203,213,225,.9);
+  margin: 0 0 6px;
+  line-height: 1.55;
+}
+.chapter-settle-soul-poem{
+  font-size: 12px;
+  color: rgba(186,230,253,.88);
+  font-style: italic;
+  margin: 0 0 8px;
+  line-height: 1.55;
+}
+.chapter-settle-soul-stats + .soul-skill-capsule{
+  margin-top: 12px;
+}
+.soul-skill-capsule{
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  margin: 0 0 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(52,211,153,.35);
+  background: rgba(15,23,42,.65);
+  font-size: 12px;
+  line-height: 1;
+}
+.soul-skill-capsule-pre{
+  padding: 6px 10px;
+  background: rgba(16,185,129,.22);
+  color: rgba(167,243,208,.95);
+  font-weight: 800;
+}
+.soul-skill-capsule-name{
+  padding: 6px 12px;
+  color: rgba(167,243,208,.98);
+  font-weight: 700;
+}
+/* —— 将魂底蕴：五维面板 + 兵种 chip（结算 / 战报共用） —— */
+.soul-dossier-panel{
+  margin-top: 2px;
+}
+.chapter-settle-soul-stats .soul-dossier-panel{
+  margin-top: 0;
+}
+.soul-dossier-kicker{
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.22em;
+  color: rgba(148,163,184,.78);
+  margin: 0 0 10px;
+  text-indent: 0.1em;
+}
+.soul-five-panel{
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  margin-bottom: 12px;
+  padding: 10px 0 12px;
+  background: linear-gradient(180deg, rgba(15,23,42,.72), rgba(15,23,42,.42));
+  border: 1px solid rgba(52,211,153,.16);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+.soul-attr-cell{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 4px 2px;
+  min-width: 0;
+  border-right: 1px solid rgba(148,163,184,.14);
+  text-align: center;
+}
+.soul-attr-cell:last-child{
+  border-right: none;
+}
+.soul-attr-cell__name{
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  color: rgba(148,163,184,.72);
+}
+.soul-attr-cell__val{
+  font-family: var(--mono);
+  font-size: clamp(17px, 2.8vw, 20px);
+  font-weight: 850;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+}
+.soul-stat-num{
+  font-family: var(--mono);
+  font-weight: 800;
+}
+.soul-stat-num--t1{
+  color: rgba(203,213,225,.88);
+}
+.soul-stat-num--t2{
+  color: rgba(253,224,71,.88);
+  text-shadow: 0 0 12px rgba(234,179,8,.12);
+}
+.soul-stat-num--t3{
+  color: rgba(250,204,21,.94);
+  text-shadow: 0 0 14px rgba(234,179,8,.18);
+}
+.soul-stat-num--t4{
+  color: rgba(254,240,138,.98);
+  text-shadow: 0 0 16px rgba(250,204,21,.22);
+}
+.soul-weapon-head{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.soul-weapon-head__label{
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.18em;
+  color: rgba(148,163,184,.72);
+}
+.soul-weapon-chips{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  align-items: center;
+}
+.soul-wp-chip{
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  border: 1px solid rgba(148,163,184,.2);
+  background: rgba(15,23,42,.55);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+}
+.soul-wp-chip__weapon{
+  color: rgba(148,163,184,.88);
+  font-weight: 750;
+}
+.soul-wp-chip__grade{
+  font-family: var(--mono);
+  min-width: 1em;
+  text-align: center;
+}
+.soul-wp-chip--s{
+  border-color: rgba(253,224,71,.45);
+  background: linear-gradient(180deg, rgba(120,53,15,.35), rgba(15,23,42,.65));
+  box-shadow: inset 0 1px 0 rgba(254,240,138,.12), 0 0 14px rgba(234,179,8,.12);
+}
+.soul-wp-chip--s .soul-wp-chip__grade{
+  color: rgba(254,249,195,.98);
+  text-shadow: 0 0 10px rgba(250,204,21,.25);
+}
+.soul-wp-chip--a{
+  border-color: rgba(45,212,191,.38);
+  background: linear-gradient(180deg, rgba(15,118,110,.28), rgba(15,23,42,.62));
+}
+.soul-wp-chip--a .soul-wp-chip__grade{
+  color: rgba(153,246,228,.96);
+}
+.soul-wp-chip--b{
+  border-color: rgba(100,116,139,.45);
+  background: rgba(15,23,42,.58);
+}
+.soul-wp-chip--b .soul-wp-chip__grade{
+  color: rgba(148,163,184,.95);
+}
+.soul-wp-chip--c{
+  border-color: rgba(71,85,105,.55);
+  background: rgba(15,23,42,.62);
+}
+.soul-wp-chip--c .soul-wp-chip__grade{
+  color: rgba(148,163,184,.78);
+}
+/* 旧版行内兵种（战报等若仍引用） */
+.soul-wp-val{
+  font-family: var(--mono);
+  font-weight: 800;
+  color: rgba(203,213,225,.9);
+}
+.soul-wp-val--s{
+  color: rgba(254,249,195,.96);
+}
+.soul-wp-val--a{
+  color: rgba(153,246,228,.95);
+}
+.soul-wp-val--b{
+  color: rgba(148,163,184,.95);
+}
+.soul-wp-val--c{
+  color: rgba(100,116,139,.95);
+}
+.chapter-settle-soul-overall{
+  font-size: 12px;
+  color: rgba(186,230,253,.9);
+  margin: 0 0 8px;
+}
+.chapter-settle-soul-stats{
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(148,163,184,.22);
+  font-size: 12px;
+  color: rgba(203,213,225,.88);
+}
+.soul-stat-grid{
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px 8px;
+  margin-bottom: 8px;
+}
+.soul-stat-grid span{
+  color: rgba(148,163,184,.85);
+  font-size: 11px;
+}
+.soul-stat-grid b{
+  font-family: var(--mono);
+  font-weight: 800;
+}
+.soul-weapon-row{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 12px;
+}
+.soul-weapon-row span{
+  color: rgba(148,163,184,.75);
+  margin-right: 2px;
+}
+.merit-soul-showcase{
+  margin: 6px 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(15,23,42,.4);
+}
+.merit-soul-showcase-row{
+  margin: 0 0 6px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: rgba(254,252,232,.96);
+}
+.merit-soul-showcase-row--hero{
+  margin-bottom: 0;
+}
+.merit-soul-showcase-k{
+  display: inline-block;
+  min-width: 3.2em;
+  margin-right: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: rgba(148,163,184,.95);
+}
+.merit-soul-showcase-v{
+  font-weight: 800;
+}
+.merit-hero-verdict--soul .merit-hero-name{
+  font-size: 17px;
+  font-weight: 900;
+  color: rgba(254,243,199,.98);
+  margin: 0;
+}
+.merit-hero-verdict--soul .merit-report-kicker{
+  color: rgba(148,163,184,.88);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+}
+.merit-soul-qi{
+  margin: 4px 0 10px;
+  font-size: 15px;
+  font-weight: 850;
+  color: rgba(250,204,21,.96);
+  letter-spacing: 0.04em;
+  line-height: 1.45;
+}
+.merit-soul-behavior-line{
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 900;
+  color: rgba(254,252,232,.96);
+  letter-spacing: 0.04em;
+  line-height: 1.45;
+}
+.merit-soul-behavior-line--echo{
+  font-size: 13px;
+  font-weight: 650;
+  color: rgba(148,163,184,.88);
+  letter-spacing: 0.03em;
+}
+.merit-soul-anchor{
+  font-size: 13px;
+  font-weight: 650;
+  color: rgba(203,213,225,.92);
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+.merit-soul-resemble{
+  font-size: 13px;
+  font-weight: 750;
+  color: rgba(226,232,240,.94);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+.merit-hero-verdict--soul .merit-soul-hook{
+  color: rgba(250,204,21,.95);
+  font-weight: 800;
+}
+.merit-hero-verdict--soul .merit-hero-trait-one{
+  font-size: 13px;
+  color: rgba(226,232,240,.9);
+  margin: 0 0 8px;
+  line-height: 1.45;
+}
+.merit-hero-verdict--soul .merit-hero-eval{
+  font-size: 13px;
+  color: rgba(203,213,225,.9);
+  margin: 0 0 6px;
+  line-height: 1.5;
+}
+.merit-hero-verdict--soul .merit-hero-poem-inline{
+  font-size: 13px;
+  color: rgba(186,230,253,.88);
+  font-style: italic;
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+.merit-hero-verdict--soul .merit-soul-cap{
+  margin-bottom: 10px;
+}
+.merit-hero-verdict--soul .merit-hero-trait{
+  font-size: 13px;
+  color: rgba(167,243,208,.9);
+  margin: 0 0 8px;
+}
+.merit-hero-overall{
+  font-size: 13px;
+  color: rgba(186,230,253,.92);
+  margin: 0 0 6px;
+}
+.merit-soul-stats{
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148,163,184,.22);
+  font-size: 12px;
+  color: rgba(203,213,225,.88);
+}
+.merit-soul-stats .soul-dossier-kicker{
+  margin-bottom: 8px;
+}
+.merit-soul-stat-row{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-bottom: 6px;
+}
+.merit-soul-weapon-row{
+  font-size: 12px;
+  opacity: 0.95;
+}
+.chapter-settle-actions{
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.chapter-settle-actions .btn{
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.battle-info-panel.battle-info-panel--chapter1-s1-settle .battle-combat-main > .battle-combat-stage{
+  display: none !important;
+}
+
 /* 主战斗列：敌我 VS、技能与底部仓库/提示同属一列，便于胜利态只盖住上方交战区 */
 .battle-combat-main{
   position: relative;
@@ -916,16 +1971,17 @@ html{
 }
 .battle-merit-judgement,
 .battle-merit-delta,
+.battle-merit-breakdown,
 .battle-merit-combo{
   position: absolute;
   left: 50%;
-  top: var(--resolution-anchor-y, 50%);
   transform: translate(-50%, -50%);
   text-align: center;
-  white-space: nowrap;
   user-select: none;
 }
 .battle-merit-judgement{
+  top: calc(var(--resolution-anchor-y, 50%) - 56px);
+  white-space: nowrap;
   font-size: clamp(22px, 4vw, 42px);
   font-weight: 1000;
   letter-spacing: .08em;
@@ -933,16 +1989,29 @@ html{
   animation: battleMeritJudgePop var(--battle-merit-ms, 720ms) cubic-bezier(.2,.9,.2,1) both;
 }
 .battle-merit-delta{
-  margin-top: 42px;
+  top: calc(var(--resolution-anchor-y, 50%) - 10px);
+  white-space: nowrap;
   font-size: clamp(16px, 2.6vw, 26px);
   font-family: var(--mono);
   font-weight: 900;
   text-shadow: 0 2px 10px rgba(0,0,0,.52);
   animation: battleMeritDeltaFloat var(--battle-merit-ms, 720ms) ease-out both;
 }
+.battle-merit-breakdown{
+  top: calc(var(--resolution-anchor-y, 50%) + 30px);
+  width: min(380px, calc(100% - 24px));
+  white-space: pre-line;
+  line-height: 1.45;
+  font-size: clamp(11px, 1.55vw, 14px);
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: rgba(254,243,199,.92);
+  text-shadow: 0 1px 8px rgba(0,0,0,.55);
+  animation: battleMeritBreakdownFade var(--battle-merit-ms, 720ms) ease-out both;
+}
 .battle-merit-combo{
-  /* 负 margin 越大，COMBO 越在判词上方，避免与「破绽」等大字重叠 */
-  margin-top: -26px;
+  top: calc(var(--resolution-anchor-y, 50%) + 86px);
+  white-space: nowrap;
   font-size: clamp(14px, 2.3vw, 28px);
   font-weight: 1000;
   letter-spacing: .08em;
@@ -955,12 +2024,14 @@ html{
 .battle-merit-fx-layer.battle-merit--normal .battle-merit-judgement{ color: rgba(254,240,138,.98); }
 .battle-merit-fx-layer.battle-merit--normal .battle-merit-delta{ color: rgba(253,224,71,.98); }
 .battle-merit-fx-layer.battle-merit--normal .battle-merit-combo{ color: rgba(255,255,255,.95); }
+.battle-merit-fx-layer.battle-merit--normal .battle-merit-breakdown{ color: rgba(254,243,199,.88); }
 .battle-merit-fx-layer.battle-merit--normal .battle-merit-burst{
   background: radial-gradient(circle at center, rgba(250,204,21,.28), rgba(0,0,0,0) 68%);
 }
 .battle-merit-fx-layer.battle-merit--gold .battle-merit-judgement{ color: rgba(251,191,36,.98); text-shadow: 0 0 20px rgba(251,191,36,.35), 0 4px 16px rgba(0,0,0,.52); }
 .battle-merit-fx-layer.battle-merit--gold .battle-merit-delta{ color: rgba(254,215,170,.98); }
 .battle-merit-fx-layer.battle-merit--gold .battle-merit-combo{ color: rgba(254,240,138,.98); }
+.battle-merit-fx-layer.battle-merit--gold .battle-merit-breakdown{ color: rgba(254,230,180,.9); }
 .battle-merit-fx-layer.battle-merit--gold .battle-merit-burst{
   background: radial-gradient(circle at center, rgba(245,158,11,.34), rgba(0,0,0,0) 70%);
 }
@@ -970,17 +2041,21 @@ html{
 }
 .battle-merit-fx-layer.battle-merit--execute .battle-merit-delta{ color: rgba(254,215,170,.98); }
 .battle-merit-fx-layer.battle-merit--execute .battle-merit-combo{ color: rgba(254,240,138,.98); }
+.battle-merit-fx-layer.battle-merit--execute .battle-merit-breakdown{ color: rgba(255,237,213,.92); }
 .battle-merit-fx-layer.battle-merit--execute .battle-merit-burst{
   background: radial-gradient(circle at center, rgba(239,68,68,.30), rgba(250,204,21,.26) 36%, rgba(0,0,0,0) 72%);
 }
 .battle-merit-fx-layer.battle-merit--red .battle-merit-judgement{ color: rgba(248,113,113,.98); text-shadow: 0 0 16px rgba(239,68,68,.42), 0 4px 16px rgba(0,0,0,.52); }
 .battle-merit-fx-layer.battle-merit--red .battle-merit-delta{ color: rgba(252,165,165,.98); }
 .battle-merit-fx-layer.battle-merit--red .battle-merit-combo{ color: rgba(254,202,202,.95); }
+.battle-merit-fx-layer.battle-merit--red .battle-merit-breakdown{ color: rgba(254,215,215,.88); }
 .battle-merit-fx-layer.battle-merit--red .battle-merit-burst{
   background: radial-gradient(circle at center, rgba(239,68,68,.34), rgba(0,0,0,0) 72%);
 }
 .battle-merit-fx-layer.battle-merit--strong .battle-merit-judgement{ font-size: clamp(26px, 4.6vw, 48px); }
 .battle-merit-fx-layer.battle-merit--strong .battle-merit-delta{ font-size: clamp(18px, 2.9vw, 30px); }
+.battle-merit-fx-layer.battle-merit--strong .battle-merit-breakdown{ font-size: clamp(12px, 1.7vw, 15px); }
+.battle-merit-fx-layer.battle-merit--strong .battle-merit-combo{ top: calc(var(--resolution-anchor-y, 50%) + 94px); }
 @keyframes battleMeritBurstPop{
   0%{ transform: translate(-50%, -50%) scale(.45); opacity: 0; }
   22%{ opacity: .92; }
@@ -994,16 +2069,22 @@ html{
   100%{ opacity: 0; transform: translate(-50%, -50%) scale(1); }
 }
 @keyframes battleMeritDeltaFloat{
-  0%{ opacity: 0; transform: translate(-50%, -8px); }
-  20%{ opacity: 1; transform: translate(-50%, 0); }
-  72%{ opacity: 1; transform: translate(-50%, -8px); }
-  100%{ opacity: 0; transform: translate(-50%, -16px); }
+  0%{ opacity: 0; transform: translate(-50%, calc(-50% - 8px)); }
+  20%{ opacity: 1; transform: translate(-50%, -50%); }
+  72%{ opacity: 1; transform: translate(-50%, calc(-50% - 4px)); }
+  100%{ opacity: 0; transform: translate(-50%, calc(-50% - 12px)); }
+}
+@keyframes battleMeritBreakdownFade{
+  0%{ opacity: 0; transform: translate(-50%, calc(-50% + 6px)); }
+  18%{ opacity: 1; transform: translate(-50%, -50%); }
+  72%{ opacity: 1; transform: translate(-50%, -50%); }
+  100%{ opacity: 0; transform: translate(-50%, calc(-50% - 6px)); }
 }
 @keyframes battleMeritComboPop{
-  0%{ opacity: 0; transform: translate(-50%, -52px) scale(.86); }
-  18%{ opacity: 1; transform: translate(-50%, -46px) scale(1); }
-  72%{ opacity: 1; transform: translate(-50%, -48px) scale(1); }
-  100%{ opacity: 0; transform: translate(-50%, -54px) scale(1); }
+  0%{ opacity: 0; transform: translate(-50%, -50%) scale(.86); }
+  18%{ opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  72%{ opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100%{ opacity: 0; transform: translate(-50%, -50%) scale(1); }
 }
 .resolution-primary{
   position: absolute;
@@ -1672,7 +2753,7 @@ html{
 }
 .intro-top3-row{
   display:grid;
-  grid-template-columns: 54px minmax(0, 1fr) 140px 90px 70px;
+  grid-template-columns: 54px minmax(0, 1fr) 72px 70px;
   align-items:center;
   gap:10px;
   padding: 8px 10px;
@@ -1697,6 +2778,13 @@ html{
   padding: 12px 8px;
 }
 .intro-top3-left{ display:flex; align-items:center; gap:8px; }
+.intro-top3-rank-spacer{
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  opacity: 0;
+  pointer-events: none;
+}
 .intro-top3-left .medal{
   width: 18px !important;
   height: 18px !important;
@@ -1787,10 +2875,48 @@ html{
   font-weight: 1000;
   color: rgba(229,231,235,.92);
 }
+.intro-top3-name-stack{
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.intro-top3-soul-wrap{
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+/* 与战功评价同档配色；开场前十条略紧凑，不显示档字图标 */
+.intro-top3-soul-name.merit-grade.soul-grade-badge::before{
+  content: none !important;
+  display: none !important;
+}
+.intro-top3-soul-name.merit-grade.soul-grade-badge{
+  max-width: min(42vw, 7.5em);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 0;
+  padding: 2px 8px 3px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  gap: 0;
+  line-height: 1.25;
+  align-self: center;
+}
+.intro-top3-soul-name.merit-grade--unknown{
+  padding: 0 2px;
+  font-size: 11px;
+  font-weight: 750;
+}
 .intro-top3-name{
+  flex: 1 1 auto;
+  min-width: 0;
   font-weight: 900;
   color: rgba(229,231,235,.95);
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2290,6 +3416,15 @@ html{
   border-color: rgba(250,204,21,.55);
   box-shadow: 0 0 0 2px rgba(250,204,21,.18), 0 18px 50px rgba(0,0,0,.45);
 }
+.pick-card-wrap--not-picked{
+  opacity: 0.38;
+  filter: grayscale(0.92);
+  pointer-events: none;
+}
+.pick-card.is-pick-locked{
+  cursor: not-allowed;
+  opacity: 0.92;
+}
 .pick-card-inner{
   position:relative;
   width:100%;
@@ -2538,10 +3673,75 @@ html{
 .left-col > .panel > .panel-header{
   flex-shrink: 0;
 }
+.panel-header--intro-hero-actions{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.panel-header--intro-hero-actions .panel-header-text{
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.intro-hero-actions{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.intro-hero-locate{
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.intro-hero-locate:disabled{
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.intro-hero-locate-msg{
+  max-width: 220px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(251,191,36,.92);
+  text-align: right;
+}
+.rank-row.intro-hero-row--flash{
+  animation: introHeroRowFlash 1.25s ease 1;
+}
+@keyframes introHeroRowFlash{
+  0%, 100%{
+    box-shadow: inset 0 0 0 0 transparent;
+    background: rgba(255,255,255,.04);
+  }
+  40%{
+    box-shadow: inset 0 0 0 2px rgba(250,204,21,.5);
+    background: rgba(250,204,21,.10);
+  }
+}
 .left-col > .panel > .scrollbox{
   flex: 1 1 0;
   max-height: none;
   min-height: 0;
+}
+/* 主界面：左侧仅展示天下英雄榜，隐藏结算/榜下半区 */
+.left-col.left-col--intro-hero{
+  grid-template-rows: 1fr;
+}
+.left-col.left-col--intro-hero #settlePanelSection{
+  display: none !important;
+}
+.scrollbox.hero-intro-ranks{
+  font-family: var(--sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: 13px;
+}
+.hero-intro-loading{
+  padding: 20px 16px;
+  text-align: center;
+  color: rgba(148,163,184,.95);
+  font-size: 13px;
 }
 
 .right-col{
@@ -3593,6 +4793,31 @@ html{
   animation: player-critical-breathe 1.05s ease-in-out infinite;
 }
 
+/* 战功回合将尽：卡顶警示条（尚余 3/2/1 回合） */
+.player-merit-turn-warn{
+  flex-shrink: 0;
+  margin: 0 0 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  color: rgba(254, 243, 199, 0.98);
+  text-align: center;
+  background: linear-gradient(180deg, rgba(180, 83, 9, 0.38), rgba(90, 45, 12, 0.32));
+  border: 1px solid rgba(251, 191, 36, 0.48);
+  box-shadow: 0 0 14px rgba(234, 179, 8, 0.12);
+  pointer-events: none;
+}
+.player-merit-turn-warn[hidden]{
+  display: none !important;
+}
+#playerCard.fighter-card.player-card--merit-warn:not(.player-critical){
+  border-color: rgba(251, 191, 36, 0.32);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.1);
+}
+
 .player-status-banner{
   position:absolute;
   inset: 0;
@@ -3648,6 +4873,29 @@ html{
   text-indent: 0.08em;
   padding-left: 0.18em;
   padding-right: 0.18em;
+}
+/* 战功回合用尽：沙漏色朱印，与「死/处决」区分 */
+.player-dead-stamp.player-dead-stamp--turn-limit{
+  font-size: clamp(38px, 10.5vw, 56px);
+  letter-spacing: 0.06em;
+  text-indent: 0.06em;
+  color: rgba(255, 251, 235, 0.98);
+  border-color: rgba(180, 83, 9, 0.95);
+  background: linear-gradient(
+    145deg,
+    rgba(55, 48, 22, 0.78) 0%,
+    rgba(113, 63, 18, 0.48) 50%,
+    rgba(55, 42, 12, 0.72) 100%
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(254, 215, 170, 0.2),
+    inset 0 2px 10px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(69, 26, 3, 0.88),
+    0 8px 22px rgba(0, 0, 0, 0.48);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+.player-dead-stamp--turn-limit::after{
+  border-color: rgba(253, 230, 138, 0.28);
 }
 .player-dead-stamp::after{
   content: "";
@@ -4762,6 +6010,15 @@ body.ending-slowmo .panel-hint-blink{
   background: linear-gradient(90deg, rgba(255,255,255,.22), rgba(59,130,246,.55) 45%, rgba(59,130,246,.08));
   box-shadow: 0 0 12px rgba(59,130,246,.18);
 }
+/* 中央「第X回合」外框：固定最小宽，光点起点不随字数抖动 */
+.battle-vs-divider__fly-anchor{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 7.25rem;
+  max-width: 100%;
+}
 .battle-vs-divider__vs{
   flex:0 0 auto;
   font-weight: 1000;
@@ -4775,6 +6032,20 @@ body.ending-slowmo .panel-hint-blink{
   border: 1px solid rgba(251,191,36,.42);
   background: linear-gradient(180deg, rgba(30,41,59,.75), rgba(15,23,42,.92));
   box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+  transition: color 0.2s ease, font-size 0.2s ease, transform 0.2s ease, border-color 0.2s ease, text-shadow 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+}
+/* 战功关：倒数第三回合起「第X回合」警示（红字放大） */
+.battle-vs-divider__vs.battle-vs-divider__vs--urgent{
+  font-size: clamp(14px, 2.1vw, 16px);
+  letter-spacing: .12em;
+  text-indent: 0;
+  color: rgba(254,202,202,.99);
+  transform: scale(1.12);
+  border-color: rgba(248,113,113,.55);
+  background: linear-gradient(180deg, rgba(69,10,10,.55), rgba(30,15,23,.95));
+  text-shadow: 0 0 14px rgba(248,113,113,.45), 0 0 28px rgba(220,38,38,.25);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 0 20px rgba(239,68,68,.22);
 }
 /* legacy story block */
 .story{
@@ -4783,50 +6054,539 @@ body.ending-slowmo .panel-hint-blink{
 .story-title{color:var(--muted); font-size:12px; letter-spacing:.05em}
 .story-text{margin-top:8px; white-space:pre-wrap; line-height:1.55}
 
-/* 战功评级徽章：丁 → 奇，由浅灰到紫金的等级色 */
+/* 战功评级 7 档：CSS 变量 + .grade-* 切换（钻晶 / 赤铜 / 曜金等主题色） */
 .merit-grade{
-  display: inline-block;
-  font-weight: 950;
+  font-weight: 800;
   letter-spacing: 0.06em;
-  padding: 0.12em 0.45em;
-  border-radius: 6px;
   line-height: 1.25;
   white-space: nowrap;
-}
-.merit-grade--ding{
-  color: rgba(203,213,225,.96);
-  background: rgba(51,65,85,.42);
-  border: 1px solid rgba(100,116,139,.38);
-}
-.merit-grade--bing{
-  color: rgba(254,215,170,.98);
-  background: rgba(120,53,15,.32);
-  border: 1px solid rgba(217,119,6,.42);
-  box-shadow: 0 0 10px rgba(245,158,11,.12);
-}
-.merit-grade--yi{
-  color: rgba(186,230,253,.98);
-  background: rgba(30,58,138,.32);
-  border: 1px solid rgba(56,189,248,.38);
-  box-shadow: 0 0 10px rgba(14,165,233,.12);
-}
-.merit-grade--jia{
-  color: rgba(254,243,199,.98);
-  background: linear-gradient(180deg, rgba(146,64,14,.5), rgba(69,26,3,.38));
-  border: 1px solid rgba(251,191,36,.48);
-  text-shadow: 0 0 12px rgba(234,179,8,.22);
-}
-.merit-grade--qi{
-  color: rgba(250,250,250,.98);
-  background: linear-gradient(135deg, rgba(91,33,182,.52), rgba(180,83,9,.36));
-  border: 1px solid rgba(196,181,253,.42);
-  box-shadow: 0 0 14px rgba(167,139,250,.28);
+  vertical-align: middle;
 }
 .merit-grade--unknown{
-  color: rgba(148,163,184,.92);
-  background: rgba(15,23,42,.35);
-  border: 1px solid rgba(71,85,105,.3);
+  display: inline-block;
+  padding: 0.12em 0.45em;
+  border-radius: 6px;
+  color: rgba(148, 163, 184, 0.92);
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(71, 85, 105, 0.3);
   font-weight: 700;
+}
+
+/* —— 战功 7 档：Lv7 神将～Lv1 战将（钻晶 / 赤锋 / 铜勋 / 曜金 / 紫镇 / 青刃 / 芽绿）—— */
+.grade-shenjiang {
+  /* Lv7 神将：钻石冰辉，神性冷光 */
+  --grade-main: #beebff;
+  --grade-sub: #f8fdff;
+  --grade-deep: #1a3d52;
+  --grade-bg: linear-gradient(188deg, rgba(142, 219, 255, 0.14), rgba(234, 251, 255, 0.06));
+  --grade-border: linear-gradient(180deg, #eafbff, #5ec8e8);
+  --grade-glow: 0 0 26px rgba(142, 219, 255, 0.38), 0 0 42px rgba(190, 235, 255, 0.12);
+  --grade-inner: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+  --grade-pattern:
+    linear-gradient(118deg, rgba(190, 235, 255, 0.14) 0%, transparent 42%),
+    linear-gradient(212deg, rgba(142, 219, 255, 0.1) 0%, transparent 48%),
+    radial-gradient(ellipse 90% 70% at 50% -10%, rgba(248, 253, 255, 0.2), transparent 58%);
+  --grade-icon: "天";
+  --grade-icon-color: rgba(190, 235, 255, 0.2);
+  --grade-sheen-opacity: 0.42;
+  --grade-burst-opacity: 0.52;
+  --grade-breathe-scale: 1.02;
+}
+.grade-feijiang {
+  /* Lv6 飞将：赤钢血锋 */
+  --grade-main: #ff625b;
+  --grade-sub: #ffb09a;
+  --grade-deep: #7a1310;
+  --grade-bg: linear-gradient(180deg, rgba(216, 58, 52, 0.22), rgba(255, 98, 91, 0.1));
+  --grade-border: linear-gradient(180deg, #ffb09a, #c42822);
+  --grade-glow: 0 0 22px rgba(216, 58, 52, 0.38);
+  --grade-inner: inset 0 1px 0 rgba(255, 200, 180, 0.22);
+  --grade-pattern: linear-gradient(128deg, rgba(255, 98, 91, 0.16), transparent 46%);
+  --grade-icon: "羽";
+  --grade-icon-color: rgba(255, 176, 154, 0.2);
+  --grade-sheen-opacity: 0.38;
+  --grade-burst-opacity: 0.42;
+  --grade-breathe-scale: 1.018;
+}
+.grade-mingjiang {
+  /* Lv5 名将：烧铜琥珀 */
+  --grade-main: #ffb14d;
+  --grade-sub: #ffe0a6;
+  --grade-deep: #7e4610;
+  --grade-bg: linear-gradient(180deg, rgba(240, 138, 36, 0.2), rgba(255, 177, 77, 0.1));
+  --grade-border: linear-gradient(180deg, #ffe0a6, #d97818);
+  --grade-glow: 0 0 20px rgba(240, 138, 36, 0.32);
+  --grade-inner: inset 0 1px 0 rgba(255, 230, 190, 0.2);
+  --grade-pattern: radial-gradient(circle at 28% 18%, rgba(255, 224, 166, 0.18), transparent 46%);
+  --grade-icon: "勋";
+  --grade-icon-color: rgba(255, 224, 166, 0.18);
+  --grade-sheen-opacity: 0.34;
+  --grade-burst-opacity: 0.36;
+  --grade-breathe-scale: 1.015;
+}
+.grade-xiaojiang {
+  /* Lv4 骁将：曜金军功牌 */
+  --grade-main: #ffe36a;
+  --grade-sub: #fff4b2;
+  --grade-deep: #7b660c;
+  --grade-bg: linear-gradient(180deg, rgba(232, 200, 58, 0.2), rgba(255, 227, 106, 0.1));
+  --grade-border: linear-gradient(180deg, #fff4b2, #c9a41e);
+  --grade-glow: 0 0 18px rgba(232, 200, 58, 0.3);
+  --grade-inner: inset 0 1px 0 rgba(255, 248, 210, 0.22);
+  --grade-pattern: linear-gradient(180deg, rgba(255, 227, 106, 0.12), transparent 54%);
+  --grade-icon: "虎";
+  --grade-icon-color: rgba(255, 244, 178, 0.16);
+  --grade-sheen-opacity: 0.3;
+  --grade-burst-opacity: 0.32;
+  --grade-breathe-scale: 1.012;
+}
+.grade-jianjiang {
+  /* Lv3 健将：紫钢镇纹 */
+  --grade-main: #a98bff;
+  --grade-sub: #e1d2ff;
+  --grade-deep: #3a206a;
+  --grade-bg: linear-gradient(180deg, rgba(122, 79, 214, 0.22), rgba(169, 139, 255, 0.1));
+  --grade-border: linear-gradient(180deg, #e1d2ff, #6a3fd4);
+  --grade-glow: 0 0 16px rgba(122, 79, 214, 0.32);
+  --grade-inner: inset 0 1px 0 rgba(225, 210, 255, 0.2);
+  --grade-pattern: radial-gradient(circle at 50% 0%, rgba(169, 139, 255, 0.14), transparent 50%);
+  --grade-icon: "镇";
+  --grade-icon-color: rgba(225, 210, 255, 0.16);
+  --grade-sheen-opacity: 0.26;
+  --grade-burst-opacity: 0.28;
+  --grade-breathe-scale: 1.01;
+}
+.grade-yongjiang {
+  /* Lv2 勇将：冷钢青锋 */
+  --grade-main: #79b3ff;
+  --grade-sub: #d7e9ff;
+  --grade-deep: #173c7a;
+  --grade-bg: linear-gradient(180deg, rgba(58, 118, 216, 0.18), rgba(121, 179, 255, 0.08));
+  --grade-border: linear-gradient(180deg, #d7e9ff, #3a76d8);
+  --grade-glow: 0 0 14px rgba(58, 118, 216, 0.28);
+  --grade-inner: inset 0 1px 0 rgba(220, 235, 255, 0.16);
+  --grade-pattern: linear-gradient(135deg, rgba(121, 179, 255, 0.11), transparent 54%);
+  --grade-icon: "刃";
+  --grade-icon-color: rgba(215, 233, 255, 0.14);
+  --grade-sheen-opacity: 0.22;
+  --grade-burst-opacity: 0.22;
+  --grade-breathe-scale: 1.008;
+}
+.grade-zhanjiang {
+  /* Lv1 战将：青铜芽绿 — 初成可战，非「差」 */
+  --grade-main: #7ce0a8;
+  --grade-sub: #d8ffe7;
+  --grade-deep: #124c33;
+  --grade-bg: linear-gradient(180deg, rgba(47, 175, 110, 0.2), rgba(124, 224, 168, 0.08));
+  --grade-border: linear-gradient(180deg, #d8ffe7, #2faf6e);
+  --grade-glow: 0 0 12px rgba(47, 175, 110, 0.28);
+  --grade-inner: inset 0 1px 0 rgba(220, 255, 235, 0.18);
+  --grade-pattern: radial-gradient(ellipse at 50% 100%, rgba(124, 224, 168, 0.1), transparent 52%);
+  --grade-icon: "芽";
+  --grade-icon-color: rgba(216, 255, 231, 0.14);
+  --grade-sheen-opacity: 0.18;
+  --grade-burst-opacity: 0.2;
+  --grade-breathe-scale: 1.006;
+}
+
+/* Lv8 天命：破格层，白金天青底 + 虹彩轨（结算徽记与神将区分） */
+.grade-tianming {
+  --grade-main: #e8f4ff;
+  --grade-sub: #bfe9ff;
+  --grade-deep: #0c2744;
+  --grade-bg: linear-gradient(188deg, rgba(224, 242, 254, 0.16), rgba(56, 189, 248, 0.08));
+  --grade-border: linear-gradient(180deg, #f8fafc, #38bdf8);
+  --grade-glow:
+    0 0 30px rgba(56, 189, 248, 0.42),
+    0 0 52px rgba(244, 114, 182, 0.2),
+    0 0 72px rgba(250, 204, 21, 0.14);
+  --grade-inner: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  --grade-pattern:
+    linear-gradient(118deg, rgba(224, 242, 254, 0.22) 0%, transparent 42%),
+    linear-gradient(212deg, rgba(56, 189, 248, 0.14) 0%, transparent 48%),
+    radial-gradient(ellipse 90% 70% at 50% -10%, rgba(244, 114, 182, 0.1), transparent 58%);
+  --grade-icon: "命";
+  --grade-icon-color: rgba(186, 230, 253, 0.22);
+  --grade-sheen-opacity: 0.48;
+  --grade-burst-opacity: 0.55;
+  --grade-breathe-scale: 1.024;
+}
+
+@keyframes merit-destiny-rainbow-text {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes merit-destiny-rainbow-glow {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+  100% {
+    filter: hue-rotate(360deg);
+  }
+}
+
+.chapter-settle-stack.grade-tianming .chapter-settle-merit-grade-display.grade-tianming {
+  background-image: linear-gradient(
+    92deg,
+    #fde68a,
+    #f0abfc,
+    #7dd3fc,
+    #6ee7b7,
+    #fcd34d,
+    #fde68a
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: merit-destiny-rainbow-text 5s linear infinite;
+  text-shadow: none;
+  filter: drop-shadow(0 2px 14px rgba(56, 189, 248, 0.45));
+}
+
+.chapter-settle-soul-layer--destiny {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--grade-main) 28%, rgba(148, 163, 184, 0.35)) !important;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--grade-sub) 10%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--grade-main) 22%, transparent),
+    0 0 28px rgba(56, 189, 248, 0.22);
+}
+
+.chapter-settle-soul-layer--destiny::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(
+    120deg,
+    rgba(251, 191, 36, 0.55),
+    rgba(167, 139, 250, 0.5),
+    rgba(56, 189, 248, 0.55),
+    rgba(52, 211, 153, 0.5),
+    rgba(244, 114, 182, 0.5),
+    rgba(251, 191, 36, 0.55)
+  );
+  background-size: 300% 300%;
+  animation: merit-destiny-rainbow-glow 10s linear infinite;
+  opacity: 0.45;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.chapter-settle-soul-layer--destiny > * {
+  position: relative;
+  z-index: 1;
+}
+
+.chapter-settle-soul-layer-kicker--destiny {
+  color: color-mix(in srgb, var(--grade-main) 62%, rgba(226, 232, 240, 0.95));
+  text-shadow: 0 0 18px color-mix(in srgb, var(--grade-main) 35%, transparent);
+}
+
+.chapter-settle-destiny-lead {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 800;
+  font-style: italic;
+  line-height: 1.45;
+  letter-spacing: 0.04em;
+  color: rgba(254, 252, 232, 0.96);
+  text-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
+}
+
+.soul-showcase--destiny {
+  border: 1px solid color-mix(in srgb, var(--grade-main) 35%, rgba(255, 255, 255, 0.1)) !important;
+  background: rgba(15, 23, 42, 0.42) !important;
+}
+
+.chapter-settle-destiny-name,
+.soul-showcase-row--destiny-hero .chapter-settle-destiny-name {
+  display: inline-block;
+  font-size: clamp(22px, 5vw, 30px);
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-align: center;
+  width: 100%;
+  margin-top: 4px;
+  background-image: linear-gradient(
+    95deg,
+    #fef9c3,
+    #fbcfe8,
+    #bae6fd,
+    #a7f3d0,
+    #fde68a
+  );
+  background-size: 240% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: merit-destiny-rainbow-text 6s linear infinite;
+}
+
+.chapter-settle-soul-trait-one.chapter-settle-destiny-intro {
+  margin-top: 12px;
+  font-size: 15px;
+  font-weight: 750;
+  color: color-mix(in srgb, var(--grade-sub) 88%, rgba(226, 232, 240, 0.95));
+}
+
+.merit-hero-verdict--destiny .merit-report-kicker--destiny {
+  letter-spacing: 0.28em;
+  color: color-mix(in srgb, var(--grade-main) 55%, rgba(226, 232, 240, 0.92));
+}
+
+.merit-destiny-lead {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 800;
+  font-style: italic;
+  color: rgba(254, 252, 232, 0.96);
+}
+
+.merit-soul-showcase--destiny .merit-destiny-name {
+  font-size: clamp(20px, 4.2vw, 28px);
+  letter-spacing: 0.1em;
+  background-image: linear-gradient(
+    95deg,
+    #fef9c3,
+    #fbcfe8,
+    #bae6fd,
+    #a7f3d0,
+    #fde68a
+  );
+  background-size: 240% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: merit-destiny-rainbow-text 6s linear infinite;
+}
+
+.merit-destiny-intro {
+  margin: 10px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.55;
+  color: rgba(226, 232, 240, 0.94);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chapter-settle-stack.grade-tianming .chapter-settle-merit-grade-display.grade-tianming,
+  .chapter-settle-destiny-name,
+  .soul-showcase-row--destiny-hero .chapter-settle-destiny-name,
+  .merit-soul-showcase--destiny .merit-destiny-name {
+    animation: none;
+    background-image: none;
+    color: var(--grade-sub);
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    filter: none;
+  }
+  .chapter-settle-soul-layer--destiny::before {
+    animation: none;
+    opacity: 0.22;
+  }
+}
+
+.soul-grade-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: var(--grade-bg);
+  box-shadow: var(--grade-glow), var(--grade-inner);
+  color: var(--grade-sub);
+  text-shadow: var(--grade-text-shadow);
+  isolation: isolate;
+}
+.soul-grade-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: var(--grade-border-width);
+  border-radius: inherit;
+  background: var(--grade-border);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.95;
+  pointer-events: none;
+}
+.soul-grade-card::after {
+  content: var(--grade-icon);
+  position: absolute;
+  right: 10px;
+  top: 4px;
+  font-size: 56px;
+  font-weight: 700;
+  color: var(--grade-icon-color);
+  line-height: 1;
+  pointer-events: none;
+  z-index: 0;
+}
+.soul-grade-title {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--grade-main);
+  text-shadow:
+    0 0 10px color-mix(in srgb, var(--grade-main) 45%, transparent),
+    var(--grade-text-shadow);
+}
+.soul-grade-subtitle {
+  position: relative;
+  z-index: 1;
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--grade-sub);
+  opacity: 0.92;
+}
+.soul-grade-chip {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  margin-left: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--grade-main) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--grade-main) 40%, transparent);
+  color: var(--grade-sub);
+  font-size: 12px;
+  font-weight: 700;
+}
+.soul-grade-desc {
+  color: rgba(255, 255, 255, 0.88);
+}
+.soul-grade-meta {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.soul-grade-card .grade-sheen {
+  position: absolute;
+  inset: -20%;
+  background: linear-gradient(
+    115deg,
+    transparent 32%,
+    rgba(255, 255, 255, var(--grade-sheen-opacity)) 48%,
+    transparent 64%
+  );
+  transform: translateX(-120%) rotate(8deg);
+  animation: gradeSheen var(--grade-sheen-speed) linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+.soul-grade-card .grade-breathe {
+  position: absolute;
+  inset: 0;
+  background: var(--grade-pattern);
+  opacity: 0.9;
+  animation: gradeBreathe var(--grade-breathe-speed) ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+.soul-grade-card.is-entering {
+  animation: gradeBurst 0.42s ease-out both;
+}
+
+@keyframes gradeSheen {
+  0% {
+    transform: translateX(-120%) rotate(8deg);
+  }
+  100% {
+    transform: translateX(120%) rotate(8deg);
+  }
+}
+@keyframes gradeBreathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(var(--grade-breathe-scale));
+    opacity: 1;
+  }
+}
+@keyframes gradeBurst {
+  0% {
+    transform: scale(0.96);
+    filter: brightness(1.35);
+    box-shadow:
+      0 0 0 rgba(255, 255, 255, 0),
+      var(--grade-glow);
+  }
+  60% {
+    transform: scale(var(--grade-burst-scale));
+    filter: brightness(1.08);
+    box-shadow:
+      0 0 28px rgba(255, 255, 255, var(--grade-burst-opacity)),
+      var(--grade-glow);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+    box-shadow: var(--grade-glow), var(--grade-inner);
+  }
+}
+
+.soul-grade-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--grade-main) 14%, #111 86%);
+  border: 1px solid color-mix(in srgb, var(--grade-main) 38%, transparent);
+  box-shadow: var(--grade-glow);
+  color: var(--grade-sub);
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.soul-grade-badge::before {
+  content: var(--grade-icon);
+  color: var(--grade-main);
+  font-size: 14px;
+  opacity: 0.95;
+}
+.merit-grade.soul-grade-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  padding: 0 10px;
+  min-height: 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .soul-grade-card .grade-sheen {
+    animation: none;
+    opacity: 0;
+  }
+  .soul-grade-card .grade-breathe {
+    animation: none;
+  }
+  .soul-grade-card.is-entering {
+    animation: none;
+  }
 }
 
 /* 第一章战功结算（S1） */
@@ -4863,6 +6623,9 @@ body.ending-slowmo .panel-hint-blink{
   color: var(--muted);
   font-style: italic;
   line-height: 1.45;
+}
+.merit-report-flavor.soul-grade-desc{
+  color: rgba(255, 255, 255, 0.88);
 }
 .merit-hero-verdict{
   margin-top: 14px;
@@ -4940,6 +6703,9 @@ body.ending-slowmo .panel-hint-blink{
   margin: 8px 0 0 0;
   font-size: 11px;
   color: var(--muted);
+}
+.merit-report-meta.soul-grade-meta{
+  color: rgba(255, 255, 255, 0.68);
 }
 
 @media (max-width: 980px){
@@ -5060,81 +6826,129 @@ body.ending-slowmo .panel-hint-blink{
   }
 }
 
-/* 昵称输入弹窗（与成长/胜利卡同款面板 + 全屏暗角） */
+/* 留名弹窗：立名赴乱世，深色金属仪式（仅视觉） */
 .name-dialog-overlay{
   position:fixed;
   inset:0;
   display:flex;
   align-items:center;
   justify-content:center;
-  padding: 16px;
-  background: rgba(2, 6, 23, .82);
-  backdrop-filter: blur(8px);
+  padding: 20px;
+  background:
+    radial-gradient(ellipse 85% 65% at 50% 40%, rgba(40, 24, 18, 0.35), transparent 62%),
+    rgba(4, 6, 14, 0.88);
+  backdrop-filter: blur(10px);
   z-index:70000;
 }
 .name-dialog-overlay[hidden]{ display:none; }
 .name-dialog-card{
-  width: min(420px, 100%);
+  width: min(432px, 100%);
   position: relative;
   text-align: left;
-  padding: 16px 16px 18px;
-  padding-top: 42px;
-  background: linear-gradient(180deg, rgba(30,41,59,.72), rgba(2,6,23,.42));
-  border: 1px solid rgba(250,204,21,.14);
-  border-radius: 14px;
-  box-shadow: 0 18px 48px rgba(0,0,0,.45);
+  display: flex;
+  flex-direction: column;
+  padding: 44px 26px 26px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(ellipse 110% 70% at 50% -8%, rgba(120, 48, 36, 0.14), transparent 52%),
+    linear-gradient(168deg, rgba(26, 28, 36, 0.97) 0%, rgba(10, 11, 18, 0.98) 55%, rgba(6, 8, 14, 0.99) 100%);
+  border: 1px solid color-mix(in srgb, rgba(180, 150, 100, 0.45) 55%, rgba(40, 35, 28, 0.9));
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.45) inset,
+    0 24px 56px rgba(0, 0, 0, 0.55),
+    0 0 80px rgba(20, 12, 8, 0.25);
   overflow: hidden;
 }
 .name-dialog-card::before{
   content:'';
   position:absolute;
   top:0; left:0; right:0;
-  height:2px;
-  background: linear-gradient(90deg, transparent, rgba(250,204,21,.5) 30%, rgba(251,191,36,.38) 70%, transparent);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200, 170, 110, 0.22) 22%, rgba(230, 200, 120, 0.28) 50%, rgba(200, 170, 110, 0.18) 78%, transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+.name-dialog-card__texture{
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+  opacity: 0.55;
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0, transparent 11px, rgba(0, 0, 0, 0.045) 11px, rgba(0, 0, 0, 0.045) 12px),
+    repeating-linear-gradient(0deg, transparent 0, transparent 9px, rgba(255, 255, 255, 0.018) 9px, rgba(255, 255, 255, 0.018) 10px),
+    radial-gradient(ellipse 55% 40% at 18% 12%, rgba(160, 110, 60, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 88% 88%, rgba(70, 90, 120, 0.05) 0%, transparent 50%);
+  mix-blend-mode: soft-light;
 }
 .name-dialog-close{
   position:absolute;
-  top: 10px;
-  right: 10px;
-  width: 34px;
-  height: 34px;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(15,23,42,.55);
-  color: rgba(226,232,240,.88);
-  font-size: 22px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(8, 10, 18, 0.35);
+  color: rgba(148, 163, 184, 0.38);
+  font-size: 18px;
   line-height: 1;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
-  transition: background .15s, border-color .15s, color .15s;
-  z-index: 2;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  z-index: 3;
 }
 .name-dialog-close:hover{
-  background: rgba(124,58,237,.22);
-  border-color: rgba(167,139,250,.45);
-  color: #fff;
+  background: rgba(15, 23, 42, 0.55);
+  border-color: rgba(148, 163, 184, 0.22);
+  color: rgba(226, 232, 240, 0.88);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.name-dialog-close:focus-visible{
+  outline: 2px solid rgba(212, 175, 55, 0.35);
+  outline-offset: 2px;
+}
+.name-dialog-head{
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
 }
 .name-dialog-kicker{
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: .2em;
-  color: rgba(253,230,138,.82);
-  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.32em;
+  text-transform: none;
+  color: rgba(148, 163, 184, 0.48);
+  margin: 0 0 12px 0;
 }
 .name-dialog-title{
-  font-size: 15px;
+  font-size: clamp(22px, 4.6vw, 28px);
   font-weight: 950;
-  color: rgba(229,231,235,.98);
-  line-height: 1.35;
-  margin: 0 0 6px 0;
+  letter-spacing: 0.14em;
+  color: rgba(252, 250, 245, 0.97);
+  line-height: 1.22;
+  margin: 0 0 14px 0;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.4), 0 0 1px rgba(0, 0, 0, 0.5);
 }
 .name-dialog-sub{
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--muted);
-  margin: 0 0 12px 0;
-  line-height: 1.45;
+  color: rgba(186, 195, 210, 0.68);
+  margin: 0;
+  line-height: 1.65;
+  letter-spacing: 0.04em;
+}
+.name-dialog-field{
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  margin: 26px 0 22px;
+  min-height: 0;
 }
 .name-dialog-card .name-dialog-row{
   margin: 8px 0 10px;
@@ -5151,35 +6965,96 @@ body.ending-slowmo .panel-hint-blink{
   line-height: 1.2;
 }
 .name-dialog-input{
-  width:100%;
+  width: 100%;
   box-sizing: border-box;
-  padding: 10px 12px;
-  border:1px solid rgba(255,255,255,.10);
+  min-height: 54px;
+  padding: 15px 20px;
   border-radius: 10px;
-  background: rgba(2,6,23,.35);
-  color: rgba(226,232,240,.96);
-  font-size: 15px;
+  border: 1px solid color-mix(in srgb, rgba(200, 175, 130, 0.35) 40%, rgba(60, 52, 40, 0.95));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 42%),
+    linear-gradient(165deg, rgba(14, 16, 26, 0.98) 0%, rgba(8, 10, 18, 0.96) 100%);
+  color: rgba(243, 244, 246, 0.97);
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: .04em;
-  text-align:center;
-  outline:none;
-  margin-bottom: 14px;
-  transition: border-color .18s, box-shadow .18s;
+  letter-spacing: 0.08em;
+  text-align: center;
+  outline: none;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35) inset,
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -2px 8px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+}
+.name-dialog-input::placeholder{
+  color: rgba(148, 163, 184, 0.45);
+  font-weight: 600;
+  letter-spacing: 0.06em;
 }
 .name-dialog-input:focus{
-  border-color: rgba(167,139,250,.55);
-  box-shadow: 0 0 0 2px rgba(124,58,237,.2);
+  border-color: color-mix(in srgb, rgba(212, 175, 55, 0.55) 50%, rgba(100, 80, 50, 0.9));
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.4) inset,
+    inset 0 1px 0 rgba(255, 245, 220, 0.1),
+    0 0 0 2px rgba(180, 140, 70, 0.18),
+    0 0 28px rgba(120, 60, 30, 0.12);
 }
 .name-dialog-actions{
-  display:flex;
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  display: flex;
   justify-content: stretch;
-  margin-top: 4px;
+  margin-top: auto;
+  padding-top: 4px;
 }
-.name-dialog-ok{
+.name-dialog-ok.btn-offense{
   width: 100%;
-  padding: 12px 16px;
-  font-size: 15px;
+  position: relative;
+  overflow: hidden;
+  min-height: 52px;
+  padding: 16px 20px;
+  font-size: 17px;
   font-weight: 950;
+  letter-spacing: 0.14em;
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 105, 0.42);
+  background: linear-gradient(180deg, #7f1c1c 0%, #5c1014 38%, #3a080c 72%, #240508 100%);
+  color: rgba(255, 248, 242, 0.98);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 200, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+    0 6px 22px rgba(0, 0, 0, 0.42);
+  transition: filter 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+.name-dialog-ok.btn-offense::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 230, 200, 0.14) 48%, transparent 62%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+.name-dialog-ok.btn-offense:hover:not([disabled])::before{
+  opacity: 1;
+}
+.name-dialog-ok.btn-offense:hover:not([disabled]){
+  border-color: rgba(250, 210, 120, 0.55);
+  filter: brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 210, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 0 28px rgba(180, 60, 40, 0.22),
+    0 8px 28px rgba(0, 0, 0, 0.45);
+}
+@media (prefers-reduced-motion: reduce){
+  .name-dialog-ok.btn-offense::before{
+    display: none;
+  }
+  .name-dialog-ok.btn-offense:hover:not([disabled]){
+    filter: none;
+  }
 }
 .name-dialog-card .name-dialog-geo-hint{
   margin-top: 0;
@@ -5190,7 +7065,9 @@ body.ending-slowmo .panel-hint-blink{
 }
 @media (max-width: 480px){
   .name-dialog-card{
-    padding: 14px 14px 16px;
-    padding-top: 40px;
+    padding: 42px 18px 22px;
+  }
+  .name-dialog-field{
+    margin: 22px 0 18px;
   }
 }
