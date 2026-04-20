@@ -47,12 +47,12 @@ const OnlineLeaderboard = (() => {
     );
   }
 
-  /** 构造请求头（新版 publishable key 只用 apikey header，不放 Authorization） */
+  /** 构造请求头 */
   function headers(extra) {
     return {
       apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       "Content-Type": "application/json",
-      Prefer: "return=minimal",
       ...extra,
     };
   }
@@ -140,7 +140,7 @@ const OnlineLeaderboard = (() => {
       };
       const res = await fetch(url, {
         method: "POST",
-        headers: headers(),
+        headers: headers({ Prefer: "return=minimal" }),
         body: JSON.stringify(body),
       });
       return res.ok;
