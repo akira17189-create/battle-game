@@ -94,7 +94,7 @@ const OnlineLeaderboard = (() => {
   async function fetchLeaderboard(limit = 30) {
     if (!isConfigured()) return null;
     try {
-      const url = `${SUPABASE_URL}/rest/v1/leaderboard?select=name,final_merit,grade,run_sum,retries,province,city,created_at&order=final_merit.desc&limit=${limit}`;
+      const url = `${SUPABASE_URL}/rest/v1/leaderboard?select=name,final_merit,grade,run_sum,retries,province,city,hero_name,created_at&order=final_merit.desc&limit=${limit}`;
       const res = await fetch(url, { headers: headers() });
       if (!res.ok) return null;
       const data = await res.json();
@@ -108,7 +108,7 @@ const OnlineLeaderboard = (() => {
         retries: row.retries,
         province: row.province || "",
         city: row.city || "",
-        heroName: "",
+        heroName: row.hero_name || "",
       }));
     } catch {
       return null;
@@ -132,6 +132,7 @@ const OnlineLeaderboard = (() => {
         retries: record.retries || 0,
         province: "",
         city: "",
+        hero_name: String(record.heroName || "").trim().slice(0, 24),
       };
       const res = await fetch(url, {
         method: "POST",
