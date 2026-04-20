@@ -5100,7 +5100,7 @@ function buildCardFxPlayerVsEnemySegment(state, bundle, segment, eo, o, rng) {
 
 /**
  * 与结算共用同一组随机数，保证对拼动画与真实结算一致。
- * @returns {{ defendFailed: boolean, blockFailed: boolean, heavyQuickInterruptSuccess: boolean, heavyBossBlockVsDefend: boolean, attackVsHeavyTargetInterrupt: boolean, restEvadeByEnemyId?: Record<string, boolean> }}
+ * @returns {{ defendFailed: boolean, blockFailed: boolean, heavyQuickInterruptSuccess: boolean, attackVsHeavyTargetInterrupt: boolean, restEvadeByEnemyId?: Record<string, boolean> }}
  * defendFailed / blockFailed 恒为 false：破绽中防御与盾反不再掷失败率，与结算一致。
  */
 function rollTurnResolutionRng(state, action) {
@@ -5122,7 +5122,6 @@ function rollTurnResolutionRng(state, action) {
     blockFailed: false,
     heavyQuickInterruptSuccess:
       action === "heavy" && enemyQuickThreatensPlayerHeavy(state) && Math.random() < INTERRUPT_QUICK_VS_HEAVY,
-    heavyBossBlockVsDefend: Math.random() < 0.5,
     /** 你对目标快攻时，是否打断其重击（与 resolveEnemyAgainstPlayer 内判定一致） */
     attackVsHeavyTargetInterrupt: Math.random() < INTERRUPT_QUICK_VS_HEAVY,
     restEvadeByEnemyId,
@@ -5179,15 +5178,6 @@ function previewRawDamageToEnemyVsDefend(state, tgt, action, targetId, rng) {
   if (action === "heavy" && rng.heavyQuickInterruptSuccess && enemyQuickThreatensPlayerHeavy(state)) {
     effectiveAction = "attack";
   }
-  if (
-    effectiveAction === "heavy" &&
-    tgt.canBlockHeavy &&
-    intent === "defend" &&
-    rng.heavyBossBlockVsDefend
-  ) {
-    return 0;
-  }
-
   if (effectiveAction === "attack") {
     let dmg = ns(2) + (state.player.atkBonus || 0);
     if (state.perks?.includes("perk_staggerstrike") && (e.broken || e.stagger > 0)) {
@@ -5266,7 +5256,6 @@ function previewRawEnemyHpDamageFromPlayer(state, tgt, action, targetId, rng) {
   }
   if (effectiveAction === "heavy") {
     if (intent === "block") return 0;
-    if (intent === "defend" && tgt.canBlockHeavy && rng.heavyBossBlockVsDefend) return 0;
     let dmg = ns(3) + (state.player.atkBonus || 0);
     let stg = 2;
     if (state.perks?.includes("perk_armorbreak")) stg += 1;
@@ -5303,7 +5292,6 @@ function previewStaggerIncFromPlayerToEnemy(state, eo, playerAction, targetId, r
   }
   if (effectiveAction === "heavy") {
     if (intent === "block") return 0;
-    if (intent === "defend" && eo.canBlockHeavy && rng?.heavyBossBlockVsDefend) return 0;
     let stg = 2;
     if (state.perks?.includes("perk_armorbreak")) stg += 1;
     stg += state.player.heavyStgBonus || 0;
@@ -6506,14 +6494,6 @@ function applyBattleTurnResolutionSegment(state, ui, turnCtx, bundle, segments, 
             `→ 对${tgt.fighter.name}：重击被敌方快攻打断，{o}改按快攻结算{/o}：伤害-{g}${r.eDmg}{/g} 失衡+{g}${r.eStg}{/g}${r.notes.length ? `【${r.notes.join("；")}】` : ""}`,
           );
           meritTurn.heavyInterrupted = true;
-        } else if (
-          action === "heavy" &&
-          tgt.canBlockHeavy &&
-          tgt.intent === "defend" &&
-          (rolled?.heavyBossBlockVsDefend ?? Math.random() < 0.5)
-        ) {
-          addStagger(state.player, 1, state);
-          details.push(`→ {r}${tgt.fighter.name}盾反了你的重击：你失衡 +1。{/r}`);
         } else {
           const st0 = tgt.fighter.stagger | 0;
           const br0 = !!tgt.fighter.broken;
@@ -10723,34 +10703,23 @@ function onPlayerAction(state, ui, action, opts = {}) {
       );
       meritTurn.heavyInterrupted = true;
     } else {
-      // 头目以防御姿态盾反：可能直接弹反你的重击并反咬节奏
-      if (
-        action === "heavy" &&
-        tgt.canBlockHeavy &&
-        tgt.intent === "defend" &&
-        (rolled?.heavyBossBlockVsDefend ?? Math.random() < 0.5)
-      ) {
-        addStagger(state.player, 1, state);
-        details.push(`→ {r}${tgt.fighter.name}盾反了你的重击：你失衡 +1。{/r}`);
-      } else {
-        const st0 = tgt.fighter.stagger | 0;
-        const br0 = !!tgt.fighter.broken;
-        const r = applyPlayerToEnemy(state, tgt, action, targetId);
-        meritAccPlayerToEnemyHit(meritTurn, r, st0, br0);
-        meritTurn.hadPlayerHit = meritTurn.hadPlayerHit || !!r.hit;
-        meritTurn.enemyStaggerGainedTotal += r.eStg || 0;
-        if (r.flags?.break_defense) meritTurn._breakDefense = true;
-        if (r.flags?.punish_adjust) meritTurn._punishAdjust = true;
-        if (r.eDmg || r.eStg || r.notes.length) {
-          details.push(
-            `→ 对${tgt.fighter.name}：伤害-{g}${r.eDmg}{/g} 失衡+{g}${r.eStg}{/g}${r.notes.length ? `【${r.notes.join("；")}】` : ""}`,
-          );
-        }
-        // 敌方防御/盾反：若本回合未受伤，则回合末其失衡 +1（与玩家规则一致）
-        if ((tgt.intent === "defend" || tgt.intent === "block") && r.eDmg === 0) {
-          addStagger(tgt.fighter, 1);
-          details.push(`→ ${tgt.fighter.name}稳住架势且未受伤：失衡 +1。`);
-        }
+      const st0 = tgt.fighter.stagger | 0;
+      const br0 = !!tgt.fighter.broken;
+      const r = applyPlayerToEnemy(state, tgt, action, targetId);
+      meritAccPlayerToEnemyHit(meritTurn, r, st0, br0);
+      meritTurn.hadPlayerHit = meritTurn.hadPlayerHit || !!r.hit;
+      meritTurn.enemyStaggerGainedTotal += r.eStg || 0;
+      if (r.flags?.break_defense) meritTurn._breakDefense = true;
+      if (r.flags?.punish_adjust) meritTurn._punishAdjust = true;
+      if (r.eDmg || r.eStg || r.notes.length) {
+        details.push(
+          `→ 对${tgt.fighter.name}：伤害-{g}${r.eDmg}{/g} 失衡+{g}${r.eStg}{/g}${r.notes.length ? `【${r.notes.join("；")}】` : ""}`,
+        );
+      }
+      // 敌方防御/盾反：若本回合未受伤，则回合末其失衡 +1（与玩家规则一致）
+      if ((tgt.intent === "defend" || tgt.intent === "block") && r.eDmg === 0) {
+        addStagger(tgt.fighter, 1);
+        details.push(`→ ${tgt.fighter.name}稳住架势且未受伤：失衡 +1。`);
       }
     }
   }
