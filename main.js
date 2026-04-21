@@ -3960,11 +3960,11 @@ function applyPlayerToEnemy(state, enemyObj, playerAction, targetId) {
       stg += 1;
       out.notes.push("截锋断势：打断重击，本次额外失衡 +1。");
     }
-    // T28：盾反成功后，下回合首次攻击额外 +1 失衡
+    // T28：盾反成功后，下回合首次快攻额外 +1 失衡
     if (state._blockNextAttackStaggerPending) {
       stg += 1;
       state._blockNextAttackStaggerPending = false;
-      out.notes.push("借锋还势：盾反余势，本次攻击额外失衡 +1。");
+      out.notes.push("借锋还势：盾反余势，本次快攻额外失衡 +1。");
     }
     // T32：连续两回合快攻，第二次快攻额外 +1 失衡
     if (state.perks?.includes("perk_quick_double_stagger") && state._lastPlayerActionWasAttack) {
@@ -7693,7 +7693,7 @@ function mkInitialState() {
     _restDefendBonusCharges: 0,
     /** T27 守中藏杀：盾反成功后下回合首次重击 */
     _blockNextHeavyBonusPending: false,
-    /** T28 借锋还势：盾反成功后下回合首次攻击额外失衡 */
+    /** T28 借锋还势：盾反成功后下回合首次快攻额外失衡 */
     _blockNextAttackStaggerPending: false,
     /** T29 重势追断：本回合重击命中后下回合首次重击 */
     _heavyChainNextHeavyPending: false,

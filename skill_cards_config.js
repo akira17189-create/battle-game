@@ -109,7 +109,7 @@
         id: "T28",
         perk: "perk_block_next_attack_stagger",
         title: "借锋还势",
-        desc: "盾反成功后，自己下回合第一次攻击额外 +1 失衡。",
+        desc: "盾反成功后，自己下回合第一次快攻额外 +1 失衡。",
         primary: "defense",
         extraTags: ["盾反", "反制", "失衡"],
       },
