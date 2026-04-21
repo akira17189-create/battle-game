@@ -94,7 +94,7 @@ const OnlineLeaderboard = (() => {
   async function fetchLeaderboard(limit = 30) {
     if (!isConfigured()) return null;
     try {
-      const url = `${SUPABASE_URL}/rest/v1/leaderboard?select=name,final_merit,grade,run_sum,retries,province,city,hero_name,created_at&order=final_merit.desc&limit=${limit}`;
+      const url = `${SUPABASE_URL}/rest/v1/leaderboard?select=name,final_merit,grade,run_sum,retries,province,city,hero_name,created_at&order=final_merit.desc,created_at.asc&limit=${limit}`;
       const res = await fetch(url, { headers: headers() });
       if (!res.ok) return null;
       const data = await res.json();
@@ -152,7 +152,7 @@ const OnlineLeaderboard = (() => {
   async function backupLeaderboard() {
     if (!isConfigured()) return false;
     try {
-      const url = `${SUPABASE_URL}/rest/v1/leaderboard?select=*&order=final_merit.desc`;
+      const url = `${SUPABASE_URL}/rest/v1/leaderboard?select=*&order=final_merit.desc,created_at.asc`;
       const res = await fetch(url, { headers: headers() });
       if (!res.ok) return false;
       const data = await res.json();
