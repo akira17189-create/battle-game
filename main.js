@@ -7534,7 +7534,7 @@ function mkInitialState() {
   player.atkBonus = 0;
   player.defendMitigationBonus = 0;
   player.heavyStgBonus = 0; // 装备/橙卡：重击额外失衡（可叠加）
-  player.executeHealBonus = 0; // 处决回血（来自 T03 / O03）
+  player.executeHealBonus = 0; // 处决回血（来自 T03 血战余生等）
   player.restCooldownLeft = 0; // 调息剩余冷却（玩家回合数，每回合结束递减）
   const enemyA = mkFighter({ name: "—", hp: ns(1), stagger: 0, staggerThreshold: 3, level: 1 });
   const enemyB = mkFighter({ name: "—", hp: ns(1), stagger: 0, staggerThreshold: 3, level: 1 });
@@ -10413,8 +10413,8 @@ function applyGrowthRewards(state, node, opt) {
     if (!state.perks.includes(opt.perk)) state.perks.push(opt.perk);
     state.settleLog.push(`成长：获得【${opt.title}】。`);
     if (opt.perk === "perk_executeheal") {
-      state.player.executeHealBonus = (state.player.executeHealBonus || 0) + ns(2);
-      state.settleLog.push("血战余生生效：处决回血 +2。");
+      state.player.executeHealBonus = (state.player.executeHealBonus || 0) + ns(20);
+      state.settleLog.push("血战余生生效：处决回血 +20。");
     }
     const offer = state.draftOffers?.[node.id];
     if (Array.isArray(offer) && offer.length) state.skillDeckRemaining = removeMany(state.skillDeckRemaining, offer);

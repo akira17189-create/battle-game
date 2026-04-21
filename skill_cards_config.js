@@ -17,7 +17,7 @@
     return [
       { id: "T01", perk: "perk_armorbreak", title: "破甲发力", desc: "重击额外 +1 失衡。", primary: "offense", extraTags: ["重击", "失衡"] },
       { id: "T02", perk: "perk_guardshock", title: "稳守反震", desc: "盾反成功后，敌人额外 +1 失衡。", primary: "defense", extraTags: ["盾反", "失衡"] },
-      { id: "T03", perk: "perk_executeheal", title: "血战余生", desc: "处决后恢复 2 点生命。", primary: "sustain", extraTags: ["处决", "回复"] },
+      { id: "T03", perk: "perk_executeheal", title: "血战余生", desc: "处决后恢复 20 点生命。", primary: "sustain", extraTags: ["处决", "回复"] },
       { id: "T04", perk: "perk_heavybreakdef", title: "断势重斩", desc: `对防御中的敌人使用重击时，额外 +${ns(1)} 伤害。`, primary: "offense", extraTags: ["重击", "破防"] },
       { id: "T05", perk: "perk_blockrelief", title: "借力反震", desc: "盾反成功几次，自己失衡减几次（对重击成功可叠加）。", primary: "defense", extraTags: ["盾反", "卸势"] },
       {
