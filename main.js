@@ -5477,6 +5477,14 @@ function previewStaggerIncFromPlayerToEnemy(state, eo, playerAction, targetId, r
     if (state.perks?.includes("perk_attackvsadjust") && intent === "adjust") stg += 1;
     if (state._blockNextAttackStaggerPending) stg += 1;
     if (state.perks?.includes("perk_quick_double_stagger") && state._lastPlayerActionWasAttack) stg += 1;
+    if (
+      state.perks?.includes("perk_interrupt_bonus") &&
+      playerAction === "attack" &&
+      intent === "heavy" &&
+      rng?.attackVsHeavyTargetInterrupt
+    ) {
+      stg += 1;
+    }
     return stg;
   }
   if (effectiveAction === "heavy") {
@@ -6656,8 +6664,22 @@ function applyBattleTurnResolutionSegment(state, ui, turnCtx, bundle, segments, 
   const action = bundle.playerAction;
   const rolled = turnCtx.rolled;
   const { meritTurn, details, targetId } = turnCtx;
-  // 每回合重置“快攻打断重击”标记（T15）
-  if (segmentIndex === 0) state._attackInterruptedHeavyTargetId = null;
+  // T15 截锋断势：applyPlayerToEnemy 早于 resolveEnemyAgainstPlayer，须在此先写入打断目标（与 rolled 一致）
+  if (segmentIndex === 0) {
+    state._attackInterruptedHeavyTargetId = null;
+    if (
+      action === "attack" &&
+      targetId &&
+      rolled &&
+      typeof rolled.attackVsHeavyTargetInterrupt === "boolean" &&
+      rolled.attackVsHeavyTargetInterrupt
+    ) {
+      const tgtT15 = state.enemies.find((x) => x.id === targetId);
+      if (tgtT15 && tgtT15.fighter.hp > 0 && tgtT15.intent === "heavy") {
+        state._attackInterruptedHeavyTargetId = targetId;
+      }
+    }
+  }
   const seg = segments[segmentIndex];
   const enemyRow = seg?.enemyRow;
   if (!enemyRow?.id) return;
@@ -10945,6 +10967,20 @@ function onPlayerAction(state, ui, action, opts = {}) {
   const heavyQuickInterruptSuccess =
     rolled?.heavyQuickInterruptSuccess ??
     (action === "heavy" && enemyQuickThreatensPlayerHeavy(state) && Math.random() < INTERRUPT_QUICK_VS_HEAVY);
+
+  /** T15：须在 applyPlayerToEnemy 之前写入（resolve 阶段更晚才设 _attackInterruptedHeavyTargetId） */
+  if (
+    action === "attack" &&
+    targetId &&
+    rolled &&
+    typeof rolled.attackVsHeavyTargetInterrupt === "boolean" &&
+    rolled.attackVsHeavyTargetInterrupt
+  ) {
+    const tgtT15 = state.enemies.find((x) => x.id === targetId);
+    if (tgtT15 && tgtT15.fighter.hp > 0 && tgtT15.intent === "heavy") {
+      state._attackInterruptedHeavyTargetId = targetId;
+    }
+  }
 
   // 调息：HP+20、失衡-1；本回合受快攻/重击时概率完全闪避（在 resolveEnemyAgainstPlayer 中判定）
   // 调息光效与数值：走 queue 时已在绿光同帧结算（bundle._restEarlyHeal），此处只写战报、不再重复加减
