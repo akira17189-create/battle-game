@@ -3506,7 +3506,7 @@ const BASE_TIPS = [
 /** 意图机制说明：药丸悬浮层；快攻/重击由 intentPillTooltipText 按 strikeBase 动态生成（含具体 HP 与失衡） */
 const INTENT_RULES = {
   defend: `防御意图：本回合先守不攻；被你打到时固定伤−${ns(1)}、被上失衡−1（无单独「防御力」面板；若本回合未受伤：回合末失衡+1）。`,
-  block: `盾反意图：本回合不按快攻/重击线出手；专候你重击以反制（无单独「盾反值」；若未受伤，盾反成功会让自己失衡+1，可叠加）。`,
+  block: `盾反意图：本回合不按快攻/重击线出手；专候你重击以反制（无单独「盾反值」；对敌方重击盾反成功时自己失衡+1，可叠加，与本回合是否被其他来源打伤无关）。`,
   adjust: `调整：回血与自减失衡，非进攻意图。`,
 };
 
@@ -3892,6 +3892,15 @@ function runBossExecutePlayerDrama(state, ui, payload) {
 }
 
 function endOfTurnForceClearBroken(fighter) {
+  // 已阵亡：仅静默清残留破绽/失衡，不播报「破绽消失」（避免已处决敌人在后续回合仍弹战报）
+  if (fighter.hp != null && fighter.hp <= 0) {
+    if (fighter.broken || (fighter.stagger | 0) > 0) {
+      fighter.stagger = 0;
+      fighter.broken = false;
+      fighter.brokenTurnsLeft = 0;
+    }
+    return false;
+  }
   // 新规则：进入破绽状态后，持续 1 回合；到回合结束强制清零（不受当回合失衡增减影响）
   if (!fighter.broken) return false;
   if (fighter.brokenTurnsLeft > 0) fighter.brokenTurnsLeft -= 1;
@@ -4449,7 +4458,7 @@ function buildActionButtonEffectHints(state) {
   ];
   if (p.includes("perk_blockrelief")) blockLines.push(hintBonusTier("借力反震：盾反成功几次，失衡减几次", 0));
   if (p.includes("perk_block_heal")) blockLines.push(hintBonusTier(`盾后回气：盾反成功后 HP+${ns(1)}`, 0));
-  blockLines.push("若未受伤，盾反成功会让自己失衡+1（可叠加）");
+  blockLines.push("对重击盾反成功：自己失衡+1（可叠加；与本回合是否被其他来源打伤无关）");
   const block = wrapLead(blockLines.join("<br>"));
 
   const restCd = state.player?.restCooldownLeft || 0;
@@ -6822,18 +6831,23 @@ function finalizeBattleTurnAfterResolutionSegments(state, ui, bundle, turnCtx, o
   let playerHpAtEnemyPhaseStartForDeathAnim = turnCtx.playerHpAtEnemyPhaseStartForDeathAnim;
 
   if (action !== "execute") {
-    if (damageTakenThisTurn === 0) {
-      if (action === "defend") {
-        addStagger(state.player, 1, state);
-        details.push("→ 你稳稳守住且未受伤：失衡 +1。");
-      } else if (action === "block" && blockSuccessCount > 0) {
-        addStagger(state.player, blockSuccessCount, state);
-        details.push(
-          blockSuccessCount === 1
+    if (damageTakenThisTurn === 0 && action === "defend") {
+      addStagger(state.player, 1, state);
+      details.push("→ 你稳稳守住且未受伤：失衡 +1。");
+    }
+    // 盾反对重击成功：架势成本始终结算；与「本回合是否被其他敌人打伤」无关（否则先反制打出破绽再被快攻摸到会吞掉 +1）
+    if (action === "block" && blockSuccessCount > 0) {
+      addStagger(state.player, blockSuccessCount, state);
+      details.push(
+        damageTakenThisTurn === 0
+          ? blockSuccessCount === 1
             ? "→ 若未受伤，盾反成功：自己失衡 +1。"
-            : `→ 若未受伤，盾反成功：自己失衡 +${blockSuccessCount}（可叠加）。`,
-        );
-      }
+            : `→ 若未受伤，盾反成功：自己失衡 +${blockSuccessCount}（可叠加）。`
+          : blockSuccessCount === 1
+            ? "→ 盾反重击成功：自己失衡 +1。"
+            : `→ 盾反重击成功：自己失衡 +${blockSuccessCount}（可叠加）。`,
+      );
+      pushMeterFloatsAndAdvanceSnap(state, ui, turnCtx.meterFloatSnap);
     }
     applyBlockReliefPerkAfterEnemyPhase(state, details, blockSuccessCount, ui, turnCtx.meterFloatSnap);
 
@@ -11165,22 +11179,25 @@ function onPlayerAction(state, ui, action, opts = {}) {
       pushMeterFloatsAndAdvanceSnap(state, ui, meterFloatSnap);
       if (playerBrokenAtEnemyPhaseStart && (state.player.hp | 0) <= 0) break;
     }
-    // 先结算「未受伤则防御/盾反」的架势增减，再结算技法「借力反震」（须与 blockSuccessCount 同阶相抵，避免先减后加时 0 失衡仍被 +1）
-    // 须先于头目处决判定：盾反/防御成功且本回合未受伤会 +1 失衡，可能在本段才把玩家推入破绽
-    if (damageTakenThisTurn === 0) {
-      if (action === "defend") {
-        addStagger(state.player, 1, state);
-        details.push("→ 你稳稳守住且未受伤：失衡 +1。");
-        pushMeterFloatsAndAdvanceSnap(state, ui, meterFloatSnap);
-      } else if (action === "block" && blockSuccessCount > 0) {
-        addStagger(state.player, blockSuccessCount, state);
-        details.push(
-          blockSuccessCount === 1
+    // 先结算防御「未受伤 +1」与盾反成功自失衡，再结算技法「借力反震」（须与 blockSuccessCount 同阶相抵）
+    // 盾反自失衡与「本回合是否受伤」解绑：对重击反制成功即产生架势压力，避免多敌时先反制打出破绽再被快攻摸到时吞掉 +1
+    if (damageTakenThisTurn === 0 && action === "defend") {
+      addStagger(state.player, 1, state);
+      details.push("→ 你稳稳守住且未受伤：失衡 +1。");
+      pushMeterFloatsAndAdvanceSnap(state, ui, meterFloatSnap);
+    }
+    if (action === "block" && blockSuccessCount > 0) {
+      addStagger(state.player, blockSuccessCount, state);
+      details.push(
+        damageTakenThisTurn === 0
+          ? blockSuccessCount === 1
             ? "→ 若未受伤，盾反成功：自己失衡 +1。"
-            : `→ 若未受伤，盾反成功：自己失衡 +${blockSuccessCount}（可叠加）。`,
-        );
-        pushMeterFloatsAndAdvanceSnap(state, ui, meterFloatSnap);
-      }
+            : `→ 若未受伤，盾反成功：自己失衡 +${blockSuccessCount}（可叠加）。`
+          : blockSuccessCount === 1
+            ? "→ 盾反重击成功：自己失衡 +1。"
+            : `→ 盾反重击成功：自己失衡 +${blockSuccessCount}（可叠加）。`,
+      );
+      pushMeterFloatsAndAdvanceSnap(state, ui, meterFloatSnap);
     }
     applyBlockReliefPerkAfterEnemyPhase(state, details, blockSuccessCount, ui, meterFloatSnap);
 
