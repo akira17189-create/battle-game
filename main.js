@@ -10435,7 +10435,8 @@ function applyGrowthRewards(state, node, opt) {
     if (!state.perks.includes(opt.perk)) state.perks.push(opt.perk);
     state.settleLog.push(`成长：获得【${opt.title}】。`);
     if (opt.perk === "perk_executeheal") {
-      state.player.executeHealBonus = (state.player.executeHealBonus || 0) + ns(20);
+      // 与调息 HP+20 同标尺：executeHealBonus 为直接传入 applyHeal 的存量；ns(2)=20。勿用 ns(20)（会变成 +200）
+      state.player.executeHealBonus = (state.player.executeHealBonus || 0) + ns(2);
       state.settleLog.push("血战余生生效：处决回血 +20。");
     }
     const offer = state.draftOffers?.[node.id];
