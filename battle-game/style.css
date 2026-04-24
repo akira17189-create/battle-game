@@ -1,18 +1,18 @@
 :root{
-  --bg:#0b0f14;
-  --panel:#111827;
-  --panel2:#0f172a;
-  --text:#e5e7eb;
-  --muted:#9ca3af;
-  --line:#23314a;
-  --accent:#7c3aed;
-  --accent2:#22c55e;
-  --danger:#ef4444;
-  --warn:#f59e0b;
-  --shadow: 0 10px 30px rgba(0,0,0,.35);
-  --radius:14px;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  --bg:#0d0a12;
+  --panel:#16121e;
+  --panel2:#110d1a;
+  --text:#e8dcc8;
+  --muted:#9a8e7a;
+  --line:#2d2340;
+  --accent:#c9a96e;
+  --accent2:#c41e3a;
+  --danger:#b91c1c;
+  --warn:#d4920a;
+  --shadow: 0 10px 30px rgba(0,0,0,.45);
+  --radius:10px;
+  --mono: "Noto Serif JP", "Shippori Mincho", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --sans: "Shippori Mincho", "Noto Serif JP", "Zen Antique Soft", serif;
   /* 战斗信息面板：战前/战中统一最小高度，避免隐藏卡片区后整体被压扁 */
   --battle-info-panel-min-h: 820px;
   --battle-enemy-slot-h: 296px;
@@ -37,35 +37,35 @@ html,body{height:100%}
 body{
   margin:0;
   font-family:var(--sans);
-  background: radial-gradient(1200px 700px at 20% 10%, rgba(124,58,237,.20), transparent 60%),
-              radial-gradient(900px 700px at 90% 30%, rgba(34,197,94,.12), transparent 55%),
+  background: radial-gradient(1200px 700px at 20% 10%, rgba(201,169,110,.12), transparent 60%),
+              radial-gradient(900px 700px at 90% 30%, rgba(196,30,58,.08), transparent 55%),
               var(--bg);
   color:var(--text);
 }
 /* 全局滚动条：与页面背景同色系，不做高对比跳色 */
 html{
   scrollbar-width: thin;
-  scrollbar-color: rgba(31,45,73,.78) rgba(11,15,20,.92);
+  scrollbar-color: rgba(45,35,64,.78) rgba(13,10,18,.92);
 }
 *::-webkit-scrollbar{
   width: 10px;
   height: 10px;
 }
 *::-webkit-scrollbar-track{
-  background: rgba(11,15,20,.92);
-  border: 1px solid rgba(23,33,54,.6);
+  background: rgba(13,10,18,.92);
+  border: 1px solid rgba(30,22,45,.6);
   border-radius: 999px;
 }
 *::-webkit-scrollbar-thumb{
-  background: linear-gradient(180deg, rgba(36,52,82,.92), rgba(24,36,60,.9));
-  border: 1px solid rgba(74,96,132,.42);
+  background: linear-gradient(180deg, rgba(45,35,64,.92), rgba(30,22,48,.9));
+  border: 1px solid rgba(80,60,100,.42);
   border-radius: 999px;
 }
 *::-webkit-scrollbar-thumb:hover{
-  background: linear-gradient(180deg, rgba(46,67,102,.94), rgba(32,47,77,.92));
+  background: linear-gradient(180deg, rgba(55,42,78,.94), rgba(40,30,58,.92));
 }
 *::-webkit-scrollbar-corner{
-  background: rgba(11,15,20,.92);
+  background: rgba(13,10,18,.92);
 }
 
 .app{
@@ -80,8 +80,8 @@ html{
   align-items:stretch;
   gap:10px;
   padding:14px 16px 12px;
-  background: linear-gradient(180deg, rgba(17,24,39,.92), rgba(15,23,42,.86));
-  border:1px solid rgba(255,255,255,.06);
+  background: linear-gradient(180deg, rgba(22,18,30,.92), rgba(17,13,26,.86));
+  border:1px solid rgba(232,220,200,.06);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
@@ -141,8 +141,8 @@ html{
   font-size:12px;
   font-weight:1000;
   letter-spacing:.12em;
-  color: #bbf7d0;
-  text-shadow: 0 0 16px rgba(34,197,94,.22);
+  color: #e8c97a;
+  text-shadow: 0 0 16px rgba(196,30,58,.22);
   white-space:nowrap;
 }
 .run-merit-value{
@@ -150,7 +150,7 @@ html{
   font-size:56px;
   font-weight:1000;
   line-height:1;
-  color: #fde047;
+  color: #f0d060;
   text-shadow: 0 0 18px rgba(234,179,8,.35);
   font-variant-numeric: tabular-nums;
   transition: transform .15s ease, color .15s ease;
@@ -170,8 +170,8 @@ html{
   font-weight: 1000;
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
-  color: #fecaca;
-  text-shadow: 0 0 14px rgba(248,113,113,.45);
+  color: #f0c4b0;
+  text-shadow: 0 0 14px rgba(210,80,80,.45);
   white-space: nowrap;
   pointer-events: none;
   animation: run-merit-penalty-delta-pop 0.4s ease-out 1;
@@ -195,8 +195,8 @@ html{
   max-width: 520px;
   padding: 12px 12px 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: linear-gradient(180deg, rgba(15,23,42,.98), rgba(2,6,23,.96));
+  border: 1px solid rgba(232,220,200,.10);
+  background: linear-gradient(180deg, rgba(17,13,26,.98), rgba(8,5,15,.96));
   box-shadow: 0 18px 50px rgba(0,0,0,.55);
   z-index: var(--z-run-merit-hint);
   opacity: 0;
@@ -220,7 +220,7 @@ html{
 .run-merit-hint .rm-head--sp{ margin-top: 10px; }
 .run-merit-hint .rm-muted{
   font-size: 12px;
-  color: rgba(229,231,235,.78);
+  color: rgba(232,220,200,.78);
   line-height: 1.45;
   margin-bottom: 4px;
 }
@@ -230,16 +230,16 @@ html{
   margin: 3px 0;
   font-size: 12px;
   line-height: 1.4;
-  color: rgba(229,231,235,.92);
+  color: rgba(232,220,200,.92);
 }
-.run-merit-hint .rm-k{ color: rgba(167,243,208,.90); font-weight: 900; white-space: nowrap; }
-.run-merit-hint .rm-v{ color: rgba(229,231,235,.90); }
+.run-merit-hint .rm-k{ color: rgba(212,190,138,.90); font-weight: 900; white-space: nowrap; }
+.run-merit-hint .rm-v{ color: rgba(232,220,200,.90); }
 .run-merit-hint .rm-sum{
   margin-top: 8px;
   font-size: 12px;
-  color: rgba(229,231,235,.92);
+  color: rgba(232,220,200,.92);
 }
-.run-merit-hint .rm-sum--small{ color: rgba(156,163,175,.95); margin-top: 4px; }
+.run-merit-hint .rm-sum--small{ color: rgba(145,148,155,.95); margin-top: 4px; }
 
 /* 左侧：结算日志缩高，下面留一半给英雄榜 */
 .panel--settle-split .settle-split{
@@ -261,7 +261,7 @@ html{
   height: auto;
 }
 .settle-log-half{
-  border-bottom: 1px solid rgba(255,255,255,.06);
+  border-bottom: 1px solid rgba(232,220,200,.06);
 }
 .settle-rank-half{
   display:flex;
@@ -270,7 +270,7 @@ html{
 }
 .settle-rank-head{
   padding: 10px 16px 6px 16px;
-  border-bottom: 1px solid rgba(255,255,255,.06);
+  border-bottom: 1px solid rgba(232,220,200,.06);
   background: rgba(0,0,0,.10);
 }
 .settle-rank-title{
@@ -280,13 +280,13 @@ html{
 .settle-rank-top3{
   flex-shrink: 0;
   padding: 6px 0 8px;
-  border-bottom: 1px solid rgba(255,255,255,.06);
+  border-bottom: 1px solid rgba(232,220,200,.06);
   background: rgba(0,0,0,.04);
 }
 .rank-row--live-preview{
   position: relative;
   border: 1px dashed rgba(250,204,21,.5) !important;
-  background: linear-gradient(90deg, rgba(234,179,8,.16), rgba(30,41,59,.4)) !important;
+  background: linear-gradient(90deg, rgba(234,179,8,.16), rgba(35,28,48,.4)) !important;
   box-shadow: inset 0 0 0 1px rgba(250,204,21,.1), 0 0 20px rgba(234,179,8,.08);
 }
 .rank-row--live-preview.rank-row--grade-tier-up{
@@ -317,7 +317,7 @@ html{
   font-weight: 900;
   font-size: 15px;
   letter-spacing: 0.14em;
-  color: #eafbff;
+  color: #d8dce8;
   text-shadow: 0 0 20px rgba(142, 219, 255, 0.48);
   background: linear-gradient(90deg, transparent, rgba(142, 219, 255, 0.2), transparent);
   border-bottom: 1px solid rgba(190, 235, 255, 0.42);
@@ -395,8 +395,8 @@ html{
   padding: 6px 12px;
   border-radius: 10px;
   margin: 0 6px 6px 6px;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.06);
+  background: rgba(232,220,200,.04);
+  border: 1px solid rgba(232,220,200,.06);
 }
 .rank-left{
   display:flex;
@@ -407,13 +407,13 @@ html{
 .rank-num{
   font-family: var(--mono);
   font-weight: 900;
-  color: rgba(229,231,235,.9);
+  color: rgba(232,220,200,.9);
 }
 .rank-name{
   min-width: 0;
   font-size: 13px;
   font-weight: 600;
-  color: rgba(229,231,235,.85);
+  color: rgba(232,220,200,.85);
   display:flex;
   align-items: center;
   gap: 8px;
@@ -431,7 +431,7 @@ html{
   font-family: var(--mono);
   font-weight: 1000;
   font-size: 14px;
-  color: #fde047;
+  color: #f0d060;
   text-align: left;
 }
 .rank-grade{
@@ -532,14 +532,14 @@ html{
 .rank-meta .rank-region{
   opacity: .7;
   font-size: 11px;
-  color: rgba(148,163,184,.95);
+  color: rgba(154,142,122,.95);
 }
 .medal{
   display:inline-block;
   width:14px;
   height:14px;
   border-radius: 999px;
-  box-shadow: 0 0 0 2px rgba(255,255,255,.10);
+  box-shadow: 0 0 0 2px rgba(232,220,200,.10);
 }
 .medal--gold{
   width:18px;
@@ -550,8 +550,8 @@ html{
 .medal--silver{
   width:16px;
   height:16px;
-  background: radial-gradient(circle at 30% 30%, rgba(226,232,240,1), rgba(148,163,184,1));
-  box-shadow: 0 0 0 2px rgba(203,213,225,.18), 0 0 14px rgba(148,163,184,.22);
+  background: radial-gradient(circle at 30% 30%, rgba(220,208,188,1), rgba(154,142,122,1));
+  box-shadow: 0 0 0 2px rgba(200,188,168,.18), 0 0 14px rgba(154,142,122,.22);
 }
 .medal--bronze{
   width:15px;
@@ -563,9 +563,9 @@ html{
   animation: runMeritValuePulse 0.75s ease-in-out 1;
 }
 @keyframes runMeritValuePulse{
-  0%{ transform: scale(1); color: #fde047; }
+  0%{ transform: scale(1); color: #f0d060; }
   35%{ transform: scale(1.12); color: #fff7c2; }
-  100%{ transform: scale(1); color: #fde047; }
+  100%{ transform: scale(1); color: #f0d060; }
 }
 .merit-lb-section{
   margin-top: 14px;
@@ -625,8 +625,8 @@ html{
   width:22px;
   height:22px;
   border-radius:999px;
-  background: rgba(255,255,255,.12);
-  border:3px solid rgba(255,255,255,.22);
+  background: rgba(232,220,200,.12);
+  border:3px solid rgba(232,220,200,.22);
   box-sizing:border-box;
   transition: background .2s, border-color .2s, box-shadow .2s;
 }
@@ -644,20 +644,20 @@ html{
   margin:0 6px;
   margin-bottom:34px;
   align-self:center;
-  background: linear-gradient(90deg, rgba(255,255,255,.12), rgba(255,255,255,.22));
+  background: linear-gradient(90deg, rgba(232,220,200,.12), rgba(232,220,200,.22));
   border-radius:1px;
 }
 .roadmap-step--done .roadmap-dot{
-  background: rgba(34,197,94,.35);
-  border-color: rgba(34,197,94,.75);
+  background: rgba(196,30,58,.35);
+  border-color: rgba(196,30,58,.75);
 }
 .roadmap-step--done .roadmap-label{
-  color: rgba(167,243,208,.85);
+  color: rgba(212,190,138,.85);
 }
 .roadmap-step--current .roadmap-dot{
-  background: rgba(124,58,237,.45);
+  background: rgba(201,169,110,.45);
   border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(124,58,237,.22);
+  box-shadow: 0 0 0 4px rgba(201,169,110,.22);
 }
 .roadmap-step--current .roadmap-label{
   color: var(--text);
@@ -677,7 +677,7 @@ html{
   font-weight:800;
 }
 .roadmap-step--current.roadmap-step--boss .roadmap-dot{
-  box-shadow: 0 0 0 4px rgba(124,58,237,.28);
+  box-shadow: 0 0 0 4px rgba(201,169,110,.28);
 }
 
 .title .kicker{
@@ -702,8 +702,8 @@ html{
 /* 剧情/目标面板已取消 */
 
 .panel{
-  background: linear-gradient(180deg, rgba(17,24,39,.90), rgba(15,23,42,.88));
-  border:1px solid rgba(255,255,255,.06);
+  background: linear-gradient(180deg, rgba(22,18,30,.90), rgba(17,13,26,.88));
+  border:1px solid rgba(232,220,200,.06);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow:hidden;
@@ -814,8 +814,8 @@ html{
   flex-direction: column;
   gap: 12px;
   padding: 10px 12px 14px;
-  border-bottom: 1px solid rgba(148,163,184,.12);
-  background: linear-gradient(180deg, rgba(15,23,42,.88), rgba(15,23,42,.55));
+  border-bottom: 1px solid rgba(154,142,122,.12);
+  background: linear-gradient(180deg, rgba(17,13,26,.88), rgba(17,13,26,.55));
   transition: border-color 0.28s ease, box-shadow 0.28s ease, background 0.28s ease;
 }
 /* 战功 7 档挂载在 stack 上时：整段结算区继承金属/鎏光主题（与 .grade-* 变量一致） */
@@ -824,10 +824,10 @@ html{
   .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
   .grade-tianming
 ){
-  border-bottom: 1px solid color-mix(in srgb, var(--grade-main) 26%, rgba(15,23,42,.85));
+  border-bottom: 1px solid color-mix(in srgb, var(--grade-main) 26%, rgba(17,13,26,.85));
   background:
     var(--grade-pattern),
-    linear-gradient(188deg, color-mix(in srgb, var(--grade-deep) 48%, #0b1220) 0%, rgba(15,23,42,.76) 58%, rgba(2,6,23,.55) 100%);
+    linear-gradient(188deg, color-mix(in srgb, var(--grade-deep) 48%, #10091a) 0%, rgba(17,13,26,.76) 58%, rgba(8,5,15,.55) 100%);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--grade-sub) 10%, transparent),
     var(--grade-glow);
@@ -838,9 +838,9 @@ html{
   padding: 16px 18px 18px;
   text-align: center;
   background:
-    radial-gradient(120% 90% at 50% 0%, rgba(34,197,94,.16), transparent 52%),
-    linear-gradient(185deg, rgba(30,41,59,.96), rgba(15,23,42,.9));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 12px 32px rgba(0,0,0,.38);
+    radial-gradient(120% 90% at 50% 0%, rgba(196,30,58,.16), transparent 52%),
+    linear-gradient(185deg, rgba(35,28,48,.96), rgba(17,13,26,.9));
+  box-shadow: inset 0 1px 0 rgba(232,220,200,.07), 0 12px 32px rgba(0,0,0,.38);
   overflow: hidden;
 }
 .chapter-settle-stack:is(
@@ -850,7 +850,7 @@ html{
 ) .chapter-settle-victory-card{
   background:
     radial-gradient(120% 95% at 50% -8%, color-mix(in srgb, var(--grade-main) 22%, transparent), transparent 55%),
-    linear-gradient(188deg, color-mix(in srgb, var(--grade-deep) 42%, #0f172a), rgba(15,23,42,.93));
+    linear-gradient(188deg, color-mix(in srgb, var(--grade-deep) 42%, #0e0a18), rgba(17,13,26,.93));
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--grade-sub) 14%, transparent),
     0 14px 38px rgba(0,0,0,.4),
@@ -877,7 +877,7 @@ html{
   .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
   .grade-tianming
 ) .win-kicker{
-  color: color-mix(in srgb, var(--grade-main) 72%, rgba(226,232,240,.95));
+  color: color-mix(in srgb, var(--grade-main) 72%, rgba(220,208,188,.95));
 }
 .chapter-settle-stack:is(
   .grade-shenjiang,.grade-feijiang,.grade-mingjiang,.grade-xiaojiang,
@@ -910,8 +910,8 @@ html{
   .grade-tianming
 )) .chapter-settle-merit-card{
   background: rgba(0,0,0,.22);
-  border-color: rgba(148,163,184,.22);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+  border-color: rgba(154,142,122,.22);
+  box-shadow: inset 0 1px 0 rgba(232,220,200,.04);
 }
 .chapter-settle-merit-card__score-row{
   display: flex;
@@ -932,7 +932,7 @@ html{
   .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
   .grade-tianming
 )) .chapter-settle-merit-card__score-row{
-  border-left-color: rgba(148,163,184,.16);
+  border-left-color: rgba(154,142,122,.16);
 }
 @media (max-width: 520px){
   .chapter-settle-merit-card__score-row{
@@ -950,7 +950,7 @@ html{
     .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
     .grade-tianming
   )) .chapter-settle-merit-card__score-row{
-    border-top-color: rgba(148,163,184,.14);
+    border-top-color: rgba(154,142,122,.14);
   }
 }
 /* 战功评级（内嵌于卡内：不再单独套一层盒子） */
@@ -978,7 +978,7 @@ html{
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.22em;
-  color: rgba(148,163,184,.92);
+  color: rgba(154,142,122,.92);
 }
 .chapter-settle-merit-card .chapter-settle-merit-grade-block{
   text-align: left;
@@ -1003,7 +1003,7 @@ html{
 .chapter-settle-merit-grade-display.merit-grade--unknown{
   font-size: clamp(28px, 6vw, 38px);
   letter-spacing: 0.08em;
-  color: rgba(148,163,184,.96);
+  color: rgba(154,142,122,.96);
   text-shadow: none;
 }
 .chapter-settle-merit-card .chapter-settle-merit-grade-display.merit-grade--unknown{
@@ -1018,8 +1018,8 @@ html{
   border-radius: 12px;
   background: linear-gradient(
     168deg,
-    color-mix(in srgb, var(--grade-deep) 90%, #041208),
-    color-mix(in srgb, var(--grade-deep) 74%, #0c3020)
+    color-mix(in srgb, var(--grade-deep) 90%, #040810),
+    color-mix(in srgb, var(--grade-deep) 74%, #0a1818)
   );
   border: 1px solid color-mix(in srgb, var(--grade-main) 45%, rgba(216, 255, 231, 0.38));
   color: var(--grade-sub);
@@ -1049,7 +1049,7 @@ html{
   .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
   .grade-tianming
 )) .chapter-settle-merit-grade-flavor{
-  color: rgba(203,213,225,.88);
+  color: rgba(200,188,168,.88);
 }
 .chapter-settle-stack.grade-zhanjiang
   .chapter-settle-merit-card
@@ -1074,7 +1074,7 @@ html{
   font-weight: 650;
   letter-spacing: 0.03em;
   line-height: 1.45;
-  color: rgba(203,213,225,.86);
+  color: rgba(200,188,168,.86);
 }
 .chapter-settle-score-hint-primary{
   display: block;
@@ -1092,7 +1092,7 @@ html{
   .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
   .grade-tianming
 ) .chapter-settle-score-hint{
-  color: color-mix(in srgb, var(--grade-sub) 82%, rgba(226,232,240,.95));
+  color: color-mix(in srgb, var(--grade-sub) 82%, rgba(220,208,188,.95));
 }
 .chapter-settle-stack:is(
   .grade-shenjiang,.grade-feijiang,.grade-mingjiang,.grade-xiaojiang,
@@ -1135,7 +1135,7 @@ html{
 .chapter-settle-label{
   font-size: 13px;
   font-weight: 800;
-  color: rgba(226,232,240,.88);
+  color: rgba(220,208,188,.88);
   letter-spacing: .08em;
 }
 .chapter-settle-score-val{
@@ -1154,7 +1154,7 @@ html{
   border-radius: 50%;
   pointer-events: none;
   will-change: left, top, transform, opacity;
-  background: radial-gradient(circle at 30% 26%, #ffffff, #fff7c2 38%, #fbbf24 72%, #ea580c 100%);
+  background: radial-gradient(circle at 30% 26%, #f0e6c8, #fff7c2 38%, #fbbf24 72%, #ea580c 100%);
   box-shadow:
     0 0 8px rgba(254,252,232,.98),
     0 0 18px rgba(250,204,21,.75),
@@ -1172,7 +1172,7 @@ html{
 .merit-fly-particle--seq.merit-fly-particle--i1{
   filter: brightness(1.14) saturate(1.08);
   box-shadow:
-    0 0 9px rgba(255,255,255,.95),
+    0 0 9px rgba(232,220,200,.95),
     0 0 20px rgba(253,224,71,.88),
     0 0 32px rgba(251,191,36,.42);
 }
@@ -1183,10 +1183,10 @@ html{
   padding: 12px 14px;
   border-radius: 12px;
   background: rgba(0,0,0,.2);
-  border: 1px solid rgba(148,163,184,.22);
+  border: 1px solid rgba(154,142,122,.22);
 }
 .chapter-settle-hero.chapter-settle-soul-layer{
-  border-color: color-mix(in srgb, var(--grade-main) 20%, rgba(148,163,184,.22));
+  border-color: color-mix(in srgb, var(--grade-main) 20%, rgba(154,142,122,.22));
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--grade-main) 6%, transparent), rgba(0,0,0,.18));
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--grade-sub) 6%, transparent);
@@ -1196,7 +1196,7 @@ html{
   .grade-jianjiang,.grade-yongjiang,.grade-zhanjiang,
   .grade-tianming
 )) .chapter-settle-hero.chapter-settle-soul-layer{
-  border-color: rgba(148,163,184,.22);
+  border-color: rgba(154,142,122,.22);
   background: rgba(0,0,0,.2);
   box-shadow: none;
 }
@@ -1204,15 +1204,15 @@ html{
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.2em;
-  color: color-mix(in srgb, var(--grade-main) 50%, rgba(226,232,240,.85));
+  color: color-mix(in srgb, var(--grade-main) 50%, rgba(220,208,188,.85));
   margin: 0 0 10px;
 }
 .chapter-settle-soul-layer .soul-showcase{
   margin: 0 0 12px;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(15,23,42,.35);
+  border: 1px solid rgba(232,220,200,.08);
+  background: rgba(17,13,26,.35);
 }
 .soul-showcase-row{
   margin: 0 0 6px;
@@ -1230,7 +1230,7 @@ html{
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.14em;
-  color: rgba(148,163,184,.95);
+  color: rgba(154,142,122,.95);
 }
 .chapter-settle-soul-layer-head{
   margin-bottom: 4px;
@@ -1251,19 +1251,19 @@ html{
 }
 .chapter-settle-hero-name{
   font-size: 13px;
-  color: rgba(203,213,225,.9);
+  color: rgba(200,188,168,.9);
   margin: 0 0 8px;
 }
 .chapter-settle-hero-explain{
   font-size: 13px;
-  color: rgba(148,163,184,.95);
+  color: rgba(154,142,122,.95);
   margin: 0;
   line-height: 1.55;
 }
 .chapter-settle-hero-empty{
   margin: 0;
   font-size: 13px;
-  color: rgba(148,163,184,.72);
+  color: rgba(154,142,122,.72);
 }
 .chapter-settle-soul-hero{
   font-size: clamp(18px, 2.8vw, 22px);
@@ -1273,28 +1273,28 @@ html{
 }
 /* 结算内武魂/天命之魂名将名：按阵营着色（底纹与周边文案不变） */
 .chapter-settle-soul-hero.soul-name-faction--shu{
-  color: #bbf7d0;
-  text-shadow: 0 0 20px rgba(52,211,153,.38);
+  color: #e8c97a;
+  text-shadow: 0 0 20px rgba(212,146,10,.38);
 }
 .chapter-settle-soul-hero.soul-name-faction--wei{
-  color: #bfdbfe;
-  text-shadow: 0 0 20px rgba(96,165,250,.38);
+  color: #a8b8d4;
+  text-shadow: 0 0 20px rgba(107,130,176,.38);
 }
 .chapter-settle-soul-hero.soul-name-faction--wu{
-  color: #fecdd3;
-  text-shadow: 0 0 20px rgba(248,113,113,.38);
+  color: #f0c4b0;
+  text-shadow: 0 0 20px rgba(210,80,80,.38);
 }
 .chapter-settle-soul-hero.soul-name-faction--qun{
   color: #fef9c3;
   text-shadow: 0 0 20px rgba(250,204,21,.32);
 }
 .chapter-settle-soul-hero.soul-name-faction--tianming{
-  color: #fecaca;
-  text-shadow: 0 0 22px rgba(239,68,68,.48);
+  color: #f0c4b0;
+  text-shadow: 0 0 22px rgba(185,28,28,.48);
 }
 .chapter-settle-soul-trait{
   font-size: 12px;
-  color: rgba(167,243,208,.92);
+  color: rgba(212,190,138,.92);
   margin: 0 0 8px;
 }
 /* 武魂鉴语：仅判气句用金，其余为史笔/评语色 */
@@ -1319,13 +1319,13 @@ html{
 .chapter-settle-soul-behavior--echo{
   font-size: clamp(12px, 2vw, 13px);
   font-weight: 650;
-  color: rgba(148,163,184,.88);
+  color: rgba(154,142,122,.88);
   letter-spacing: 0.03em;
 }
 .chapter-settle-soul-anchor{
   font-size: 12px;
   font-weight: 650;
-  color: rgba(203,213,225,.93);
+  color: rgba(200,188,168,.93);
   margin: 0 0 8px;
   line-height: 1.55;
   letter-spacing: 0.02em;
@@ -1333,14 +1333,14 @@ html{
 .chapter-settle-soul-resemble{
   font-size: 12px;
   font-weight: 750;
-  color: rgba(226,232,240,.94);
+  color: rgba(220,208,188,.94);
   margin: 0 0 10px;
   line-height: 1.55;
   letter-spacing: 0.03em;
 }
 .chapter-settle-soul-eval--note{
   font-size: 11px;
-  color: rgba(148,163,184,.78);
+  color: rgba(154,142,122,.78);
   font-style: italic;
 }
 .chapter-settle-soul-hook{
@@ -1353,19 +1353,19 @@ html{
 }
 .chapter-settle-soul-trait-one{
   font-size: 12px;
-  color: rgba(226,232,240,.92);
+  color: rgba(220,208,188,.92);
   margin: 0 0 8px;
   line-height: 1.5;
 }
 .chapter-settle-soul-eval{
   font-size: 12px;
-  color: rgba(203,213,225,.9);
+  color: rgba(200,188,168,.9);
   margin: 0 0 6px;
   line-height: 1.55;
 }
 .chapter-settle-soul-poem{
   font-size: 12px;
-  color: rgba(186,230,253,.88);
+  color: rgba(160,175,200,.88);
   font-style: italic;
   margin: 0 0 8px;
   line-height: 1.55;
@@ -1380,20 +1380,20 @@ html{
   margin: 0 0 10px;
   border-radius: 999px;
   overflow: hidden;
-  border: 1px solid rgba(52,211,153,.35);
-  background: rgba(15,23,42,.65);
+  border: 1px solid rgba(212,146,10,.35);
+  background: rgba(17,13,26,.65);
   font-size: 12px;
   line-height: 1;
 }
 .soul-skill-capsule-pre{
   padding: 6px 10px;
   background: rgba(16,185,129,.22);
-  color: rgba(167,243,208,.95);
+  color: rgba(212,190,138,.95);
   font-weight: 800;
 }
 .soul-skill-capsule-name{
   padding: 6px 12px;
-  color: rgba(167,243,208,.98);
+  color: rgba(212,190,138,.98);
   font-weight: 700;
 }
 /* —— 将魂底蕴：五维面板 + 兵种 chip（结算 / 战报共用） —— */
@@ -1407,7 +1407,7 @@ html{
   font-size: 10px;
   font-weight: 850;
   letter-spacing: 0.22em;
-  color: rgba(148,163,184,.78);
+  color: rgba(154,142,122,.78);
   margin: 0 0 10px;
   text-indent: 0.1em;
 }
@@ -1417,10 +1417,10 @@ html{
   gap: 0;
   margin-bottom: 12px;
   padding: 10px 0 12px;
-  background: linear-gradient(180deg, rgba(15,23,42,.72), rgba(15,23,42,.42));
-  border: 1px solid rgba(52,211,153,.16);
+  background: linear-gradient(180deg, rgba(17,13,26,.72), rgba(17,13,26,.42));
+  border: 1px solid rgba(212,146,10,.16);
   border-radius: 10px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+  box-shadow: inset 0 1px 0 rgba(232,220,200,.04);
 }
 .soul-attr-cell{
   display: flex;
@@ -1430,7 +1430,7 @@ html{
   gap: 6px;
   padding: 4px 2px;
   min-width: 0;
-  border-right: 1px solid rgba(148,163,184,.14);
+  border-right: 1px solid rgba(154,142,122,.14);
   text-align: center;
 }
 .soul-attr-cell:last-child{
@@ -1440,7 +1440,7 @@ html{
   font-size: 10px;
   font-weight: 750;
   letter-spacing: 0.14em;
-  color: rgba(148,163,184,.72);
+  color: rgba(154,142,122,.72);
 }
 .soul-attr-cell__val{
   font-family: var(--mono);
@@ -1454,7 +1454,7 @@ html{
   font-weight: 800;
 }
 .soul-stat-num--t1{
-  color: rgba(203,213,225,.88);
+  color: rgba(200,188,168,.88);
 }
 .soul-stat-num--t2{
   color: rgba(253,224,71,.88);
@@ -1477,7 +1477,7 @@ html{
   font-size: 10px;
   font-weight: 750;
   letter-spacing: 0.18em;
-  color: rgba(148,163,184,.72);
+  color: rgba(154,142,122,.72);
 }
 .soul-weapon-chips{
   display: flex;
@@ -1494,12 +1494,12 @@ html{
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
-  border: 1px solid rgba(148,163,184,.2);
-  background: rgba(15,23,42,.55);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+  border: 1px solid rgba(154,142,122,.2);
+  background: rgba(17,13,26,.55);
+  box-shadow: inset 0 1px 0 rgba(232,220,200,.05);
 }
 .soul-wp-chip__weapon{
-  color: rgba(148,163,184,.88);
+  color: rgba(154,142,122,.88);
   font-weight: 750;
 }
 .soul-wp-chip__grade{
@@ -1509,7 +1509,7 @@ html{
 }
 .soul-wp-chip--s{
   border-color: rgba(253,224,71,.45);
-  background: linear-gradient(180deg, rgba(120,53,15,.35), rgba(15,23,42,.65));
+  background: linear-gradient(180deg, rgba(120,53,15,.35), rgba(17,13,26,.65));
   box-shadow: inset 0 1px 0 rgba(254,240,138,.12), 0 0 14px rgba(234,179,8,.12);
 }
 .soul-wp-chip--s .soul-wp-chip__grade{
@@ -1518,30 +1518,30 @@ html{
 }
 .soul-wp-chip--a{
   border-color: rgba(45,212,191,.38);
-  background: linear-gradient(180deg, rgba(15,118,110,.28), rgba(15,23,42,.62));
+  background: linear-gradient(180deg, rgba(15,118,110,.28), rgba(17,13,26,.62));
 }
 .soul-wp-chip--a .soul-wp-chip__grade{
   color: rgba(153,246,228,.96);
 }
 .soul-wp-chip--b{
   border-color: rgba(100,116,139,.45);
-  background: rgba(15,23,42,.58);
+  background: rgba(17,13,26,.58);
 }
 .soul-wp-chip--b .soul-wp-chip__grade{
-  color: rgba(148,163,184,.95);
+  color: rgba(154,142,122,.95);
 }
 .soul-wp-chip--c{
   border-color: rgba(71,85,105,.55);
-  background: rgba(15,23,42,.62);
+  background: rgba(17,13,26,.62);
 }
 .soul-wp-chip--c .soul-wp-chip__grade{
-  color: rgba(148,163,184,.78);
+  color: rgba(154,142,122,.78);
 }
 /* 旧版行内兵种（战报等若仍引用） */
 .soul-wp-val{
   font-family: var(--mono);
   font-weight: 800;
-  color: rgba(203,213,225,.9);
+  color: rgba(200,188,168,.9);
 }
 .soul-wp-val--s{
   color: rgba(254,249,195,.96);
@@ -1550,22 +1550,22 @@ html{
   color: rgba(153,246,228,.95);
 }
 .soul-wp-val--b{
-  color: rgba(148,163,184,.95);
+  color: rgba(154,142,122,.95);
 }
 .soul-wp-val--c{
   color: rgba(100,116,139,.95);
 }
 .chapter-settle-soul-overall{
   font-size: 12px;
-  color: rgba(186,230,253,.9);
+  color: rgba(160,175,200,.9);
   margin: 0 0 8px;
 }
 .chapter-settle-soul-stats{
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid rgba(148,163,184,.22);
+  border-top: 1px solid rgba(154,142,122,.22);
   font-size: 12px;
-  color: rgba(203,213,225,.88);
+  color: rgba(200,188,168,.88);
 }
 .soul-stat-grid{
   display: grid;
@@ -1574,7 +1574,7 @@ html{
   margin-bottom: 8px;
 }
 .soul-stat-grid span{
-  color: rgba(148,163,184,.85);
+  color: rgba(154,142,122,.85);
   font-size: 11px;
 }
 .soul-stat-grid b{
@@ -1588,15 +1588,15 @@ html{
   font-size: 12px;
 }
 .soul-weapon-row span{
-  color: rgba(148,163,184,.75);
+  color: rgba(154,142,122,.75);
   margin-right: 2px;
 }
 .merit-soul-showcase{
   margin: 6px 0 12px;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(15,23,42,.4);
+  border: 1px solid rgba(232,220,200,.08);
+  background: rgba(17,13,26,.4);
 }
 .merit-soul-showcase-row{
   margin: 0 0 6px;
@@ -1614,7 +1614,7 @@ html{
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
-  color: rgba(148,163,184,.95);
+  color: rgba(154,142,122,.95);
 }
 .merit-soul-showcase-v{
   font-weight: 800;
@@ -1625,13 +1625,13 @@ html{
   color: rgba(254,243,199,.98);
   margin: 0;
 }
-.merit-hero-verdict--soul .merit-hero-name.soul-name-faction--shu{ color: #bbf7d0; text-shadow: 0 0 16px rgba(52,211,153,.28); }
-.merit-hero-verdict--soul .merit-hero-name.soul-name-faction--wei{ color: #bfdbfe; text-shadow: 0 0 16px rgba(96,165,250,.28); }
-.merit-hero-verdict--soul .merit-hero-name.soul-name-faction--wu{ color: #fecdd3; text-shadow: 0 0 16px rgba(248,113,113,.28); }
+.merit-hero-verdict--soul .merit-hero-name.soul-name-faction--shu{ color: #e8c97a; text-shadow: 0 0 16px rgba(212,146,10,.28); }
+.merit-hero-verdict--soul .merit-hero-name.soul-name-faction--wei{ color: #a8b8d4; text-shadow: 0 0 16px rgba(107,130,176,.28); }
+.merit-hero-verdict--soul .merit-hero-name.soul-name-faction--wu{ color: #f0c4b0; text-shadow: 0 0 16px rgba(210,80,80,.28); }
 .merit-hero-verdict--soul .merit-hero-name.soul-name-faction--qun{ color: #fef9c3; text-shadow: 0 0 16px rgba(250,204,21,.22); }
-.merit-hero-verdict--soul .merit-hero-name.soul-name-faction--tianming{ color: #fecaca; text-shadow: 0 0 18px rgba(239,68,68,.38); }
+.merit-hero-verdict--soul .merit-hero-name.soul-name-faction--tianming{ color: #f0c4b0; text-shadow: 0 0 18px rgba(185,28,28,.38); }
 .merit-hero-verdict--soul .merit-report-kicker{
-  color: rgba(148,163,184,.88);
+  color: rgba(154,142,122,.88);
   font-size: 11px;
   letter-spacing: 0.18em;
 }
@@ -1654,20 +1654,20 @@ html{
 .merit-soul-behavior-line--echo{
   font-size: 13px;
   font-weight: 650;
-  color: rgba(148,163,184,.88);
+  color: rgba(154,142,122,.88);
   letter-spacing: 0.03em;
 }
 .merit-soul-anchor{
   font-size: 13px;
   font-weight: 650;
-  color: rgba(203,213,225,.92);
+  color: rgba(200,188,168,.92);
   margin: 0 0 8px;
   line-height: 1.5;
 }
 .merit-soul-resemble{
   font-size: 13px;
   font-weight: 750;
-  color: rgba(226,232,240,.94);
+  color: rgba(220,208,188,.94);
   margin: 0 0 10px;
   line-height: 1.5;
 }
@@ -1677,19 +1677,19 @@ html{
 }
 .merit-hero-verdict--soul .merit-hero-trait-one{
   font-size: 13px;
-  color: rgba(226,232,240,.9);
+  color: rgba(220,208,188,.9);
   margin: 0 0 8px;
   line-height: 1.45;
 }
 .merit-hero-verdict--soul .merit-hero-eval{
   font-size: 13px;
-  color: rgba(203,213,225,.9);
+  color: rgba(200,188,168,.9);
   margin: 0 0 6px;
   line-height: 1.5;
 }
 .merit-hero-verdict--soul .merit-hero-poem-inline{
   font-size: 13px;
-  color: rgba(186,230,253,.88);
+  color: rgba(160,175,200,.88);
   font-style: italic;
   margin: 0 0 10px;
   line-height: 1.5;
@@ -1699,20 +1699,20 @@ html{
 }
 .merit-hero-verdict--soul .merit-hero-trait{
   font-size: 13px;
-  color: rgba(167,243,208,.9);
+  color: rgba(212,190,138,.9);
   margin: 0 0 8px;
 }
 .merit-hero-overall{
   font-size: 13px;
-  color: rgba(186,230,253,.92);
+  color: rgba(160,175,200,.92);
   margin: 0 0 6px;
 }
 .merit-soul-stats{
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(148,163,184,.22);
+  border-top: 1px solid rgba(154,142,122,.22);
   font-size: 12px;
-  color: rgba(203,213,225,.88);
+  color: rgba(200,188,168,.88);
 }
 .merit-soul-stats .soul-dossier-kicker{
   margin-bottom: 8px;
@@ -1926,7 +1926,7 @@ html{
   align-items: stretch;
   border-radius: 16px;
   border: 1px solid rgba(250,204,21,.22);
-  background: linear-gradient(180deg, rgba(30,41,59,.92), rgba(15,23,42,.94) 45%, rgba(2,6,23,.92));
+  background: linear-gradient(180deg, rgba(35,28,48,.92), rgba(17,13,26,.94) 45%, rgba(8,5,15,.92));
   box-shadow: 0 28px 70px rgba(0,0,0,.55);
   overflow: hidden;
 }
@@ -1962,7 +1962,7 @@ html{
   padding: 12px 18px 18px;
   border-radius: 0;
   border: 0;
-  border-top: 1px solid rgba(255,255,255,.08);
+  border-top: 1px solid rgba(232,220,200,.08);
   background: transparent;
   box-shadow: none;
 }
@@ -1991,7 +1991,7 @@ html{
   margin: 0;
   padding: 12px 18px 18px;
   border: 0;
-  border-top: 1px solid rgba(255,255,255,.08);
+  border-top: 1px solid rgba(232,220,200,.08);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -2036,7 +2036,7 @@ html{
   z-index: 90;
   display: block;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(2,6,23,.04), rgba(2,6,23,.30) 40%, rgba(2,6,23,.48));
+  background: linear-gradient(180deg, rgba(8,5,15,.04), rgba(8,5,15,.30) 40%, rgba(8,5,15,.48));
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.12s ease, visibility 0.12s ease;
@@ -2126,7 +2126,7 @@ html{
 .battle-merit-combo.is-x4{ transform: translate(-50%, -50%) scale(1.24); }
 .battle-merit-fx-layer.battle-merit--normal .battle-merit-judgement{ color: rgba(254,240,138,.98); }
 .battle-merit-fx-layer.battle-merit--normal .battle-merit-delta{ color: rgba(253,224,71,.98); }
-.battle-merit-fx-layer.battle-merit--normal .battle-merit-combo{ color: rgba(255,255,255,.95); }
+.battle-merit-fx-layer.battle-merit--normal .battle-merit-combo{ color: rgba(232,220,200,.95); }
 .battle-merit-fx-layer.battle-merit--normal .battle-merit-breakdown{ color: rgba(254,243,199,.88); }
 .battle-merit-fx-layer.battle-merit--normal .battle-merit-burst{
   background: radial-gradient(circle at center, rgba(250,204,21,.28), rgba(0,0,0,0) 68%);
@@ -2139,21 +2139,21 @@ html{
   background: radial-gradient(circle at center, rgba(245,158,11,.34), rgba(0,0,0,0) 70%);
 }
 .battle-merit-fx-layer.battle-merit--execute .battle-merit-judgement{
-  color: rgba(255,255,255,.98);
-  text-shadow: 0 0 22px rgba(251,191,36,.48), 0 0 10px rgba(239,68,68,.45);
+  color: rgba(232,220,200,.98);
+  text-shadow: 0 0 22px rgba(251,191,36,.48), 0 0 10px rgba(185,28,28,.45);
 }
 .battle-merit-fx-layer.battle-merit--execute .battle-merit-delta{ color: rgba(254,215,170,.98); }
 .battle-merit-fx-layer.battle-merit--execute .battle-merit-combo{ color: rgba(254,240,138,.98); }
 .battle-merit-fx-layer.battle-merit--execute .battle-merit-breakdown{ color: rgba(255,237,213,.92); }
 .battle-merit-fx-layer.battle-merit--execute .battle-merit-burst{
-  background: radial-gradient(circle at center, rgba(239,68,68,.30), rgba(250,204,21,.26) 36%, rgba(0,0,0,0) 72%);
+  background: radial-gradient(circle at center, rgba(185,28,28,.30), rgba(250,204,21,.26) 36%, rgba(0,0,0,0) 72%);
 }
-.battle-merit-fx-layer.battle-merit--red .battle-merit-judgement{ color: rgba(248,113,113,.98); text-shadow: 0 0 16px rgba(239,68,68,.42), 0 4px 16px rgba(0,0,0,.52); }
-.battle-merit-fx-layer.battle-merit--red .battle-merit-delta{ color: rgba(252,165,165,.98); }
-.battle-merit-fx-layer.battle-merit--red .battle-merit-combo{ color: rgba(254,202,202,.95); }
+.battle-merit-fx-layer.battle-merit--red .battle-merit-judgement{ color: rgba(210,80,80,.98); text-shadow: 0 0 16px rgba(185,28,28,.42), 0 4px 16px rgba(0,0,0,.52); }
+.battle-merit-fx-layer.battle-merit--red .battle-merit-delta{ color: rgba(224,160,144,.98); }
+.battle-merit-fx-layer.battle-merit--red .battle-merit-combo{ color: rgba(240,196,176,.95); }
 .battle-merit-fx-layer.battle-merit--red .battle-merit-breakdown{ color: rgba(254,215,215,.88); }
 .battle-merit-fx-layer.battle-merit--red .battle-merit-burst{
-  background: radial-gradient(circle at center, rgba(239,68,68,.34), rgba(0,0,0,0) 72%);
+  background: radial-gradient(circle at center, rgba(185,28,28,.34), rgba(0,0,0,0) 72%);
 }
 .battle-merit-fx-layer.battle-merit--strong .battle-merit-judgement{ font-size: clamp(26px, 4.6vw, 48px); }
 .battle-merit-fx-layer.battle-merit--strong .battle-merit-delta{ font-size: clamp(18px, 2.9vw, 30px); }
@@ -2217,14 +2217,14 @@ html{
   justify-content: center;
   padding: 8px 16px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(232,220,200,.14);
+  background: rgba(232,220,200,.08);
   font-weight: 900;
   font-size: 15px;
   letter-spacing: .06em;
   min-height: 38px;
   white-space: nowrap;
-  text-shadow: 0 1px 2px rgba(2,6,23,.5);
+  text-shadow: 0 1px 2px rgba(8,5,15,.5);
 }
 .resolution-capsule--player{
   grid-column: 1;
@@ -2247,19 +2247,19 @@ html{
 /* 碰撞段：防御/盾反胶囊也参与展示，便于看清双方当前交锋关系 */
 /* 对撞层玩家侧：与主行动栏同色（快攻浅红 / 重击深红 / 防御蓝 / 盾反黄 / 调息绿） */
 .resolution-capsule--player.battle-clash-chip--quick{
-  color: rgba(254,226,231,.98);
-  border-color: rgba(251,113,133,.55);
-  background: rgba(244,63,94,.18);
+  color: rgba(240,210,186,.98);
+  border-color: rgba(200,100,120,.55);
+  background: rgba(196,50,60,.18);
 }
 .resolution-capsule--player.battle-clash-chip--heavy{
-  color: rgba(254,202,202,.98);
-  border-color: rgba(220,38,38,.58);
+  color: rgba(240,196,176,.98);
+  border-color: rgba(180,30,30,.58);
   background: rgba(127,29,29,.32);
 }
 .resolution-capsule--player.battle-clash-chip--defend{
-  color: rgba(191,219,254,.98);
-  border-color: rgba(59,130,246,.48);
-  background: rgba(59,130,246,.18);
+  color: rgba(168,184,212,.98);
+  border-color: rgba(80,100,160,.48);
+  background: rgba(80,100,160,.18);
 }
 .resolution-capsule--player.battle-clash-chip--block{
   color: rgba(254,240,138,.98);
@@ -2267,30 +2267,30 @@ html{
   background: rgba(161,98,7,.22);
 }
 .resolution-capsule--player.battle-clash-chip--rest{
-  color: rgba(187,247,208,.98);
-  border-color: rgba(34,197,94,.48);
-  background: rgba(34,197,94,.16);
+  color: rgba(232,201,122,.98);
+  border-color: rgba(196,30,58,.48);
+  background: rgba(196,30,58,.16);
 }
 .resolution-capsule--player.battle-clash-chip--execute{
   color: rgba(254,215,170,.98);
   border-color: rgba(245,158,11,.52);
-  background: linear-gradient(180deg, rgba(239,68,68,.28), rgba(185,28,28,.24));
-  box-shadow: 0 0 18px rgba(239,68,68,.22);
+  background: linear-gradient(180deg, rgba(185,28,28,.28), rgba(185,28,28,.24));
+  box-shadow: 0 0 18px rgba(185,28,28,.22);
 }
 /* 多段对撞里非招式侧的「我」：低对比中性胶囊 */
 .resolution-capsule--player.battle-clash-chip--me{
-  color: rgba(226,232,240,.95);
-  border-color: rgba(148,163,184,.42);
-  background: rgba(148,163,184,.14);
+  color: rgba(220,208,188,.95);
+  border-color: rgba(154,142,122,.42);
+  background: rgba(154,142,122,.14);
 }
 /* 调息回合对撞：本段无出手意图，仅占位与敌意图对撞（非调息色、非「我」侧袭） */
 .resolution-capsule--player.battle-clash-chip--neutral-intent{
   min-width: 3rem;
   min-height: 1.35em;
-  color: rgba(148,163,184,.35);
+  color: rgba(154,142,122,.35);
   border-style: dashed;
   border-color: rgba(100,116,139,.38);
-  background: rgba(15,23,42,.35);
+  background: rgba(17,13,26,.35);
   box-shadow: none;
 }
 /* 防御/盾反为全体对策：不展示“我方 vs 单敌”对撞胶囊，仅保留敌方侧 */
@@ -2301,19 +2301,19 @@ html{
   box-shadow: none;
 }
 .resolution-capsule--enemy.intent-quick{
-  color: rgba(254,226,231,.98);
-  border-color: rgba(251,113,133,.52);
-  background: rgba(244,63,94,.16);
+  color: rgba(240,210,186,.98);
+  border-color: rgba(200,100,120,.52);
+  background: rgba(196,50,60,.16);
 }
 .resolution-capsule--enemy.intent-heavy{
-  color: rgba(254,202,202,.98);
-  border-color: rgba(220,38,38,.55);
+  color: rgba(240,196,176,.98);
+  border-color: rgba(180,30,30,.55);
   background: rgba(127,29,29,.28);
 }
 .resolution-capsule--enemy.intent-defend{
-  color: rgba(191,219,254,.98);
-  border-color: rgba(59,130,246,.48);
-  background: rgba(59,130,246,.18);
+  color: rgba(168,184,212,.98);
+  border-color: rgba(80,100,160,.48);
+  background: rgba(80,100,160,.18);
 }
 .resolution-capsule--enemy.intent-block{
   color: rgba(254,240,138,.98);
@@ -2321,16 +2321,16 @@ html{
   background: rgba(161,98,7,.2);
 }
 .resolution-capsule--enemy.intent-rest{
-  color: rgba(187,247,208,.98);
-  border-color: rgba(34,197,94,.48);
-  background: rgba(34,197,94,.16);
+  color: rgba(232,201,122,.98);
+  border-color: rgba(196,30,58,.48);
+  background: rgba(196,30,58,.16);
 }
 /* 破绽：本段不与敌方意图药丸对撞，仅表示「破绽」状态 */
 .resolution-capsule--enemy.intent-broken{
   color: rgba(251,182,206,.98);
-  border-color: rgba(244,114,182,.55);
-  background: rgba(244,114,182,.16);
-  box-shadow: 0 0 18px rgba(244,114,182,.22);
+  border-color: rgba(192,144,160,.55);
+  background: rgba(192,144,160,.16);
+  box-shadow: 0 0 18px rgba(192,144,160,.22);
 }
 /* 双方均破绽对撞：敌方侧为「击溃」（非破绽文案） */
 .resolution-capsule--enemy.intent-rout{
@@ -2462,17 +2462,17 @@ html{
 .resolution-side-result{
   padding: 5px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(15,23,42,.80);
+  border: 1px solid rgba(232,220,200,.14);
+  background: rgba(17,13,26,.80);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: .04em;
-  color: rgba(229,231,235,.95);
+  color: rgba(232,220,200,.95);
 }
 .resolution-outcome-hit .resolution-label,
-.resolution-side-result.resolution-outcome-hit{ color: #fca5a5; }
+.resolution-side-result.resolution-outcome-hit{ color: #e0a090; }
 .resolution-outcome-blocked .resolution-label,
-.resolution-side-result.resolution-outcome-blocked{ color: #93c5fd; }
+.resolution-side-result.resolution-outcome-blocked{ color: #8a9cc4; }
 .resolution-outcome-mitigated .resolution-label,
 .resolution-side-result.resolution-outcome-mitigated{ color: #fdba74; }
 .resolution-outcome-press_defense .resolution-label,
@@ -2482,24 +2482,24 @@ html{
 .resolution-outcome-interrupted .resolution-label,
 .resolution-side-result.resolution-outcome-interrupted{ color: #fcd34d; }
 .resolution-outcome-whiff .resolution-label,
-.resolution-side-result.resolution-outcome-whiff{ color: #c4b5fd; }
+.resolution-side-result.resolution-outcome-whiff{ color: #d4be8a; }
 .resolution-outcome-rest .resolution-label,
-.resolution-side-result.resolution-outcome-rest{ color: #86efac; }
+.resolution-side-result.resolution-outcome-rest{ color: #e8c97a; }
 .resolution-outcome-trade .resolution-label,
-.resolution-side-result.resolution-outcome-trade{ color: #f9a8d4; }
+.resolution-side-result.resolution-outcome-trade{ color: #d0b8a0; }
 .resolution-outcome-flanked .resolution-label,
-.resolution-side-result.resolution-outcome-flanked{ color: #e879f9; }
+.resolution-side-result.resolution-outcome-flanked{ color: #c090b8; }
 .resolution-outcome-blood_trade .resolution-label,
-.resolution-side-result.resolution-outcome-blood_trade{ color: #fb7185; }
+.resolution-side-result.resolution-outcome-blood_trade{ color: #c86070; }
 /* 换血且先手击杀：第二段「先手！」强调 */
 .resolution-label.resolution-label--first-strike{
-  color: #fde047;
+  color: #f0d060;
   text-shadow: 0 0 14px rgba(250,204,21,.38);
 }
 /* 换血且将敌打入破绽：第二段「崩了！」强调 */
 .resolution-label.resolution-label--enemy-break{
-  color: #f9a8d4;
-  text-shadow: 0 0 14px rgba(244,114,182,.4);
+  color: #d0b8a0;
+  text-shadow: 0 0 14px rgba(192,144,160,.4);
 }
 /* 本段击杀：第二段「击杀！」强调（换血先杀 / 命中·打断·压制等决胜） */
 .resolution-label.resolution-label--lethal-kill{
@@ -2509,17 +2509,17 @@ html{
 .resolution-outcome-execute .resolution-label,
 .resolution-side-result.resolution-outcome-execute{ color: #fdba74; }
 .resolution-outcome-dual_broken .resolution-label,
-.resolution-side-result.resolution-outcome-dual_broken{ color: #a5f3fc; }
+.resolution-side-result.resolution-outcome-dual_broken{ color: #90c8d0; }
 .resolution-capsule--player.intent-broken{
   color: rgba(251,182,206,.98);
-  border-color: rgba(244,114,182,.55);
-  background: rgba(244,114,182,.16);
-  box-shadow: 0 0 18px rgba(244,114,182,.22);
+  border-color: rgba(192,144,160,.55);
+  background: rgba(192,144,160,.16);
+  box-shadow: 0 0 18px rgba(192,144,160,.22);
 }
 /* 仅我方破绽（敌未破绽）：对撞状态2 */
 .resolution-capsule--player.intent-broken.resolution-player-broken--lv2{
-  box-shadow: 0 0 14px rgba(244,114,182,.32);
-  border-color: rgba(244,114,182,.62);
+  box-shadow: 0 0 14px rgba(192,144,160,.32);
+  border-color: rgba(192,144,160,.62);
 }
 /* 双方均破绽：对撞状态3（我方破绽） */
 .resolution-capsule--player.intent-broken.resolution-player-broken--lv3{
@@ -2681,8 +2681,8 @@ html{
   font-size:104px;
   font-weight: 1000;
   letter-spacing: .15em;
-  color: #ef4444;
-  text-shadow: 0 0 22px rgba(239,68,68,.35);
+  color: #c82030;
+  text-shadow: 0 0 22px rgba(185,28,28,.35);
   margin-bottom: 14px;
 }
 .death-retry{
@@ -2710,7 +2710,7 @@ html{
 }
 .win-growth-embed{
   width:100%;
-  background: linear-gradient(180deg, rgba(30,41,59,.62), rgba(2,6,23,.35));
+  background: linear-gradient(180deg, rgba(35,28,48,.62), rgba(8,5,15,.35));
   border:1px solid rgba(250,204,21,.16);
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(0,0,0,.25);
@@ -2731,7 +2731,7 @@ html{
 .win-growth-title{
   font-weight: 950;
   font-size: 15px;
-  color: rgba(229,231,235,.96);
+  color: rgba(232,220,200,.96);
 }
 .win-growth-sub{
   margin-top:4px;
@@ -2740,15 +2740,15 @@ html{
 }
 .win-growth-options.node-options{
   padding:12px 0 0 0;
-  border-top:1px solid rgba(255,255,255,.06);
+  border-top:1px solid rgba(232,220,200,.06);
   margin-top:12px;
   display:block;
 }
 .win-card{
   position:relative;
   overflow:hidden;
-  background: linear-gradient(180deg, rgba(30,41,59,.62), rgba(2,6,23,.35));
-  border:1px solid rgba(74,222,128,.18);
+  background: linear-gradient(180deg, rgba(35,28,48,.62), rgba(8,5,15,.35));
+  border:1px solid rgba(232,201,122,.18);
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(0,0,0,.25);
   padding: 22px 20px 20px;
@@ -2762,25 +2762,25 @@ html{
   position:absolute;
   top:0; left:0; right:0;
   height:2px;
-  background: linear-gradient(90deg, transparent, rgba(74,222,128,.6) 30%, rgba(253,224,71,.5) 70%, transparent);
+  background: linear-gradient(90deg, transparent, rgba(232,201,122,.6) 30%, rgba(253,224,71,.5) 70%, transparent);
 }
 .win-kicker{
   font-size:10px;
   font-weight:900;
   letter-spacing:.18em;
-  color: rgba(74,222,128,.75);
+  color: rgba(232,201,122,.75);
   margin-bottom:4px;
 }
 .win-divider{
   width:40px;
   height:1px;
   margin:10px auto 16px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent);
+  background: linear-gradient(90deg, transparent, rgba(232,220,200,.15), transparent);
 }
 .win-warehouse-panel{
   width: 100%;
-  background: linear-gradient(180deg, rgba(30,41,59,.62), rgba(2,6,23,.35));
-  border: 1px solid rgba(148,163,184,.18);
+  background: linear-gradient(180deg, rgba(35,28,48,.62), rgba(8,5,15,.35));
+  border: 1px solid rgba(154,142,122,.18);
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(0,0,0,.25);
   padding: 12px 12px 10px;
@@ -2792,7 +2792,7 @@ html{
   font-size: 12px;
   font-weight: 900;
   letter-spacing: .08em;
-  color: rgba(191,219,254,.92);
+  color: rgba(168,184,212,.92);
   margin-bottom: 8px;
 }
 .win-warehouse-cards{
@@ -2822,8 +2822,8 @@ html{
   margin: 10px 0 12px;
   padding: 14px 14px 12px;
   border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: linear-gradient(180deg, rgba(30,41,59,.62), rgba(2,6,23,.35));
+  border: 1px solid rgba(232,220,200,.10);
+  background: linear-gradient(180deg, rgba(35,28,48,.62), rgba(8,5,15,.35));
   box-shadow: 0 10px 30px rgba(0,0,0,.25);
   flex-shrink: 0;
 }
@@ -2832,12 +2832,12 @@ html{
   font-size: 13px;
   font-weight: 1000;
   letter-spacing: .12em;
-  color: rgba(191,219,254,.92);
+  color: rgba(168,184,212,.92);
   text-transform: uppercase;
   margin-bottom: 8px;
 }
 .intro-body{
-  color: rgba(229,231,235,.92);
+  color: rgba(232,220,200,.92);
   font-size: 16px;
   line-height: 1.7;
 }
@@ -2885,18 +2885,18 @@ html{
   gap:10px;
   padding: 8px 10px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(2,6,23,.26);
+  border: 1px solid rgba(232,220,200,.08);
+  background: rgba(8,5,15,.26);
 }
 .intro-top3-row--vacant{
   opacity: .72;
 }
 .intro-top3-row--vacant .intro-top3-name{
-  color: rgba(156,163,175,.95);
+  color: rgba(145,148,155,.95);
   font-style: italic;
 }
 .intro-top3-empty{
-  color: rgba(156,163,175,.95);
+  color: rgba(145,148,155,.95);
   font-size: 13px;
   padding: 6px 0 2px;
 }
@@ -2931,7 +2931,7 @@ html{
   display:inline-block;
   border-radius: 6px;
   position: relative;
-  box-shadow: 0 0 0 2px rgba(255,255,255,.10), 0 0 14px rgba(148,163,184,.10);
+  box-shadow: 0 0 0 2px rgba(232,220,200,.10), 0 0 14px rgba(154,142,122,.10);
   flex: 0 0 auto;
 }
 .intro-faction-flag::after{
@@ -2945,22 +2945,22 @@ html{
   opacity: .95;
 }
 .intro-faction-flag--wei{
-  background: linear-gradient(180deg, rgba(147,197,253,.95), rgba(59,130,246,.55));
+  background: linear-gradient(180deg, rgba(138,156,196,.95), rgba(80,100,160,.55));
 }
 .intro-faction-flag--wei::after{
-  background: linear-gradient(180deg, rgba(147,197,253,.92), rgba(59,130,246,.52));
+  background: linear-gradient(180deg, rgba(138,156,196,.92), rgba(80,100,160,.52));
 }
 .intro-faction-flag--shu{
-  background: linear-gradient(180deg, rgba(134,239,172,.95), rgba(34,197,94,.52));
+  background: linear-gradient(180deg, rgba(200,176,128,.95), rgba(196,30,58,.52));
 }
 .intro-faction-flag--shu::after{
-  background: linear-gradient(180deg, rgba(134,239,172,.92), rgba(34,197,94,.48));
+  background: linear-gradient(180deg, rgba(200,176,128,.92), rgba(196,30,58,.48));
 }
 .intro-faction-flag--wu{
-  background: linear-gradient(180deg, rgba(252,165,165,.95), rgba(239,68,68,.50));
+  background: linear-gradient(180deg, rgba(224,160,144,.95), rgba(185,28,28,.50));
 }
 .intro-faction-flag--wu::after{
-  background: linear-gradient(180deg, rgba(252,165,165,.92), rgba(239,68,68,.46));
+  background: linear-gradient(180deg, rgba(224,160,144,.92), rgba(185,28,28,.46));
 }
 .intro-faction-flag--qun{
   background: linear-gradient(180deg, rgba(254,240,138,.95), rgba(234,179,8,.50));
@@ -2969,10 +2969,10 @@ html{
   background: linear-gradient(180deg, rgba(254,240,138,.92), rgba(234,179,8,.46));
 }
 .intro-faction-flag--unknown{
-  background: linear-gradient(180deg, rgba(226,232,240,.92), rgba(148,163,184,.55));
+  background: linear-gradient(180deg, rgba(220,208,188,.92), rgba(154,142,122,.55));
 }
 .intro-faction-flag--unknown::after{
-  background: linear-gradient(180deg, rgba(226,232,240,.90), rgba(148,163,184,.52));
+  background: linear-gradient(180deg, rgba(220,208,188,.90), rgba(154,142,122,.52));
 }
 .intro-flag{
   display:inline-block;
@@ -2980,8 +2980,8 @@ html{
   height: 18px;
   border-radius: 6px;
   background:
-    linear-gradient(180deg, rgba(226,232,240,.92), rgba(148,163,184,.55));
-  box-shadow: 0 0 0 2px rgba(203,213,225,.14), 0 0 14px rgba(148,163,184,.16);
+    linear-gradient(180deg, rgba(220,208,188,.92), rgba(154,142,122,.55));
+  box-shadow: 0 0 0 2px rgba(200,188,168,.14), 0 0 14px rgba(154,142,122,.16);
   position: relative;
   flex: 0 0 auto;
 }
@@ -2993,14 +2993,14 @@ html{
   width: 10px;
   height: 10px;
   background:
-    linear-gradient(180deg, rgba(226,232,240,.9), rgba(148,163,184,.55));
+    linear-gradient(180deg, rgba(220,208,188,.9), rgba(154,142,122,.55));
   clip-path: polygon(0 0, 100% 50%, 0 100%);
   opacity: .9;
 }
 .intro-top3-rank{
   font-family: var(--mono);
   font-weight: 1000;
-  color: rgba(229,231,235,.92);
+  color: rgba(232,220,200,.92);
 }
 .intro-top3-name-stack{
   display: flex;
@@ -3046,19 +3046,19 @@ html{
 }
 /* 右侧前十：战功档胶囊底框不变，武魂名字按阵营改字色 */
 .intro-top3-soul-name.merit-grade.soul-grade-badge.soul-name-faction--shu{
-  --grade-main: #34d399;
-  --grade-sub: #bbf7d0;
-  color: #bbf7d0;
+  --grade-main: #d4920a;
+  --grade-sub: #e8c97a;
+  color: #e8c97a;
 }
 .intro-top3-soul-name.merit-grade.soul-grade-badge.soul-name-faction--wei{
-  --grade-main: #60a5fa;
-  --grade-sub: #bfdbfe;
-  color: #bfdbfe;
+  --grade-main: #6b82b0;
+  --grade-sub: #a8b8d4;
+  color: #a8b8d4;
 }
 .intro-top3-soul-name.merit-grade.soul-grade-badge.soul-name-faction--wu{
-  --grade-main: #f87171;
-  --grade-sub: #fecdd3;
-  color: #fecdd3;
+  --grade-main: #c84040;
+  --grade-sub: #f0c4b0;
+  color: #f0c4b0;
 }
 .intro-top3-soul-name.merit-grade.soul-grade-badge.soul-name-faction--qun{
   --grade-main: #facc15;
@@ -3070,16 +3070,16 @@ html{
   --grade-sub: #fdba74;
   color: #fdba74;
 }
-.intro-top3-soul-name.merit-grade--unknown.soul-name-faction--shu{ color: #86efac; }
-.intro-top3-soul-name.merit-grade--unknown.soul-name-faction--wei{ color: #93c5fd; }
-.intro-top3-soul-name.merit-grade--unknown.soul-name-faction--wu{ color: #fca5a5; }
-.intro-top3-soul-name.merit-grade--unknown.soul-name-faction--qun{ color: #fde047; }
+.intro-top3-soul-name.merit-grade--unknown.soul-name-faction--shu{ color: #e8c97a; }
+.intro-top3-soul-name.merit-grade--unknown.soul-name-faction--wei{ color: #8a9cc4; }
+.intro-top3-soul-name.merit-grade--unknown.soul-name-faction--wu{ color: #e0a090; }
+.intro-top3-soul-name.merit-grade--unknown.soul-name-faction--qun{ color: #f0d060; }
 .intro-top3-soul-name.merit-grade--unknown.soul-name-faction--tianming{ color: #fb923c; }
 .intro-top3-name{
   flex: 1 1 auto;
   min-width: 0;
   font-weight: 900;
-  color: rgba(229,231,235,.95);
+  color: rgba(232,220,200,.95);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3090,7 +3090,7 @@ html{
   justify-content:flex-end;
   gap:6px;
   min-width: 0;
-  color: rgba(148,163,184,.92);
+  color: rgba(154,142,122,.92);
   font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
@@ -3106,15 +3106,15 @@ html{
   border-radius: 999px;
   font-weight: 1000;
   letter-spacing:.06em;
-  border:1px solid rgba(255,255,255,.10);
-  background: rgba(148,163,184,.10);
+  border:1px solid rgba(232,220,200,.10);
+  background: rgba(154,142,122,.10);
 }
 .intro-meta-province{
-  color: rgba(148,163,184,.92);
+  color: rgba(154,142,122,.92);
 }
-.intro-meta-pill.faction-pill--wei{ border-color: rgba(59,130,246,.35); background: rgba(59,130,246,.14); }
-.intro-meta-pill.faction-pill--shu{ border-color: rgba(34,197,94,.32); background: rgba(34,197,94,.12); }
-.intro-meta-pill.faction-pill--wu{ border-color: rgba(239,68,68,.32); background: rgba(239,68,68,.12); }
+.intro-meta-pill.faction-pill--wei{ border-color: rgba(80,100,160,.35); background: rgba(80,100,160,.14); }
+.intro-meta-pill.faction-pill--shu{ border-color: rgba(196,30,58,.32); background: rgba(196,30,58,.12); }
+.intro-meta-pill.faction-pill--wu{ border-color: rgba(185,28,28,.32); background: rgba(185,28,28,.12); }
 .intro-meta-pill.faction-pill--qun{ border-color: rgba(234,179,8,.35); background: rgba(234,179,8,.12); }
 .intro-top3-score{
   font-family: var(--mono);
@@ -3138,8 +3138,8 @@ html{
   font-size: 16px;
   font-weight: 1000;
   letter-spacing: .02em;
-  color: rgba(191,219,254,.95);
-  text-shadow: 0 0 14px rgba(59,130,246,.20);
+  color: rgba(168,184,212,.95);
+  text-shadow: 0 0 14px rgba(80,100,160,.20);
 }
 .intro-dare-actions{
   margin-top: 10px;
@@ -3160,8 +3160,8 @@ html{
   font-size: 22px;
   font-weight: 1000;
   letter-spacing: .14em;
-  color: rgba(229,231,235,.96);
-  text-shadow: 0 0 14px rgba(34,197,94,.15);
+  color: rgba(232,220,200,.96);
+  text-shadow: 0 0 14px rgba(196,30,58,.15);
 }
 .win-claim{
   width:100%;
@@ -3170,15 +3170,15 @@ html{
   font-weight: 900;
   letter-spacing:.03em;
   background: rgba(22,101,52,.24);
-  border-color: rgba(74,222,128,.38);
-  color: rgba(229,231,235,.94);
+  border-color: rgba(232,201,122,.38);
+  color: rgba(232,220,200,.94);
   transition: background .15s, border-color .15s;
 }
 .win-claim[hidden]{ display:none; }
 .win-claim + .win-claim{ margin-top:6px; }
 .win-claim:hover:not([disabled]){
   background: rgba(22,101,52,.38);
-  border-color: rgba(74,222,128,.58);
+  border-color: rgba(232,201,122,.58);
 }
 
 .name-dialog-row{
@@ -3192,7 +3192,7 @@ html{
   font-size: 12px;
   font-weight: 900;
   letter-spacing: .06em;
-  color: rgba(148,163,184,.95);
+  color: rgba(154,142,122,.95);
   min-width: 40px;
 }
 .name-dialog-factions{
@@ -3207,35 +3207,35 @@ html{
   gap: 6px;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(2,6,23,.26);
+  border: 1px solid rgba(232,220,200,.10);
+  background: rgba(8,5,15,.26);
   user-select: none;
   cursor: pointer;
   font-weight: 900;
-  color: rgba(229,231,235,.92);
+  color: rgba(232,220,200,.92);
 }
 .name-dialog-faction input{
   accent-color: rgba(250,204,21,.9);
 }
-.faction--wei{ color: rgba(147,197,253,.98) !important; }
-.faction--shu{ color: rgba(134,239,172,.98) !important; }
-.faction--wu{ color: rgba(252,165,165,.98) !important; }
+.faction--wei{ color: rgba(138,156,196,.98) !important; }
+.faction--shu{ color: rgba(200,176,128,.98) !important; }
+.faction--wu{ color: rgba(224,160,144,.98) !important; }
 .faction--qun{ color: rgba(254,240,138,.98) !important; }
-.faction-pill--wei{ border-color: rgba(59,130,246,.35) !important; background: rgba(59,130,246,.16) !important; }
-.faction-pill--shu{ border-color: rgba(34,197,94,.32) !important; background: rgba(34,197,94,.14) !important; }
-.faction-pill--wu{ border-color: rgba(239,68,68,.32) !important; background: rgba(239,68,68,.14) !important; }
+.faction-pill--wei{ border-color: rgba(80,100,160,.35) !important; background: rgba(80,100,160,.16) !important; }
+.faction-pill--shu{ border-color: rgba(196,30,58,.32) !important; background: rgba(196,30,58,.14) !important; }
+.faction-pill--wu{ border-color: rgba(185,28,28,.32) !important; background: rgba(185,28,28,.14) !important; }
 .faction-pill--qun{ border-color: rgba(234,179,8,.35) !important; background: rgba(234,179,8,.14) !important; }
 .name-dialog-faction:has(input:checked){
   box-shadow: 0 0 0 2px rgba(250,204,21,.10) inset;
 }
-.name-dialog-faction.faction-pill--wei:has(input:checked){ box-shadow: 0 0 0 2px rgba(59,130,246,.18) inset; }
-.name-dialog-faction.faction-pill--shu:has(input:checked){ box-shadow: 0 0 0 2px rgba(34,197,94,.18) inset; }
-.name-dialog-faction.faction-pill--wu:has(input:checked){ box-shadow: 0 0 0 2px rgba(239,68,68,.18) inset; }
+.name-dialog-faction.faction-pill--wei:has(input:checked){ box-shadow: 0 0 0 2px rgba(80,100,160,.18) inset; }
+.name-dialog-faction.faction-pill--shu:has(input:checked){ box-shadow: 0 0 0 2px rgba(196,30,58,.18) inset; }
+.name-dialog-faction.faction-pill--wu:has(input:checked){ box-shadow: 0 0 0 2px rgba(185,28,28,.18) inset; }
 .name-dialog-faction.faction-pill--qun:has(input:checked){ box-shadow: 0 0 0 2px rgba(234,179,8,.18) inset; }
 .name-dialog-geo-hint{
   margin-top: 2px;
   font-size: 12px;
-  color: rgba(156,163,175,.95);
+  color: rgba(145,148,155,.95);
 }
 
 .title-rank{
@@ -3255,7 +3255,7 @@ html{
 }
 .title-rank-sub{
   font-size: 12px;
-  color: rgba(148,163,184,.92);
+  color: rgba(154,142,122,.92);
 }
 .title-rank-row{
   display:flex;
@@ -3264,8 +3264,8 @@ html{
   gap: 10px;
   padding: 8px 10px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: rgba(2,6,23,.22);
+  border: 1px solid rgba(232,220,200,.08);
+  background: rgba(8,5,15,.22);
   margin-bottom: 8px;
 }
 .title-rank-left{
@@ -3283,17 +3283,17 @@ html{
   font-weight: 1000;
   letter-spacing: .1em;
   text-indent: .1em;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(148,163,184,.12);
-  color: rgba(229,231,235,.92);
+  border: 1px solid rgba(232,220,200,.10);
+  background: rgba(154,142,122,.12);
+  color: rgba(232,220,200,.92);
 }
-.title-rank-badge.faction-pill--wei{ border-color: rgba(59,130,246,.35); background: rgba(59,130,246,.16); }
-.title-rank-badge.faction-pill--shu{ border-color: rgba(34,197,94,.32); background: rgba(34,197,94,.14); }
-.title-rank-badge.faction-pill--wu{ border-color: rgba(239,68,68,.32); background: rgba(239,68,68,.14); }
+.title-rank-badge.faction-pill--wei{ border-color: rgba(80,100,160,.35); background: rgba(80,100,160,.16); }
+.title-rank-badge.faction-pill--shu{ border-color: rgba(196,30,58,.32); background: rgba(196,30,58,.14); }
+.title-rank-badge.faction-pill--wu{ border-color: rgba(185,28,28,.32); background: rgba(185,28,28,.14); }
 .title-rank-badge.faction-pill--qun{ border-color: rgba(234,179,8,.35); background: rgba(234,179,8,.14); }
 .title-rank-name{
   font-weight: 1000;
-  color: rgba(229,231,235,.92);
+  color: rgba(232,220,200,.92);
 }
 .title-rank-score{
   font-family: var(--mono);
@@ -3304,7 +3304,7 @@ html{
 
 .pre-fight-start{
   padding: 16px 16px 6px 16px;
-  border-top: 1px solid rgba(255,255,255,.06);
+  border-top: 1px solid rgba(232,220,200,.06);
   display:flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -3320,9 +3320,9 @@ html{
   opacity: .55;
   pointer-events: none;
   user-select: none;
-  border-top: 1px dashed rgba(255,255,255,.16);
-  border-bottom: 1px dashed rgba(255,255,255,.10);
-  background: linear-gradient(180deg, rgba(30,41,59,.26), rgba(15,23,42,.22));
+  border-top: 1px dashed rgba(232,220,200,.16);
+  border-bottom: 1px dashed rgba(232,220,200,.10);
+  background: linear-gradient(180deg, rgba(35,28,48,.26), rgba(17,13,26,.22));
   display:flex;
   align-items:center;
   justify-content:center;
@@ -3342,7 +3342,7 @@ html{
 .growth-overlay[hidden]{ display:none; }
 .growth-overlay-inner{
   width:100%;
-  background: linear-gradient(180deg, rgba(30,41,59,.62), rgba(2,6,23,.35));
+  background: linear-gradient(180deg, rgba(35,28,48,.62), rgba(8,5,15,.35));
   border:1px solid rgba(250,204,21,.16);
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(0,0,0,.25);
@@ -3368,7 +3368,7 @@ html{
 }
 .growth-overlay .node-options{
   padding:12px 0 0 0;
-  border-top:1px solid rgba(255,255,255,.06);
+  border-top:1px solid rgba(232,220,200,.06);
   margin-top:12px;
   display:block;
 }
@@ -3376,7 +3376,7 @@ html{
   margin:0;
   padding:8px 0 0 0;
   font-size:13px;
-  color: rgba(229,231,235,.88);
+  color: rgba(232,220,200,.88);
 }
 
 /* 预留：内嵌成长 + 底部「继续战斗」条时的版面（当前 R3 已改为技法三选一，与 R1 同流程） */
@@ -3403,7 +3403,7 @@ html{
   justify-content:center;
   align-items:center;
   padding:12px 16px 16px;
-  border-top:1px solid rgba(255,255,255,.06);
+  border-top:1px solid rgba(232,220,200,.06);
   flex-shrink:0;
 }
 .growth-continue-bar[hidden]{ display:none !important; }
@@ -3436,12 +3436,12 @@ html{
   text-align: center;
   padding: 28px 20px 24px;
   border-radius: 14px;
-  border: 1px solid rgba(239,68,68,.28);
+  border: 1px solid rgba(185,28,28,.28);
   background:
-    radial-gradient(ellipse 120% 80% at 50% 20%, rgba(239,68,68,.10), transparent 60%),
-    linear-gradient(180deg, rgba(30,41,59,.72), rgba(2,6,23,.52));
+    radial-gradient(ellipse 120% 80% at 50% 20%, rgba(185,28,28,.10), transparent 60%),
+    linear-gradient(180deg, rgba(35,28,48,.72), rgba(8,5,15,.52));
   box-shadow:
-    0 0 40px rgba(239,68,68,.08),
+    0 0 40px rgba(185,28,28,.08),
     0 10px 30px rgba(0,0,0,.30);
   animation: bossAlertIn .5s cubic-bezier(.18,.85,.22,1) both;
 }
@@ -3449,13 +3449,13 @@ html{
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(239,68,68,.7) 30%, rgba(251,146,60,.5) 70%, transparent);
+  background: linear-gradient(90deg, transparent, rgba(185,28,28,.7) 30%, rgba(251,146,60,.5) 70%, transparent);
 }
 .boss-alert__icon{
   font-size: 42px;
   line-height: 1;
   margin-bottom: 8px;
-  filter: drop-shadow(0 0 14px rgba(239,68,68,.5));
+  filter: drop-shadow(0 0 14px rgba(185,28,28,.5));
   animation: bossAlertPulse 1.8s ease-in-out infinite;
 }
 .boss-alert__warn{
@@ -3463,8 +3463,8 @@ html{
   font-weight: 1000;
   letter-spacing: .32em;
   text-indent: .32em;
-  color: rgba(239,68,68,.88);
-  text-shadow: 0 0 18px rgba(239,68,68,.35);
+  color: rgba(185,28,28,.88);
+  text-shadow: 0 0 18px rgba(185,28,28,.35);
   margin-bottom: 6px;
   animation: bossWarnBlink 1.2s ease-in-out infinite;
 }
@@ -3472,14 +3472,14 @@ html{
   font-size: 22px;
   font-weight: 1000;
   letter-spacing: .12em;
-  color: rgba(254,202,202,.98);
-  text-shadow: 0 0 22px rgba(239,68,68,.25);
+  color: rgba(240,196,176,.98);
+  text-shadow: 0 0 22px rgba(185,28,28,.25);
   margin-bottom: 8px;
 }
 .boss-alert__flavor{
   font-size: 12px;
   line-height: 1.65;
-  color: rgba(229,231,235,.72);
+  color: rgba(232,220,200,.72);
   max-width: 440px;
   margin: 0 auto 16px;
   text-align: center;
@@ -3499,14 +3499,14 @@ html{
 }
 .boss-alert__hl--exec{
   font-size: 1.35em;
-  color: rgba(254,202,202,.98);
-  text-shadow: 0 0 16px rgba(239,68,68,.45);
+  color: rgba(240,196,176,.98);
+  text-shadow: 0 0 16px rgba(185,28,28,.45);
 }
 .boss-alert__divider{
   width: 60px;
   height: 1px;
   margin: 0 auto 18px;
-  background: linear-gradient(90deg, transparent, rgba(239,68,68,.35), transparent);
+  background: linear-gradient(90deg, transparent, rgba(185,28,28,.35), transparent);
 }
 .boss-alert__btn{
   display: flex;
@@ -3536,8 +3536,8 @@ html{
   50%{ opacity: 1; }
 }
 @keyframes bossAlertBtnPulse{
-  0%, 100%{ box-shadow: 0 0 0 0 rgba(239,68,68,0); }
-  50%{ box-shadow: 0 0 18px 4px rgba(239,68,68,.35); }
+  0%, 100%{ box-shadow: 0 0 0 0 rgba(185,28,28,0); }
+  50%{ box-shadow: 0 0 18px 4px rgba(185,28,28,.35); }
 }
 @media (prefers-reduced-motion: reduce){
   .boss-alert{ animation: none; opacity: 1; }
@@ -3563,7 +3563,7 @@ html{
   .pick-grid{ grid-template-columns: 1fr; }
 }
 .pick-card{
-  border:1px solid rgba(255,255,255,.10);
+  border:1px solid rgba(232,220,200,.10);
   background: transparent;
   border-radius: 16px;
   padding:0;
@@ -3609,7 +3609,7 @@ html{
 }
 .pick-card-back{
   transform: rotateY(180deg);
-  background: radial-gradient(ellipse at top, rgba(250,204,21,.10), rgba(15,23,42,.82));
+  background: radial-gradient(ellipse at top, rgba(250,204,21,.10), rgba(17,13,26,.82));
   border:1px dashed rgba(250,204,21,.25);
   display:flex;
   align-items:center;
@@ -3622,39 +3622,39 @@ html{
 }
 .pick-card-front{
   transform: rotateY(0deg);
-  background: linear-gradient(180deg, rgba(17,24,39,.92), rgba(2,6,23,.90));
+  background: linear-gradient(180deg, rgba(22,18,30,.92), rgba(8,5,15,.90));
 }
 .pick-card--offense .pick-card-front{
   background:
-    radial-gradient(120% 80% at 20% 0%, rgba(239,68,68,.18), rgba(2,6,23,0) 55%),
-    linear-gradient(180deg, rgba(17,24,39,.92), rgba(2,6,23,.90));
-  border: 1px solid rgba(239,68,68,.18);
-  box-shadow: 0 0 0 1px rgba(239,68,68,.08) inset;
+    radial-gradient(120% 80% at 20% 0%, rgba(185,28,28,.18), rgba(8,5,15,0) 55%),
+    linear-gradient(180deg, rgba(22,18,30,.92), rgba(8,5,15,.90));
+  border: 1px solid rgba(185,28,28,.18);
+  box-shadow: 0 0 0 1px rgba(185,28,28,.08) inset;
 }
 .pick-card--defense .pick-card-front{
   background:
-    radial-gradient(120% 80% at 20% 0%, rgba(59,130,246,.18), rgba(2,6,23,0) 55%),
-    linear-gradient(180deg, rgba(17,24,39,.92), rgba(2,6,23,.90));
-  border: 1px solid rgba(59,130,246,.18);
-  box-shadow: 0 0 0 1px rgba(59,130,246,.08) inset;
+    radial-gradient(120% 80% at 20% 0%, rgba(80,100,160,.18), rgba(8,5,15,0) 55%),
+    linear-gradient(180deg, rgba(22,18,30,.92), rgba(8,5,15,.90));
+  border: 1px solid rgba(80,100,160,.18);
+  box-shadow: 0 0 0 1px rgba(80,100,160,.08) inset;
 }
 .pick-card--sustain .pick-card-front{
   background:
-    radial-gradient(120% 80% at 20% 0%, rgba(34,197,94,.16), rgba(2,6,23,0) 55%),
-    linear-gradient(180deg, rgba(17,24,39,.92), rgba(2,6,23,.90));
-  border: 1px solid rgba(34,197,94,.18);
-  box-shadow: 0 0 0 1px rgba(34,197,94,.08) inset;
+    radial-gradient(120% 80% at 20% 0%, rgba(196,30,58,.16), rgba(8,5,15,0) 55%),
+    linear-gradient(180deg, rgba(22,18,30,.92), rgba(8,5,15,.90));
+  border: 1px solid rgba(196,30,58,.18);
+  box-shadow: 0 0 0 1px rgba(196,30,58,.08) inset;
 }
 .pick-card--tempo .pick-card-front{
   background:
-    radial-gradient(120% 80% at 20% 0%, rgba(245,158,11,.16), rgba(2,6,23,0) 55%),
-    linear-gradient(180deg, rgba(17,24,39,.92), rgba(2,6,23,.90));
+    radial-gradient(120% 80% at 20% 0%, rgba(245,158,11,.16), rgba(8,5,15,0) 55%),
+    linear-gradient(180deg, rgba(22,18,30,.92), rgba(8,5,15,.90));
   border: 1px solid rgba(245,158,11,.18);
   box-shadow: 0 0 0 1px rgba(245,158,11,.08) inset;
 }
-.pick-card--offense .pick-card-kicker{ color: rgba(252,165,165,.92); }
-.pick-card--defense .pick-card-kicker{ color: rgba(147,197,253,.92); }
-.pick-card--sustain .pick-card-kicker{ color: rgba(134,239,172,.92); }
+.pick-card--offense .pick-card-kicker{ color: rgba(224,160,144,.92); }
+.pick-card--defense .pick-card-kicker{ color: rgba(138,156,196,.92); }
+.pick-card--sustain .pick-card-kicker{ color: rgba(200,176,128,.92); }
 .pick-card--tempo .pick-card-kicker{ color: rgba(253,230,138,.92); }
 .pick-card-kicker{
   font-size: 11px;
@@ -3666,7 +3666,7 @@ html{
   margin-top: 6px;
   font-size: 11px;
   line-height: 1.45;
-  color: rgba(148,163,184,.92);
+  color: rgba(154,142,122,.92);
   letter-spacing: .02em;
   white-space: normal;
 }
@@ -3680,7 +3680,7 @@ html{
   margin-top: 8px;
   font-size: 12px;
   line-height: 1.6;
-  color: rgba(229,231,235,.82);
+  color: rgba(232,220,200,.82);
 }
 .pick-card-confirm{
   display:none;
@@ -3708,7 +3708,7 @@ html{
 
 .panel-header{
   padding:14px 16px 10px 16px;
-  border-bottom:1px solid rgba(255,255,255,.06);
+  border-bottom:1px solid rgba(232,220,200,.06);
   display:flex;
   align-items:baseline;
   justify-content:space-between;
@@ -3728,19 +3728,19 @@ html{
   line-height:1.55;
 }
 .log .line{margin:0 0 8px 0; white-space:pre-wrap}
-.log .sys{color:#c7d2fe}
-.log .enemy{color:#fecaca}
-.log .you{color:#bbf7d0}
+.log .sys{color:#c8b898}
+.log .enemy{color:#f0c4b0}
+.log .you{color:#e8c97a}
 .log .dim{color:var(--muted)}
 
 /* legacy intent / input rows (kept for compatibility) */
 .input-row{
   padding:12px 16px;
-  border-top:1px solid rgba(255,255,255,.06);
+  border-top:1px solid rgba(232,220,200,.06);
 }
 .intent-card{
   background: rgba(0,0,0,.18);
-  border:1px solid rgba(255,255,255,.06);
+  border:1px solid rgba(232,220,200,.06);
   border-radius: 12px;
   padding:12px 12px 10px 12px;
 }
@@ -3753,7 +3753,7 @@ html{
   display:grid;
   grid-template-columns: repeat(5, 1fr);
   gap:10px;
-  border-top:1px solid rgba(255,255,255,.06);
+  border-top:1px solid rgba(232,220,200,.06);
   align-items:start;
   flex-shrink: 0;
   margin-top: auto;
@@ -3781,7 +3781,7 @@ html{
   max-width:320px;
   padding:10px 14px;
   background:rgba(15,15,20,.96);
-  border:1px solid rgba(255,255,255,.12);
+  border:1px solid rgba(232,220,200,.12);
   border-radius:8px;
   box-shadow:0 8px 24px rgba(0,0,0,.6);
   font-size:12px;
@@ -3801,13 +3801,13 @@ html{
 }
 .action-effect .action-effect-lead,
 .skill-hover-tooltip__mech .action-effect-lead{
-  color: rgba(229,231,235,.96);
+  color: rgba(232,220,200,.96);
   font-weight: 900;
-  text-shadow: 0 0 10px rgba(255,255,255,.08);
+  text-shadow: 0 0 10px rgba(232,220,200,.08);
 }
 .action-effect .action-effect-bonus,
 .skill-hover-tooltip__mech .action-effect-bonus{
-  color: #fde047;
+  color: #f0d060;
   font-weight: 800;
   text-shadow: 0 0 10px rgba(234,179,8,.35);
 }
@@ -3877,7 +3877,7 @@ html{
 @keyframes introHeroRowFlash{
   0%, 100%{
     box-shadow: inset 0 0 0 0 transparent;
-    background: rgba(255,255,255,.04);
+    background: rgba(232,220,200,.04);
   }
   40%{
     box-shadow: inset 0 0 0 2px rgba(250,204,21,.5);
@@ -3903,7 +3903,7 @@ html{
 .hero-intro-loading{
   padding: 20px 16px;
   text-align: center;
-  color: rgba(148,163,184,.95);
+  color: rgba(154,142,122,.95);
   font-size: 13px;
 }
 
@@ -3988,13 +3988,13 @@ html{
 }
 .mini-panel{
   background: rgba(0,0,0,.14);
-  border:1px solid rgba(255,255,255,.06);
+  border:1px solid rgba(232,220,200,.06);
   border-radius: 12px;
   overflow:hidden;
 }
 .mini-title{
   padding:10px 12px 8px 12px;
-  border-bottom:1px solid rgba(255,255,255,.06);
+  border-bottom:1px solid rgba(232,220,200,.06);
   font-size:12px;
   letter-spacing:.05em;
   color:var(--muted);
@@ -4061,7 +4061,7 @@ html{
   white-space: nowrap;
 }
 .player-summary td:last-child{
-  color: rgba(229,231,235,.96);
+  color: rgba(232,220,200,.96);
   font-weight: 900;
   text-align: right;
   white-space: nowrap;
@@ -4090,62 +4090,62 @@ html{
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at top right, rgba(255,255,255,.08), transparent 42%),
+    radial-gradient(circle at top right, rgba(232,220,200,.08), transparent 42%),
     linear-gradient(180deg, rgba(20,28,45,.96), rgba(8,14,28,.94));
-  border:1px solid rgba(148,163,184,.18);
+  border:1px solid rgba(154,142,122,.18);
   border-radius: 14px;
   padding:12px 12px 11px;
   box-sizing:border-box;
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.05),
-    0 10px 22px rgba(2,6,23,.22);
+    inset 0 1px 0 rgba(232,220,200,.05),
+    0 10px 22px rgba(8,5,15,.22);
 }
 .wh-card.wh-card--offense{
-  border-color: rgba(239,68,68,.28);
+  border-color: rgba(185,28,28,.28);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.05),
-    inset 0 0 0 1px rgba(239,68,68,.08),
-    0 10px 22px rgba(2,6,23,.22);
+    inset 0 1px 0 rgba(232,220,200,.05),
+    inset 0 0 0 1px rgba(185,28,28,.08),
+    0 10px 22px rgba(8,5,15,.22);
 }
 .wh-card.wh-card--defense{
-  border-color: rgba(59,130,246,.28);
+  border-color: rgba(80,100,160,.28);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.05),
-    inset 0 0 0 1px rgba(59,130,246,.08),
-    0 10px 22px rgba(2,6,23,.22);
+    inset 0 1px 0 rgba(232,220,200,.05),
+    inset 0 0 0 1px rgba(80,100,160,.08),
+    0 10px 22px rgba(8,5,15,.22);
 }
 .wh-card.wh-card--sustain{
-  border-color: rgba(34,197,94,.28);
+  border-color: rgba(196,30,58,.28);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.05),
-    inset 0 0 0 1px rgba(34,197,94,.08),
-    0 10px 22px rgba(2,6,23,.22);
+    inset 0 1px 0 rgba(232,220,200,.05),
+    inset 0 0 0 1px rgba(196,30,58,.08),
+    0 10px 22px rgba(8,5,15,.22);
 }
 .wh-card.wh-card--tempo{
   border-color: rgba(245,158,11,.30);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.05),
+    inset 0 1px 0 rgba(232,220,200,.05),
     inset 0 0 0 1px rgba(245,158,11,.08),
-    0 10px 22px rgba(2,6,23,.22);
+    0 10px 22px rgba(8,5,15,.22);
 }
 .wh-card.wh-card--equip{
   border-color: rgba(125,211,252,.28);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.05),
+    inset 0 1px 0 rgba(232,220,200,.05),
     inset 0 0 0 1px rgba(125,211,252,.08),
-    0 10px 22px rgba(2,6,23,.22);
+    0 10px 22px rgba(8,5,15,.22);
 }
 .wh-card.wh-card--attr{
-  border-color: rgba(167,139,250,.30);
+  border-color: rgba(212,190,138,.30);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.05),
-    inset 0 0 0 1px rgba(167,139,250,.08),
-    0 10px 22px rgba(2,6,23,.22);
+    inset 0 1px 0 rgba(232,220,200,.05),
+    inset 0 0 0 1px rgba(212,190,138,.08),
+    0 10px 22px rgba(8,5,15,.22);
 }
 .wh-card.wh-card--orange{
   border-color: rgba(251,191,36,.38);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.06),
+    inset 0 1px 0 rgba(232,220,200,.06),
     inset 0 0 0 1px rgba(251,191,36,.12),
     0 12px 24px rgba(120,53,15,.18);
 }
@@ -4157,17 +4157,17 @@ html{
   top:0;
   height:2px;
   border-radius:0 0 999px 999px;
-  background: linear-gradient(90deg, rgba(148,163,184,.16), rgba(226,232,240,.7), rgba(148,163,184,.16));
+  background: linear-gradient(90deg, rgba(154,142,122,.16), rgba(220,208,188,.7), rgba(154,142,122,.16));
   opacity:.88;
 }
 .wh-card.wh-card--offense::before{
-  background: linear-gradient(90deg, rgba(239,68,68,.15), rgba(251,113,133,.88), rgba(239,68,68,.15));
+  background: linear-gradient(90deg, rgba(185,28,28,.15), rgba(200,100,120,.88), rgba(185,28,28,.15));
 }
 .wh-card.wh-card--defense::before{
-  background: linear-gradient(90deg, rgba(59,130,246,.15), rgba(96,165,250,.88), rgba(59,130,246,.15));
+  background: linear-gradient(90deg, rgba(80,100,160,.15), rgba(107,130,176,.88), rgba(80,100,160,.15));
 }
 .wh-card.wh-card--sustain::before{
-  background: linear-gradient(90deg, rgba(34,197,94,.15), rgba(74,222,128,.88), rgba(34,197,94,.15));
+  background: linear-gradient(90deg, rgba(196,30,58,.15), rgba(232,201,122,.88), rgba(196,30,58,.15));
 }
 .wh-card.wh-card--tempo::before{
   background: linear-gradient(90deg, rgba(245,158,11,.15), rgba(251,191,36,.88), rgba(245,158,11,.15));
@@ -4184,7 +4184,7 @@ html{
 .wh-card-extras{
   font-size:10px;
   line-height: 1.45;
-  color: rgba(148,163,184,.95);
+  color: rgba(154,142,122,.95);
   margin: 0 0 8px 0;
   white-space: normal;
   font-weight: 700;
@@ -4200,7 +4200,7 @@ html{
 .wh-card-desc{
   font-size:11px;
   line-height:1.6;
-  color: rgba(226,232,240,.8);
+  color: rgba(220,208,188,.8);
 }
 .wh-empty{
   color: var(--muted);
@@ -4239,18 +4239,18 @@ html{
   min-width: 0;
   padding: 10px 10px;
   border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(2,6,23,.22);
+  border: 1px solid rgba(232,220,200,.10);
+  background: rgba(8,5,15,.22);
   font-weight: 1000;
   letter-spacing: .06em;
   text-align: center;
-  color: rgba(229,231,235,.92);
+  color: rgba(232,220,200,.92);
   user-select: none;
   cursor: pointer;
   position: relative;
   transform: translateY(0);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.22),
+    inset 0 1px 0 rgba(232,220,200,.22),
     inset 0 -1px 0 rgba(0,0,0,.28),
     0 3px 0 rgba(0,0,0,.34),
     0 8px 14px rgba(0,0,0,.24);
@@ -4264,13 +4264,13 @@ html{
   top: 2px;
   height: 38%;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,0));
+  background: linear-gradient(180deg, rgba(232,220,200,.24), rgba(232,220,200,0));
   pointer-events: none;
 }
 .skill-icon:hover:not([disabled]){
   transform: translateY(-1px);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.26),
+    inset 0 1px 0 rgba(232,220,200,.26),
     inset 0 -1px 0 rgba(0,0,0,.30),
     0 4px 0 rgba(0,0,0,.34),
     0 10px 16px rgba(0,0,0,.28);
@@ -4279,25 +4279,25 @@ html{
 .skill-icon:active:not([disabled]){
   transform: translateY(2px);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.18),
+    inset 0 1px 0 rgba(232,220,200,.18),
     inset 0 -1px 0 rgba(0,0,0,.26),
     0 1px 0 rgba(0,0,0,.34),
     0 3px 8px rgba(0,0,0,.22);
 }
 .skill-icon--attack{
-  border-color: rgba(251,113,133,.35);
-  background: rgba(244,63,94,.16);
-  color: rgba(254,226,231,.98);
+  border-color: rgba(200,100,120,.35);
+  background: rgba(196,50,60,.16);
+  color: rgba(240,210,186,.98);
 }
 .skill-icon--heavy{
-  border-color: rgba(220,38,38,.38);
+  border-color: rgba(180,30,30,.38);
   background: rgba(127,29,29,.26);
-  color: rgba(254,202,202,.98);
+  color: rgba(240,196,176,.98);
 }
 .skill-icon--defend{
-  border-color: rgba(59,130,246,.35);
-  background: rgba(59,130,246,.14);
-  color: rgba(191,219,254,.98);
+  border-color: rgba(80,100,160,.35);
+  background: rgba(80,100,160,.14);
+  color: rgba(168,184,212,.98);
 }
 .skill-icon--block{
   border-color: rgba(234,179,8,.38);
@@ -4305,9 +4305,9 @@ html{
   color: rgba(254,240,138,.98);
 }
 .skill-icon--rest{
-  border-color: rgba(34,197,94,.34);
-  background: rgba(34,197,94,.12);
-  color: rgba(187,247,208,.98);
+  border-color: rgba(196,30,58,.34);
+  background: rgba(196,30,58,.12);
+  color: rgba(232,201,122,.98);
 }
 
 /* 旧底部技能栏已弃用：仅使用玩家卡右侧技能按钮 */
@@ -4315,11 +4315,11 @@ html{
   display: none !important;
 }
 
-.good{color:#86efac; font-weight:700}
-.bad{color:#fca5a5; font-weight:700}
+.good{color:#e8c97a; font-weight:700}
+.bad{color:#e0a090; font-weight:700}
 .orange{color:#fdba74; font-weight:800}
-.player-name{color:#93c5fd; font-weight:900}
-.fighter-level{color:#93c5fd; font-size:13px; font-weight:700; opacity:.9}
+.player-name{color:#8a9cc4; font-weight:900}
+.fighter-level{color:#8a9cc4; font-size:13px; font-weight:700; opacity:.9}
 .player-card-head{
   display:flex;
   align-items:center;
@@ -4360,7 +4360,7 @@ html{
   position: relative;
   overflow: hidden;
   background: rgba(0,0,0,.18);
-  border:1px solid rgba(255,255,255,.06);
+  border:1px solid rgba(232,220,200,.06);
   border-radius: 12px;
   padding:12px;
 }
@@ -4372,8 +4372,8 @@ html{
 .player-card-flavor{
   margin-top: 12px;
   padding-top: 10px;
-  border-top: 1px solid rgba(255,255,255,.06);
-  color:#bbf7d0;
+  border-top: 1px solid rgba(232,220,200,.06);
+  color:#e8c97a;
   font-family:var(--mono);
   font-size:12px;
   line-height: 1.6;
@@ -4452,11 +4452,11 @@ html{
   background: linear-gradient(
     105deg,
     transparent 34%,
-    rgba(255,255,255,0) 40%,
-    rgba(255,255,255,.95) 46.5%,
-    rgba(254,226,226,.88) 49%,
-    rgba(248,113,113,.95) 50%,
-    rgba(239,68,68,.88) 51.2%,
+    rgba(232,220,200,0) 40%,
+    rgba(232,220,200,.95) 46.5%,
+    rgba(240,200,180,.88) 49%,
+    rgba(210,80,80,.95) 50%,
+    rgba(185,28,28,.88) 51.2%,
     rgba(185,28,28,.55) 52.5%,
     transparent 59%
   );
@@ -4468,8 +4468,8 @@ html{
   background: linear-gradient(
     105deg,
     transparent 34%,
-    rgba(254,202,202,.2) 42%,
-    rgba(239,68,68,.98) 49%,
+    rgba(240,196,176,.2) 42%,
+    rgba(185,28,28,.98) 49%,
     rgba(153,27,27,.75) 51.5%,
     rgba(127,29,29,.45) 53%,
     transparent 60%
@@ -4484,8 +4484,8 @@ html{
   line-height: 1;
   transform-origin: 50% 18%;
   filter:
-    drop-shadow(0 0 18px rgba(248,113,113,.65))
-    drop-shadow(0 4px 14px rgba(239,68,68,.35));
+    drop-shadow(0 0 18px rgba(210,80,80,.65))
+    drop-shadow(0 4px 14px rgba(185,28,28,.35));
   z-index: 2;
   animation: cardFxSwordSwingDown .44s cubic-bezier(.22,.85,.18,1) .03s both;
 }
@@ -4526,12 +4526,12 @@ html{
 .card-fx-token.card-fx--slash-token .slash-token-split__half--a{
   clip-path: inset(0 58% 0 0);
   transform: translate(-7px, 5px) rotate(-12deg);
-  filter: drop-shadow(-2px 1px 1px rgba(15,23,42,.5));
+  filter: drop-shadow(-2px 1px 1px rgba(17,13,26,.5));
 }
 .card-fx-token.card-fx--slash-token .slash-token-split__half--b{
   clip-path: inset(0 0 0 58%);
   transform: translate(7px, -4px) rotate(10deg);
-  filter: drop-shadow(2px -1px 1px rgba(15,23,42,.45));
+  filter: drop-shadow(2px -1px 1px rgba(17,13,26,.45));
 }
 .card-fx-token.card-fx--slash-token--heavy .slash-token-split__half--a{
   transform: translate(-6px, 4px) rotate(-10deg);
@@ -4541,7 +4541,7 @@ html{
 }
 #playerCard .card-fx-token.card-fx--slash-token{
   filter:
-    drop-shadow(0 0 22px rgba(239,68,68,.75))
+    drop-shadow(0 0 22px rgba(185,28,28,.75))
     drop-shadow(0 4px 16px rgba(185,28,28,.4));
 }
 #playerCard .card-fx-token.card-fx--slash-token--heavy{
@@ -4599,8 +4599,8 @@ html{
 
 .card-fx-layer.card-fx--shield-full{
   background:
-    radial-gradient(ellipse 92% 88% at 50% 46%, rgba(59,130,246,.38) 0%, rgba(37,99,235,.12) 42%, transparent 68%),
-    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(147,197,253,.22) 0%, transparent 55%);
+    radial-gradient(ellipse 92% 88% at 50% 46%, rgba(80,100,160,.38) 0%, rgba(37,99,235,.12) 42%, transparent 68%),
+    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(138,156,196,.22) 0%, transparent 55%);
   animation: cardFxShieldAura .55s ease-out both;
 }
 @keyframes cardFxShieldAura{
@@ -4617,9 +4617,9 @@ html{
   font-size: 78px;
   line-height: 1;
   filter:
-    drop-shadow(0 0 22px rgba(59,130,246,.95))
-    drop-shadow(0 0 38px rgba(96,165,250,.55))
-    drop-shadow(0 4px 0 rgba(15,23,42,.25));
+    drop-shadow(0 0 22px rgba(80,100,160,.95))
+    drop-shadow(0 0 38px rgba(107,130,176,.55))
+    drop-shadow(0 4px 0 rgba(17,13,26,.25));
   animation: cardFxShieldPop .5s cubic-bezier(.2,.85,.2,1) both;
   z-index: 2;
 }
@@ -4632,11 +4632,11 @@ html{
   height: 135%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  border: 3px solid rgba(147,197,253,.55);
+  border: 3px solid rgba(138,156,196,.55);
   box-shadow:
-    0 0 0 1px rgba(59,130,246,.35),
-    0 0 28px rgba(59,130,246,.45),
-    inset 0 0 24px rgba(59,130,246,.18);
+    0 0 0 1px rgba(80,100,160,.35),
+    0 0 28px rgba(80,100,160,.45),
+    inset 0 0 24px rgba(80,100,160,.18);
   animation: cardFxRipple .58s ease-out both;
   pointer-events: none;
   z-index: 1;
@@ -4652,7 +4652,7 @@ html{
 
 .card-fx-layer.card-fx--shield-chip{
   background:
-    radial-gradient(ellipse 88% 82% at 50% 48%, rgba(59,130,246,.28) 0%, rgba(37,99,235,.08) 48%, transparent 70%);
+    radial-gradient(ellipse 88% 82% at 50% 48%, rgba(80,100,160,.28) 0%, rgba(37,99,235,.08) 48%, transparent 70%);
   animation: cardFxShieldAura .48s ease-out both;
 }
 .card-fx-layer.card-fx--shield-chip::before{
@@ -4664,8 +4664,8 @@ html{
   font-size: 68px;
   opacity: .96;
   filter:
-    drop-shadow(0 0 18px rgba(59,130,246,.85))
-    drop-shadow(0 0 32px rgba(96,165,250,.4));
+    drop-shadow(0 0 18px rgba(80,100,160,.85))
+    drop-shadow(0 0 32px rgba(107,130,176,.4));
   z-index: 2;
 }
 .card-fx-layer.card-fx--shield-chip::after{
@@ -4675,7 +4675,7 @@ html{
   top: 38%;
   width: 44%;
   height: 3px;
-  background: linear-gradient(90deg, transparent, rgba(239,68,68,.75), transparent);
+  background: linear-gradient(90deg, transparent, rgba(185,28,28,.75), transparent);
   transform: rotate(-18deg);
   border-radius: 2px;
   animation: cardFxChipCrack .38s ease-out both;
@@ -4688,7 +4688,7 @@ html{
 
 .card-fx-layer.card-fx--parry{
   background:
-    radial-gradient(ellipse 90% 85% at 50% 46%, rgba(59,130,246,.22) 0%, transparent 58%),
+    radial-gradient(ellipse 90% 85% at 50% 46%, rgba(80,100,160,.22) 0%, transparent 58%),
     radial-gradient(ellipse 55% 50% at 50% 44%, rgba(251,191,36,.18) 0%, transparent 55%);
 }
 .card-fx-layer.card-fx--parry::before{
@@ -4699,7 +4699,7 @@ html{
   transform: translate(-50%, -50%);
   font-size: 76px;
   filter:
-    drop-shadow(0 0 18px rgba(59,130,246,.75))
+    drop-shadow(0 0 18px rgba(80,100,160,.75))
     drop-shadow(0 0 26px rgba(251,191,36,.55));
   z-index: 2;
 }
@@ -4724,7 +4724,7 @@ html{
 /* 调息完全闪避（听风卸势 70% / 基础 30%）：青辉 +「闪」字 */
 .card-fx-layer.card-fx--rest-evade{
   background:
-    radial-gradient(ellipse 100% 72% at 42% 46%, rgba(34,211,238,.32) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 72% at 42% 46%, rgba(80,168,190,.32) 0%, transparent 60%),
     radial-gradient(ellipse 55% 48% at 58% 52%, rgba(165,243,252,.14) 0%, transparent 55%);
 }
 .card-fx-layer.card-fx--rest-evade::before{
@@ -4732,7 +4732,7 @@ html{
   position: absolute;
   inset: 6% 4% 8%;
   border-radius: 12px;
-  background: linear-gradient(108deg, transparent 32%, rgba(255,255,255,.2) 50%, transparent 68%);
+  background: linear-gradient(108deg, transparent 32%, rgba(232,220,200,.2) 50%, transparent 68%);
   animation: cardFxRestEvadeSheen .42s ease-out both;
   pointer-events: none;
 }
@@ -4743,7 +4743,7 @@ html{
   top: 28%;
   font-size: 22px;
   color: rgba(103,232,249,.95);
-  text-shadow: 0 0 12px rgba(34,211,238,.9);
+  text-shadow: 0 0 12px rgba(80,168,190,.9);
   animation: cardFxRestEvadeSpark .38s cubic-bezier(.2,.9,.2,1) .04s both;
   z-index: 3;
 }
@@ -4757,10 +4757,10 @@ html{
   100%{ transform: translate(4px, -6px) scale(1); opacity: 0; }
 }
 .card-fx-token.card-fx--rest-evade-token{
-  color: rgba(34,211,238,.98);
+  color: rgba(80,168,190,.98);
   font-size: 40px;
   font-weight: 700;
-  text-shadow: 0 0 14px rgba(34,211,238,.85), 0 0 28px rgba(103,232,249,.45);
+  text-shadow: 0 0 14px rgba(80,168,190,.85), 0 0 28px rgba(103,232,249,.45);
   animation: cardFxRestEvadeToken .4s cubic-bezier(.2,.9,.2,1) both;
 }
 @keyframes cardFxRestEvadeToken{
@@ -4777,7 +4777,7 @@ html{
 }
 
 .card-fx-token.card-fx--rest-token{
-  color: rgba(134,239,172,.95);
+  color: rgba(200,176,128,.95);
   font-size: 36px;
   letter-spacing: .2em;
   animation: cardFxRestToken .55s ease-out both;
@@ -4794,7 +4794,7 @@ html{
   bottom: 18%;
   width: 76%;
   height: 40%;
-  background: linear-gradient(180deg, rgba(34,197,94,.22), rgba(34,197,94,.08));
+  background: linear-gradient(180deg, rgba(196,30,58,.22), rgba(196,30,58,.08));
   animation: cardFxRestRise .22s ease-out both;
 }
 .card-fx-layer.card-fx--rest-break::after{
@@ -4804,7 +4804,7 @@ html{
   top: 42%;
   width: 60%;
   height: 3px;
-  background: linear-gradient(90deg, transparent, rgba(239,68,68,.85), transparent);
+  background: linear-gradient(90deg, transparent, rgba(185,28,28,.85), transparent);
   transform: rotate(-8deg);
   animation: cardFxRestCut .35s ease-out .08s both;
 }
@@ -4838,8 +4838,8 @@ html{
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(118deg, transparent 46%, rgba(255,255,255,.22) 49.5%, transparent 53%),
-    linear-gradient(72deg, transparent 48%, rgba(248,113,113,.35) 50%, transparent 52%);
+    linear-gradient(118deg, transparent 46%, rgba(232,220,200,.22) 49.5%, transparent 53%),
+    linear-gradient(72deg, transparent 48%, rgba(210,80,80,.35) 50%, transparent 52%);
   animation: cardFxBreakFlash .38s ease-out both;
   pointer-events: none;
 }
@@ -4868,10 +4868,10 @@ html{
   background: linear-gradient(
     12deg,
     transparent 42%,
-    rgba(239,68,68,.25) 48%,
+    rgba(185,28,28,.25) 48%,
     rgba(251,146,60,.75) 49.5%,
     rgba(254,249,195,.55) 50.2%,
-    rgba(239,68,68,.35) 51%,
+    rgba(185,28,28,.35) 51%,
     transparent 56%
   );
   filter: blur(0.5px) saturate(1.2);
@@ -4905,8 +4905,8 @@ html{
 .card-fx--strong .card-fx-token.card-fx--slash-token{
   font-size: 86px;
   filter:
-    drop-shadow(0 0 26px rgba(254,202,202,.85))
-    drop-shadow(0 6px 20px rgba(239,68,68,.5));
+    drop-shadow(0 0 26px rgba(240,196,176,.85))
+    drop-shadow(0 6px 20px rgba(185,28,28,.5));
 }
 .card-fx--strong .card-fx-token.card-fx--slash-token--heavy{
   filter:
@@ -4944,12 +4944,12 @@ html{
 
 @keyframes player-critical-breathe{
   0%,100%{
-    box-shadow: 0 0 0 0 rgba(239,68,68,0), 0 0 0 rgba(239,68,68,0);
-    border-color: rgba(255,255,255,.06);
+    box-shadow: 0 0 0 0 rgba(185,28,28,0), 0 0 0 rgba(185,28,28,0);
+    border-color: rgba(232,220,200,.06);
   }
   50%{
-    box-shadow: 0 0 0 2px rgba(239,68,68,.55), 0 0 24px rgba(239,68,68,.25);
-    border-color: rgba(239,68,68,.85);
+    box-shadow: 0 0 0 2px rgba(185,28,28,.55), 0 0 24px rgba(185,28,28,.25);
+    border-color: rgba(185,28,28,.85);
   }
 }
 #playerCard.fighter-card.player-critical{
@@ -4991,9 +4991,9 @@ html{
   font-weight: 1000;
   letter-spacing: .12em;
   font-size: 28px;
-  color: rgba(248,113,113,.96);
-  text-shadow: 0 0 18px rgba(239,68,68,.35);
-  background: radial-gradient(ellipse at center, rgba(239,68,68,.14), rgba(0,0,0,0) 62%);
+  color: rgba(210,80,80,.96);
+  text-shadow: 0 0 18px rgba(185,28,28,.35);
+  background: radial-gradient(ellipse at center, rgba(185,28,28,.14), rgba(0,0,0,0) 62%);
   pointer-events:none;
 }
 .player-status-banner.player-status-banner--dead{
@@ -5106,12 +5106,12 @@ html{
 /* ending：与 HP/失衡拉回同总时长（2s），循环白光至条满 */
 @keyframes win-border-heal-pulse-kf{
   0%, 100%{
-    box-shadow: 0 0 0 0 rgba(255,255,255,0);
-    border-color: rgba(255,255,255,.06);
+    box-shadow: 0 0 0 0 rgba(232,220,200,0);
+    border-color: rgba(232,220,200,.06);
   }
   50%{
-    box-shadow: 0 0 0 3px rgba(255,255,255,.48), 0 0 26px rgba(255,255,255,.38);
-    border-color: rgba(255,255,255,.88);
+    box-shadow: 0 0 0 3px rgba(232,220,200,.48), 0 0 26px rgba(232,220,200,.38);
+    border-color: rgba(232,220,200,.88);
   }
 }
 #playerCard.fighter-card.win-border-heal-pulse{
@@ -5120,9 +5120,9 @@ html{
 /* 胜利结算：与条回复同步的额外白光层 + 战功爬升提示 */
 #playerCard.fighter-card.player-card--victory-restoration{
   box-shadow:
-    0 0 0 1px rgba(255,255,255,.35),
-    0 0 32px rgba(255,255,255,.42),
-    inset 0 0 20px rgba(255,255,255,.1);
+    0 0 0 1px rgba(232,220,200,.35),
+    0 0 32px rgba(232,220,200,.42),
+    inset 0 0 20px rgba(232,220,200,.1);
 }
 .run-merit-widget.run-merit--victory-rise{
   filter: drop-shadow(0 0 10px rgba(250,204,21,.55));
@@ -5140,8 +5140,8 @@ html{
   border-radius: inherit;
   background: linear-gradient(
     180deg,
-    rgba(34,197,94,.52) 0%,
-    rgba(74,222,128,.38) 42%,
+    rgba(196,30,58,.52) 0%,
+    rgba(232,201,122,.38) 42%,
     rgba(16,185,129,.28) 100%
   );
   transform: scaleY(0);
@@ -5171,24 +5171,24 @@ html{
 }
 @keyframes restFxBorderFlash{
   0%, 100%{
-    box-shadow: 0 0 0 0 rgba(34,197,94,0);
-    border-color: rgba(255,255,255,.06);
+    box-shadow: 0 0 0 0 rgba(196,30,58,0);
+    border-color: rgba(232,220,200,.06);
   }
   22%{
-    border-color: rgba(74,222,128,.95);
+    border-color: rgba(232,201,122,.95);
     box-shadow:
-      0 0 0 3px rgba(34,197,94,.5),
-      0 0 26px rgba(34,197,94,.38);
+      0 0 0 3px rgba(196,30,58,.5),
+      0 0 26px rgba(196,30,58,.38);
   }
   48%{
-    border-color: rgba(34,197,94,.88);
+    border-color: rgba(196,30,58,.88);
     box-shadow:
-      0 0 0 2px rgba(52,211,153,.55),
-      0 0 20px rgba(52,211,153,.28);
+      0 0 0 2px rgba(212,146,10,.55),
+      0 0 20px rgba(212,146,10,.28);
   }
   72%{
-    border-color: rgba(74,222,128,.72);
-    box-shadow: 0 0 0 2px rgba(34,197,94,.28);
+    border-color: rgba(232,201,122,.72);
+    box-shadow: 0 0 0 2px rgba(196,30,58,.28);
   }
 }
 #playerCard.fighter-card.rest-fx-play,
@@ -5211,8 +5211,8 @@ html{
   }
 }
 @keyframes restFxBorderFlashReduced{
-  0%, 100%{ border-color: rgba(255,255,255,.06); box-shadow: none; }
-  50%{ border-color: rgba(74,222,128,.75); box-shadow: 0 0 0 2px rgba(34,197,94,.35); }
+  0%, 100%{ border-color: rgba(232,220,200,.06); box-shadow: none; }
+  50%{ border-color: rgba(232,201,122,.75); box-shadow: 0 0 0 2px rgba(196,30,58,.35); }
 }
 
 .enemy-field-badge{
@@ -5225,15 +5225,15 @@ html{
   letter-spacing: 0.04em;
   padding: 3px 8px;
   border-radius: 8px;
-  border: 1px solid rgba(255,255,255,.12);
+  border: 1px solid rgba(232,220,200,.12);
   background: rgba(0,0,0,.35);
   color: var(--muted);
   pointer-events: none;
 }
 .enemy-field-badge.is-on{
-  color: #bbf7d0;
-  border-color: rgba(34,197,94,.45);
-  background: rgba(34,197,94,.14);
+  color: #e8c97a;
+  border-color: rgba(196,30,58,.45);
+  background: rgba(196,30,58,.14);
 }
 .enemy-field-badge.is-wait{
   color: #fde68a;
@@ -5241,9 +5241,9 @@ html{
   background: rgba(245,158,11,.12);
 }
 .enemy-field-badge.is-down{
-  color: rgba(252,165,165,.95);
-  border-color: rgba(239,68,68,.35);
-  background: rgba(239,68,68,.12);
+  color: rgba(224,160,144,.95);
+  border-color: rgba(185,28,28,.35);
+  background: rgba(185,28,28,.12);
 }
 
 .enemy-card{
@@ -5260,7 +5260,7 @@ html{
   display: flex;
   align-items: center;
   justify-content: stretch;
-  background: radial-gradient(ellipse at center, rgba(239,68,68,.20), rgba(0,0,0,.70) 65%),
+  background: radial-gradient(ellipse at center, rgba(185,28,28,.20), rgba(0,0,0,.70) 65%),
               rgba(0,0,0,.62);
   border-radius: 11px;
   pointer-events: none;
@@ -5280,20 +5280,20 @@ html{
 
 @keyframes execHotBorder {
   0%, 100%{
-    box-shadow: 0 0 0 0 rgba(239,68,68,0), 0 0 0 rgba(239,68,68,0);
+    box-shadow: 0 0 0 0 rgba(185,28,28,0), 0 0 0 rgba(185,28,28,0);
   }
   50%{
-    box-shadow: 0 0 0 3px rgba(239,68,68,.75), 0 0 26px rgba(239,68,68,.55);
+    box-shadow: 0 0 0 3px rgba(185,28,28,.75), 0 0 26px rgba(185,28,28,.55);
   }
 }
 .enemy-card.is-executable{
-  border-color: rgba(239,68,68,.78) !important;
-  box-shadow: 0 0 0 3px rgba(239,68,68,.55), 0 0 26px rgba(239,68,68,.35);
+  border-color: rgba(185,28,28,.78) !important;
+  box-shadow: 0 0 0 3px rgba(185,28,28,.55), 0 0 26px rgba(185,28,28,.35);
   animation: execHotBorder .55s ease-in-out infinite;
 }
 .enemy-card.is-executable.selected{
-  border-color: rgba(239,68,68,.85) !important;
-  box-shadow: 0 0 0 3px rgba(239,68,68,.65), 0 0 28px rgba(239,68,68,.40);
+  border-color: rgba(185,28,28,.85) !important;
+  box-shadow: 0 0 0 3px rgba(185,28,28,.65), 0 0 28px rgba(185,28,28,.40);
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -5302,43 +5302,43 @@ html{
   }
 }
 .enemy-card:hover{
-  border-color: rgba(124,58,237,.35);
-  background: rgba(124,58,237,.06);
+  border-color: rgba(201,169,110,.35);
+  background: rgba(201,169,110,.06);
 }
 .enemy-card:active{transform: translateY(1px)}
 .enemy-card.selected{
-  border-color: rgba(34,197,94,.60);
-  box-shadow: 0 0 0 2px rgba(34,197,94,.14);
-  background: rgba(34,197,94,.05);
+  border-color: rgba(196,30,58,.60);
+  box-shadow: 0 0 0 2px rgba(196,30,58,.14);
+  background: rgba(196,30,58,.05);
 }
 .enemy-card.selected{
-  border-color: rgba(239,68,68,.60);
-  box-shadow: 0 0 0 2px rgba(239,68,68,.16);
-  background: rgba(239,68,68,.05);
+  border-color: rgba(185,28,28,.60);
+  box-shadow: 0 0 0 2px rgba(185,28,28,.16);
+  background: rgba(185,28,28,.05);
 }
 .enemy-card.is-boss{
-  border-color: rgba(239,68,68,.30);
-  box-shadow: 0 0 0 1px rgba(239,68,68,.12);
+  border-color: rgba(185,28,28,.30);
+  box-shadow: 0 0 0 1px rgba(185,28,28,.12);
 }
 .enemy-row.enemy-row--boss-wide #enemyCardA.enemy-card.is-boss{
   min-height: 188px;
   padding: 14px 16px;
   border-width: 2px;
-  border-color: rgba(239,68,68,.42);
+  border-color: rgba(185,28,28,.42);
   background:
-    linear-gradient(135deg, rgba(239,68,68,.10) 0%, rgba(0,0,0,.22) 42%, rgba(127,29,29,.12) 100%);
+    linear-gradient(135deg, rgba(185,28,28,.10) 0%, rgba(0,0,0,.22) 42%, rgba(127,29,29,.12) 100%);
   box-shadow:
     0 0 0 1px rgba(250,204,21,.12),
     0 18px 44px rgba(0,0,0,.38),
-    inset 0 1px 0 rgba(255,255,255,.06);
+    inset 0 1px 0 rgba(232,220,200,.06);
 }
 .enemy-row.enemy-row--boss-wide #enemyCardA.enemy-card.is-boss .card-title{
   font-size: 1.08em;
   letter-spacing: .04em;
 }
 .enemy-card.is-boss .card-title{
-  color: rgba(248,113,113,.98);
-  text-shadow: 0 0 16px rgba(239,68,68,.30);
+  color: rgba(210,80,80,.98);
+  text-shadow: 0 0 16px rgba(185,28,28,.30);
 }
 .enemy-card.is-boss .card-title::before{
   content: "BOSS";
@@ -5349,9 +5349,9 @@ html{
   font-size: 10px;
   font-weight: 1000;
   letter-spacing: .10em;
-  color: rgba(254,202,202,.98);
-  border: 1px solid rgba(239,68,68,.40);
-  background: rgba(239,68,68,.14);
+  color: rgba(240,196,176,.98);
+  border: 1px solid rgba(185,28,28,.40);
+  background: rgba(185,28,28,.14);
   transform: translateY(-1px);
 }
 .enemy-card.waiting{
@@ -5420,19 +5420,19 @@ html{
 .enemy-card.dead{
   filter: grayscale(1);
   opacity: .55;
-  border-color: rgba(255,255,255,.06);
+  border-color: rgba(232,220,200,.06);
   box-shadow: none;
-  background: rgba(255,255,255,.03);
+  background: rgba(232,220,200,.03);
   cursor: default;
 }
 .enemy-card.dead:hover{
-  border-color: rgba(255,255,255,.06);
-  background: rgba(255,255,255,.03);
+  border-color: rgba(232,220,200,.06);
+  background: rgba(232,220,200,.03);
 }
 .enemy-intent{
   margin-top:10px;
   padding-top:10px;
-  border-top:1px solid rgba(255,255,255,.06);
+  border-top:1px solid rgba(232,220,200,.06);
   color:#fde68a;
   font-size:14px;
   line-height:1.55;
@@ -5444,8 +5444,8 @@ html{
   gap:6px;
   padding:2px 8px;
   border-radius:999px;
-  border:1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.06);
+  border:1px solid rgba(232,220,200,.10);
+  background: rgba(232,220,200,.06);
   font-weight: 900;
   letter-spacing: .04em;
 }
@@ -5464,19 +5464,19 @@ html{
   display:none;
 }
 .intent-pill.intent-quick{
-  color: rgba(254,226,231,.98);
-  border-color: rgba(251,113,133,.42);
-  background: rgba(244,63,94,.14);
+  color: rgba(240,210,186,.98);
+  border-color: rgba(200,100,120,.42);
+  background: rgba(196,50,60,.14);
 }
 .intent-pill.intent-heavy{
-  color: rgba(254,202,202,.98);
-  border-color: rgba(220,38,38,.45);
+  color: rgba(240,196,176,.98);
+  border-color: rgba(180,30,30,.45);
   background: rgba(127,29,29,.22);
 }
 .intent-pill.intent-defend{
-  color: rgba(191,219,254,.98);
-  border-color: rgba(59,130,246,.38);
-  background: rgba(59,130,246,.14);
+  color: rgba(168,184,212,.98);
+  border-color: rgba(80,100,160,.38);
+  background: rgba(80,100,160,.14);
 }
 .intent-pill.intent-block{
   color: rgba(254,240,138,.98);
@@ -5484,9 +5484,9 @@ html{
   background: rgba(161,98,7,.18);
 }
 .intent-pill.intent-rest{
-  color: rgba(187,247,208,.98);
-  border-color: rgba(34,197,94,.38);
-  background: rgba(34,197,94,.12);
+  color: rgba(232,201,122,.98);
+  border-color: rgba(196,30,58,.38);
+  background: rgba(196,30,58,.12);
 }
 
 /* 敌人意图药丸：悬浮规则说明（层级与下方招式提示一致） */
@@ -5509,7 +5509,7 @@ html{
   max-width: min(320px, 78vw);
   padding: 10px 14px;
   background: rgba(15,15,20,.96);
-  border: 1px solid rgba(255,255,255,.12);
+  border: 1px solid rgba(232,220,200,.12);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,.6);
   font-size: 12px;
@@ -5532,12 +5532,12 @@ html{
   margin-left: 8px;
   font-family: var(--mono);
   font-size: 11px;
-  color: rgba(229,231,235,.72);
+  color: rgba(232,220,200,.72);
   letter-spacing: 0;
   white-space: nowrap;
 }
 .intent-delta b{
-  color: rgba(229,231,235,.92);
+  color: rgba(232,220,200,.92);
   font-weight: 900;
 }
 
@@ -5558,11 +5558,11 @@ html{
   max-width: min(420px, calc(100vw - 24px));
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(15,23,42,.92);
+  border: 1px solid rgba(232,220,200,.14);
+  background: rgba(17,13,26,.92);
   box-shadow: 0 18px 60px rgba(0,0,0,.55);
   backdrop-filter: blur(10px);
-  color: rgba(226,232,240,.92);
+  color: rgba(220,208,188,.92);
   font-size: 12px;
   line-height: 1.55;
   pointer-events: none;
@@ -5575,12 +5575,12 @@ html{
   transform: translateY(0);
 }
 .skill-hover-tooltip__flavor{
-  color: rgba(187,247,208,.95);
+  color: rgba(232,201,122,.95);
   font-family: var(--mono);
   margin: 0 0 8px 0;
 }
 .skill-hover-tooltip__mech{
-  color: rgba(148,163,184,.92);
+  color: rgba(154,142,122,.92);
 }
 
 .player-row{
@@ -5620,8 +5620,8 @@ html{
 
 .btn{
   appearance:none;
-  border:1px solid rgba(255,255,255,.10);
-  background: rgba(124,58,237,.15);
+  border:1px solid rgba(232,220,200,.10);
+  background: rgba(201,169,110,.15);
   color:var(--text);
   padding:10px 10px;
   border-radius:12px;
@@ -5630,8 +5630,8 @@ html{
   transition: transform .04s ease, background .12s ease, border-color .12s ease, opacity .12s ease;
 }
 .btn:hover{
-  background: rgba(124,58,237,.22);
-  border-color: rgba(124,58,237,.45);
+  background: rgba(201,169,110,.22);
+  border-color: rgba(201,169,110,.45);
 }
 .btn:active{transform: translateY(1px)}
 .btn[disabled]{opacity:.45; cursor:not-allowed}
@@ -5667,22 +5667,22 @@ html{
 }
 /* legacy selected (target buttons); new UI selects enemy cards */
 .btn.selected{
-  border-color: rgba(34,197,94,.55);
-  background: rgba(34,197,94,.12);
+  border-color: rgba(196,30,58,.55);
+  background: rgba(196,30,58,.12);
 }
 .btn-secondary{
-  background: rgba(255,255,255,.06);
+  background: rgba(232,220,200,.06);
 }
 .btn-secondary:hover{
-  background: rgba(255,255,255,.10);
-  border-color: rgba(255,255,255,.18);
+  background: rgba(232,220,200,.10);
+  border-color: rgba(232,220,200,.18);
 }
 
 /* chapter node panel */
 .node-row{
   margin-top:14px;
-  border-color: rgba(34,197,94,.25);
-  background: linear-gradient(180deg, rgba(34,197,94,.08), rgba(15,23,42,.88));
+  border-color: rgba(196,30,58,.25);
+  background: linear-gradient(180deg, rgba(196,30,58,.08), rgba(17,13,26,.88));
 }
 .node-body{
   padding:12px 16px 6px 16px;
@@ -5690,14 +5690,14 @@ html{
   line-height:1.6;
   font-family:var(--mono);
   font-size:13px;
-  color: rgba(229,231,235,.92);
+  color: rgba(232,220,200,.92);
 }
 .node-options{
   padding:10px 16px 16px 16px;
   display:flex;
   flex-wrap:wrap;
   gap:10px;
-  border-top:1px solid rgba(255,255,255,.06);
+  border-top:1px solid rgba(232,220,200,.06);
 }
 .node-options .btn{
   flex: 1 1 180px;
@@ -5720,7 +5720,7 @@ html{
 .node-options .option-desc{
   display:block;
   font-size:12px;
-  color: rgba(229,231,235,.82);
+  color: rgba(232,220,200,.82);
   font-weight:600;
 }
 .node-options .merit-replay-cta{
@@ -5733,12 +5733,12 @@ html{
   gap: 6px;
   padding: 18px 18px 16px;
   border-radius: 18px;
-  border: 1px solid rgba(248,113,113,.34);
+  border: 1px solid rgba(210,80,80,.34);
   background:
-    radial-gradient(circle at right top, rgba(248,113,113,.14), transparent 34%),
+    radial-gradient(circle at right top, rgba(210,80,80,.14), transparent 34%),
     linear-gradient(180deg, rgba(127,29,29,.34), rgba(69,10,10,.18));
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.04),
+    inset 0 1px 0 rgba(232,220,200,.04),
     0 12px 28px rgba(0,0,0,.22);
   overflow: hidden;
 }
@@ -5749,30 +5749,30 @@ html{
   top: 16px;
   font-size: 26px;
   line-height: 1;
-  color: rgba(254,202,202,.24);
+  color: rgba(240,196,176,.24);
   font-weight: 900;
 }
 .node-options .merit-replay-cta:hover:not([disabled]){
   transform: translateY(-1px);
-  border-color: rgba(248,113,113,.52);
+  border-color: rgba(210,80,80,.52);
   background:
-    radial-gradient(circle at right top, rgba(248,113,113,.18), transparent 38%),
+    radial-gradient(circle at right top, rgba(210,80,80,.18), transparent 38%),
     linear-gradient(180deg, rgba(153,27,27,.42), rgba(69,10,10,.24));
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.05),
+    inset 0 1px 0 rgba(232,220,200,.05),
     0 16px 34px rgba(0,0,0,.26),
-    0 0 0 1px rgba(248,113,113,.08);
+    0 0 0 1px rgba(210,80,80,.08);
 }
 .merit-replay-cta__badge{
   display: inline-flex;
   align-items: center;
   padding: 3px 8px;
   border-radius: 999px;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(232,220,200,.08);
+  border: 1px solid rgba(232,220,200,.08);
   font-size: 11px;
   letter-spacing: .08em;
-  color: rgba(254,226,226,.88);
+  color: rgba(240,200,180,.88);
   font-weight: 900;
 }
 .merit-replay-cta__title{
@@ -5781,63 +5781,63 @@ html{
   line-height: 1.15;
   font-weight: 1000;
   letter-spacing: .02em;
-  color: rgba(255,255,255,.98);
-  text-shadow: 0 0 18px rgba(248,113,113,.16);
+  color: rgba(232,220,200,.98);
+  text-shadow: 0 0 18px rgba(210,80,80,.16);
 }
 .merit-replay-cta__desc{
   display: block;
   max-width: 460px;
   font-size: 13px;
   line-height: 1.55;
-  color: rgba(254,226,226,.82);
+  color: rgba(240,200,180,.82);
   font-weight: 700;
 }
 
 /* dev jump removed */
 .btn-danger{
-  background: rgba(239,68,68,.16);
+  background: rgba(185,28,28,.16);
   color: #fff;
 }
 .btn-danger:hover{
-  background: rgba(239,68,68,.22);
-  border-color: rgba(239,68,68,.45);
+  background: rgba(185,28,28,.22);
+  border-color: rgba(185,28,28,.45);
   color: #fff;
 }
 
 /* 主行动栏：底按色相区分（快攻浅红 / 重击深红 / …），默认文字统一白色；强化层数 +n 与悬浮 .action-effect-bonus 同色 */
 .btn .combat-btn-bonus-suffix{
-  color: #fde047;
+  color: #f0d060;
   font-weight: 900;
   text-shadow: 0 0 10px rgba(234, 179, 8, 0.35);
 }
 .btn-quick{
-  background: rgba(244,63,94,.16);
-  border-color: rgba(251,113,133,.48);
+  background: rgba(196,50,60,.16);
+  border-color: rgba(200,100,120,.48);
   color: #fff;
 }
 .btn-quick:hover:not([disabled]){
-  background: rgba(244,63,94,.26);
-  border-color: rgba(251,113,133,.65);
+  background: rgba(196,50,60,.26);
+  border-color: rgba(200,100,120,.65);
   color: #fff;
 }
 .btn-heavy{
   background: rgba(127,29,29,.34);
-  border-color: rgba(220,38,38,.55);
+  border-color: rgba(180,30,30,.55);
   color: #fff;
 }
 .btn-heavy:hover:not([disabled]){
   background: rgba(153,27,27,.42);
-  border-color: rgba(248,113,113,.62);
+  border-color: rgba(210,80,80,.62);
   color: #fff;
 }
 .btn-defend{
-  background: rgba(59,130,246,.18);
-  border-color: rgba(59,130,246,.45);
+  background: rgba(80,100,160,.18);
+  border-color: rgba(80,100,160,.45);
   color: #fff;
 }
 .btn-defend:hover:not([disabled]){
-  background: rgba(59,130,246,.28);
-  border-color: rgba(96,165,250,.65);
+  background: rgba(80,100,160,.28);
+  border-color: rgba(107,130,176,.65);
   color: #fff;
 }
 .btn-block{
@@ -5852,23 +5852,23 @@ html{
 }
 .btn-rest{
   background: rgba(22,163,74,.2);
-  border-color: rgba(74,222,128,.45);
+  border-color: rgba(232,201,122,.45);
   color: #fff;
 }
 .btn-rest:hover:not([disabled]){
-  background: rgba(34,197,94,.3);
-  border-color: rgba(74,222,128,.62);
+  background: rgba(196,30,58,.3);
+  border-color: rgba(232,201,122,.62);
   color: #fff;
 }
 /* 弹窗/节点等仍用 btn-offense：与重击同色（深红强调） */
 .btn-offense{
   background: rgba(127,29,29,.34);
-  border-color: rgba(220,38,38,.55);
+  border-color: rgba(180,30,30,.55);
   color: #fff;
 }
 .btn-offense:hover:not([disabled]){
   background: rgba(153,27,27,.42);
-  border-color: rgba(248,113,113,.62);
+  border-color: rgba(210,80,80,.62);
   color: #fff;
 }
 
@@ -5889,7 +5889,7 @@ html{
 }
 .card{
   background: rgba(0,0,0,.18);
-  border:1px solid rgba(255,255,255,.06);
+  border:1px solid rgba(232,220,200,.06);
   border-radius: 12px;
   padding:12px;
 }
@@ -5899,7 +5899,7 @@ html{
 }
 .enemy-name{
   margin-top:6px;
-  color:#fecaca;
+  color:#f0c4b0;
   font-weight:700;
 }
 .meters{margin-top:10px; display:grid; gap:10px}
@@ -5908,8 +5908,8 @@ html{
 .meter-bar{
   width:100%;
   height:10px;
-  background: rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.06);
+  background: rgba(232,220,200,.06);
+  border:1px solid rgba(232,220,200,.06);
   border-radius: 999px;
   overflow:visible;
   justify-self:start;
@@ -5938,21 +5938,21 @@ html{
   58%{ opacity: 1; transform: translate(-50%, -11px); }
   100%{ opacity: 0; transform: translate(-50%, -18px); }
 }
-.meter-float--hp-up{ color: #4ade80; }
-.meter-float--hp-down{ color: #f87171; }
+.meter-float--hp-up{ color: #d4a040; }
+.meter-float--hp-down{ color: #c84040; }
 /* 玩家：失衡上升不利 / 下降有利 */
 .meter-float--stg-up-player{ color: #fb923c; }
-.meter-float--stg-down-player{ color: #34d399; }
+.meter-float--stg-down-player{ color: #d4920a; }
 /* 敌人：失衡上升有利我方 / 下降不利 */
-.meter-float--stg-up-enemy{ color: #4ade80; }
+.meter-float--stg-up-enemy{ color: #d4a040; }
 .meter-float--stg-down-enemy{ color: #fdba74; }
 .meter-fill{
   height:100%;
   width:0%;
-  background: linear-gradient(90deg, rgba(34,197,94,.95), rgba(34,197,94,.55));
+  background: linear-gradient(90deg, rgba(196,30,58,.95), rgba(196,30,58,.55));
 }
 .enemy-card .meter-fill{
-  background: linear-gradient(90deg, rgba(239,68,68,.92), rgba(239,68,68,.55));
+  background: linear-gradient(90deg, rgba(185,28,28,.92), rgba(185,28,28,.55));
 }
 .anim-meters .meter-fill{
   transition: width .18s linear;
@@ -6033,11 +6033,11 @@ body.ending-slowmo .panel-hint-blink{
   background: linear-gradient(
     105deg,
     transparent 38%,
-    rgba(255,255,255,0) 42%,
-    rgba(255,255,255,.88) 47.5%,
-    rgba(186,230,253,.75) 50%,
+    rgba(232,220,200,0) 42%,
+    rgba(232,220,200,.88) 47.5%,
+    rgba(160,175,200,.75) 50%,
     rgba(254,249,195,.55) 51.5%,
-    rgba(255,255,255,.65) 53%,
+    rgba(232,220,200,.65) 53%,
     transparent 58%
   );
   filter: blur(0.35px);
@@ -6063,11 +6063,11 @@ body.ending-slowmo .panel-hint-blink{
   background: linear-gradient(
     105deg,
     transparent 38%,
-    rgba(255,255,255,0) 42%,
-    rgba(255,255,255,.88) 47.5%,
-    rgba(186,230,253,.75) 50%,
+    rgba(232,220,200,0) 42%,
+    rgba(232,220,200,.88) 47.5%,
+    rgba(160,175,200,.75) 50%,
     rgba(254,249,195,.55) 51.5%,
-    rgba(255,255,255,.65) 53%,
+    rgba(232,220,200,.65) 53%,
     transparent 58%
   );
   filter: blur(0.35px);
@@ -6088,7 +6088,7 @@ body.ending-slowmo .panel-hint-blink{
 @keyframes execBurst {
   0%{ transform: scale(1) rotate(0deg); filter: brightness(1); box-shadow: 0 0 0 rgba(0,0,0,0); }
   20%{ transform: scale(1.02) rotate(-1deg); filter: brightness(1.25); box-shadow: 0 0 0 2px rgba(251,146,60,.55), 0 0 22px rgba(251,146,60,.25); }
-  45%{ transform: scale(1.01) rotate(1deg); filter: brightness(1.15); box-shadow: 0 0 0 3px rgba(239,68,68,.55), 0 0 28px rgba(239,68,68,.18); }
+  45%{ transform: scale(1.01) rotate(1deg); filter: brightness(1.15); box-shadow: 0 0 0 3px rgba(185,28,28,.55), 0 0 28px rgba(185,28,28,.18); }
   100%{ transform: scale(1) rotate(0deg); filter: brightness(1); box-shadow: 0 0 0 rgba(0,0,0,0); }
 }
 .fighter-card.exec-burst{
@@ -6105,11 +6105,11 @@ body.ending-slowmo .panel-hint-blink{
   font-weight: 1000;
   font-size: 44px;
   letter-spacing: .08em;
-  color: rgba(255,255,255,.94);
-  text-shadow: 0 2px 18px rgba(239,68,68,.35), 0 2px 8px rgba(0,0,0,.55);
+  color: rgba(232,220,200,.94);
+  text-shadow: 0 2px 18px rgba(185,28,28,.35), 0 2px 8px rgba(0,0,0,.55);
   padding: 10px 14px;
   border-radius: 14px;
-  background: radial-gradient(ellipse at center, rgba(239,68,68,.16), rgba(0,0,0,0) 68%);
+  background: radial-gradient(ellipse at center, rgba(185,28,28,.16), rgba(0,0,0,0) 68%);
   backdrop-filter: blur(2px);
   will-change: transform, opacity;
 }
@@ -6133,18 +6133,18 @@ body.ending-slowmo .panel-hint-blink{
   font-size:12px;
   padding:4px 8px;
   border-radius:999px;
-  border:1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.06);
+  border:1px solid rgba(232,220,200,.08);
+  background: rgba(232,220,200,.06);
   color:var(--text);
 }
-.flag.danger{border-color: rgba(239,68,68,.40); background: rgba(239,68,68,.10)}
+.flag.danger{border-color: rgba(185,28,28,.40); background: rgba(185,28,28,.10)}
 .flag.warn{border-color: rgba(245,158,11,.40); background: rgba(245,158,11,.10)}
-.flag.good{border-color: rgba(34,211,238,.45); background: rgba(34,211,238,.12)}
+.flag.good{border-color: rgba(80,168,190,.45); background: rgba(80,168,190,.12)}
 
 .panel-divider{
   margin:0 16px;
   height:1px;
-  background: rgba(255,255,255,.06);
+  background: rgba(232,220,200,.06);
   flex-shrink: 0;
 }
 
@@ -6166,12 +6166,12 @@ body.ending-slowmo .panel-hint-blink{
   border-radius: 2px;
 }
 .battle-vs-divider__line--enemy{
-  background: linear-gradient(90deg, rgba(239,68,68,.08), rgba(239,68,68,.55) 55%, rgba(255,255,255,.22));
-  box-shadow: 0 0 12px rgba(239,68,68,.18);
+  background: linear-gradient(90deg, rgba(185,28,28,.08), rgba(185,28,28,.55) 55%, rgba(232,220,200,.22));
+  box-shadow: 0 0 12px rgba(185,28,28,.18);
 }
 .battle-vs-divider__line--player{
-  background: linear-gradient(90deg, rgba(255,255,255,.22), rgba(59,130,246,.55) 45%, rgba(59,130,246,.08));
-  box-shadow: 0 0 12px rgba(59,130,246,.18);
+  background: linear-gradient(90deg, rgba(232,220,200,.22), rgba(80,100,160,.55) 45%, rgba(80,100,160,.08));
+  box-shadow: 0 0 12px rgba(80,100,160,.18);
 }
 /* 中央「第X回合」外框：固定最小宽，光点起点不随字数抖动 */
 .battle-vs-divider__fly-anchor{
@@ -6193,8 +6193,8 @@ body.ending-slowmo .panel-hint-blink{
   padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid rgba(251,191,36,.42);
-  background: linear-gradient(180deg, rgba(30,41,59,.75), rgba(15,23,42,.92));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+  background: linear-gradient(180deg, rgba(35,28,48,.75), rgba(17,13,26,.92));
+  box-shadow: inset 0 1px 0 rgba(232,220,200,.06);
   transition: color 0.2s ease, font-size 0.2s ease, transform 0.2s ease, border-color 0.2s ease, text-shadow 0.2s ease, box-shadow 0.2s ease;
   white-space: nowrap;
 }
@@ -6203,12 +6203,12 @@ body.ending-slowmo .panel-hint-blink{
   font-size: clamp(14px, 2.1vw, 16px);
   letter-spacing: .12em;
   text-indent: 0;
-  color: rgba(254,202,202,.99);
+  color: rgba(240,196,176,.99);
   transform: scale(1.12);
-  border-color: rgba(248,113,113,.55);
+  border-color: rgba(210,80,80,.55);
   background: linear-gradient(180deg, rgba(69,10,10,.55), rgba(30,15,23,.95));
-  text-shadow: 0 0 14px rgba(248,113,113,.45), 0 0 28px rgba(220,38,38,.25);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 0 20px rgba(239,68,68,.22);
+  text-shadow: 0 0 14px rgba(210,80,80,.45), 0 0 28px rgba(180,30,30,.25);
+  box-shadow: inset 0 1px 0 rgba(232,220,200,.05), 0 0 20px rgba(185,28,28,.22);
 }
 /* legacy story block */
 .story{
@@ -6238,11 +6238,11 @@ body.ending-slowmo .panel-hint-blink{
 /* —— 战功 7 档：Lv7 神将～Lv1 战将（钻晶 / 赤锋 / 铜勋 / 曜金 / 紫镇 / 青刃 / 芽绿）—— */
 .grade-shenjiang {
   /* Lv7 神将：钻石冰辉，神性冷光 */
-  --grade-main: #beebff;
-  --grade-sub: #f8fdff;
-  --grade-deep: #1a3d52;
+  --grade-main: #a8c8d8;
+  --grade-sub: #e8e4f0;
+  --grade-deep: #18283a;
   --grade-bg: linear-gradient(188deg, rgba(142, 219, 255, 0.14), rgba(234, 251, 255, 0.06));
-  --grade-border: linear-gradient(180deg, #eafbff, #5ec8e8);
+  --grade-border: linear-gradient(180deg, #d8dce8, #4a98a8);
   --grade-glow: 0 0 26px rgba(142, 219, 255, 0.38), 0 0 42px rgba(190, 235, 255, 0.12);
   --grade-inner: inset 0 1px 0 rgba(255, 255, 255, 0.38);
   --grade-pattern:
@@ -6257,11 +6257,11 @@ body.ending-slowmo .panel-hint-blink{
 }
 .grade-feijiang {
   /* Lv6 飞将：赤钢血锋 */
-  --grade-main: #ff625b;
-  --grade-sub: #ffb09a;
-  --grade-deep: #7a1310;
+  --grade-main: #c43828;
+  --grade-sub: #e0a888;
+  --grade-deep: #60100e;
   --grade-bg: linear-gradient(180deg, rgba(216, 58, 52, 0.22), rgba(255, 98, 91, 0.1));
-  --grade-border: linear-gradient(180deg, #ffb09a, #c42822);
+  --grade-border: linear-gradient(180deg, #e0a888, #a82020);
   --grade-glow: 0 0 22px rgba(216, 58, 52, 0.38);
   --grade-inner: inset 0 1px 0 rgba(255, 200, 180, 0.22);
   --grade-pattern: linear-gradient(128deg, rgba(255, 98, 91, 0.16), transparent 46%);
@@ -6305,11 +6305,11 @@ body.ending-slowmo .panel-hint-blink{
 }
 .grade-jianjiang {
   /* Lv3 健将：紫钢镇纹 */
-  --grade-main: #a98bff;
-  --grade-sub: #e1d2ff;
-  --grade-deep: #3a206a;
+  --grade-main: #d4be8a;
+  --grade-sub: #d0c0b0;
+  --grade-deep: #2a1850;
   --grade-bg: linear-gradient(180deg, rgba(122, 79, 214, 0.22), rgba(169, 139, 255, 0.1));
-  --grade-border: linear-gradient(180deg, #e1d2ff, #6a3fd4);
+  --grade-border: linear-gradient(180deg, #d0c0b0, #5a38a0);
   --grade-glow: 0 0 16px rgba(122, 79, 214, 0.32);
   --grade-inner: inset 0 1px 0 rgba(225, 210, 255, 0.2);
   --grade-pattern: radial-gradient(circle at 50% 0%, rgba(169, 139, 255, 0.14), transparent 50%);
@@ -6321,11 +6321,11 @@ body.ending-slowmo .panel-hint-blink{
 }
 .grade-yongjiang {
   /* Lv2 勇将：冷钢青锋 */
-  --grade-main: #79b3ff;
-  --grade-sub: #d7e9ff;
-  --grade-deep: #173c7a;
+  --grade-main: #8aa0c8;
+  --grade-sub: #c8cce0;
+  --grade-deep: #142860;
   --grade-bg: linear-gradient(180deg, rgba(58, 118, 216, 0.18), rgba(121, 179, 255, 0.08));
-  --grade-border: linear-gradient(180deg, #d7e9ff, #3a76d8);
+  --grade-border: linear-gradient(180deg, #c8cce0, #3060a0);
   --grade-glow: 0 0 14px rgba(58, 118, 216, 0.28);
   --grade-inner: inset 0 1px 0 rgba(220, 235, 255, 0.16);
   --grade-pattern: linear-gradient(135deg, rgba(121, 179, 255, 0.11), transparent 54%);
@@ -6337,11 +6337,11 @@ body.ending-slowmo .panel-hint-blink{
 }
 .grade-zhanjiang {
   /* Lv1 战将：青铜芽绿 — 初成可战，非「差」 */
-  --grade-main: #7ce0a8;
-  --grade-sub: #d8ffe7;
-  --grade-deep: #124c33;
+  --grade-main: #88c090;
+  --grade-sub: #e0d8c0;
+  --grade-deep: #103828;
   --grade-bg: linear-gradient(180deg, rgba(47, 175, 110, 0.2), rgba(124, 224, 168, 0.08));
-  --grade-border: linear-gradient(180deg, #d8ffe7, #2faf6e);
+  --grade-border: linear-gradient(180deg, #e0d8c0, #2a8858);
   --grade-glow: 0 0 12px rgba(47, 175, 110, 0.28);
   --grade-inner: inset 0 1px 0 rgba(220, 255, 235, 0.18);
   --grade-pattern: radial-gradient(ellipse at 50% 100%, rgba(124, 224, 168, 0.1), transparent 52%);
@@ -6354,11 +6354,11 @@ body.ending-slowmo .panel-hint-blink{
 
 /* Lv8 天命：破格层，白金天青底 + 虹彩轨（结算徽记与神将区分） */
 .grade-tianming {
-  --grade-main: #e8f4ff;
-  --grade-sub: #bfe9ff;
-  --grade-deep: #0c2744;
+  --grade-main: #d0d8e8;
+  --grade-sub: #b0c8d0;
+  --grade-deep: #0a1830;
   --grade-bg: linear-gradient(188deg, rgba(224, 242, 254, 0.16), rgba(56, 189, 248, 0.08));
-  --grade-border: linear-gradient(180deg, #f8fafc, #38bdf8);
+  --grade-border: linear-gradient(180deg, #f0e8d0, #3890b0);
   --grade-glow:
     0 0 30px rgba(56, 189, 248, 0.42),
     0 0 52px rgba(244, 114, 182, 0.2),
@@ -6397,9 +6397,9 @@ body.ending-slowmo .panel-hint-blink{
   background-image: linear-gradient(
     92deg,
     #fde68a,
-    #f0abfc,
-    #7dd3fc,
-    #6ee7b7,
+    #c0a0c0,
+    #7098b8,
+    #b8a878,
     #fcd34d,
     #fde68a
   );
@@ -6481,9 +6481,9 @@ body.ending-slowmo .panel-hint-blink{
   background-image: linear-gradient(
     95deg,
     #fef9c3,
-    #fbcfe8,
-    #bae6fd,
-    #a7f3d0,
+    #c8b8a0,
+    #a0b0c8,
+    #c8b890,
     #fde68a
   );
   background-size: 240% auto;
@@ -6519,9 +6519,9 @@ body.ending-slowmo .panel-hint-blink{
   background-image: linear-gradient(
     95deg,
     #fef9c3,
-    #fbcfe8,
-    #bae6fd,
-    #a7f3d0,
+    #c8b8a0,
+    #a0b0c8,
+    #c8b890,
     #fde68a
   );
   background-size: 240% auto;
@@ -6745,9 +6745,9 @@ body.ending-slowmo .panel-hint-blink{
   background-image: linear-gradient(
     92deg,
     #fde68a,
-    #f0abfc,
-    #7dd3fc,
-    #6ee7b7,
+    #c0a0c0,
+    #7098b8,
+    #b8a878,
     #fcd34d,
     #fde68a
   );
@@ -6770,8 +6770,8 @@ body.ending-slowmo .panel-hint-blink{
     background-image: none;
     -webkit-background-clip: border-box;
     background-clip: border-box;
-    color: #fca5a5;
-    -webkit-text-fill-color: #fca5a5;
+    color: #e0a090;
+    -webkit-text-fill-color: #e0a090;
     filter: none;
   }
   .soul-grade-card .grade-sheen {
@@ -6795,12 +6795,12 @@ body.ending-slowmo .panel-hint-blink{
   text-align: left;
   font-size: 13px;
   line-height: 1.5;
-  color: rgba(229,231,235,.92);
+  color: rgba(232,220,200,.92);
 }
 .merit-report-head{
   margin-bottom: 12px;
   padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(232,220,200,.08);
 }
 .merit-report-total{
   margin: 0 0 6px 0;
@@ -6808,7 +6808,7 @@ body.ending-slowmo .panel-hint-blink{
 }
 .merit-report-grade{
   margin: 0 0 8px 0;
-  color: rgba(229,231,235,.88);
+  color: rgba(232,220,200,.88);
   font-size: 14px;
 }
 .merit-report-grade .merit-grade{
@@ -6828,8 +6828,8 @@ body.ending-slowmo .panel-hint-blink{
   margin-top: 14px;
   padding: 12px 14px;
   border-radius: 10px;
-  background: linear-gradient(145deg, rgba(88,28,135,.22), rgba(15,23,42,.55));
-  border: 1px solid rgba(167,139,250,.28);
+  background: linear-gradient(145deg, rgba(88,28,135,.22), rgba(17,13,26,.55));
+  border: 1px solid rgba(212,190,138,.28);
 }
 .merit-hero-line{
   margin: 0 0 10px 0;
@@ -6842,17 +6842,17 @@ body.ending-slowmo .panel-hint-blink{
 .merit-hero-explain{
   margin: 0 0 12px 0;
   font-size: 13px;
-  color: rgba(226,232,240,.92);
+  color: rgba(220,208,188,.92);
   line-height: 1.55;
 }
 .merit-hero-poem{
   margin: 0;
   padding: 10px 0 0 0;
-  border-top: 1px solid rgba(255,255,255,.08);
+  border-top: 1px solid rgba(232,220,200,.08);
   font-family: var(--mono);
   font-size: 12px;
   line-height: 1.65;
-  color: rgba(187,247,208,.9);
+  color: rgba(232,201,122,.9);
 }
 .merit-hero-poem-line{
   margin: 2px 0;
@@ -6860,7 +6860,7 @@ body.ending-slowmo .panel-hint-blink{
 .merit-hero-secondary{
   margin: 12px 0 0 0;
   font-size: 12px;
-  color: rgba(148,163,184,.95);
+  color: rgba(154,142,122,.95);
 }
 .merit-report-section{
   margin-top: 12px;
@@ -6889,7 +6889,7 @@ body.ending-slowmo .panel-hint-blink{
 .merit-report-table th,
 .merit-report-table td{
   padding: 6px 8px;
-  border-bottom: 1px solid rgba(255,255,255,.06);
+  border-bottom: 1px solid rgba(232,220,200,.06);
   text-align: right;
 }
 .merit-report-table th:first-child,
@@ -6989,30 +6989,30 @@ body.ending-slowmo .panel-hint-blink{
 }
 #playerCard.fighter-card.boss-exec-drama--broken{
   animation: bossExecDramaBrokenPulse 0.72s ease-in-out infinite;
-  border-color: rgba(239,68,68,.62);
-  box-shadow: 0 0 0 2px rgba(239,68,68,.45), 0 0 26px rgba(239,68,68,.22);
+  border-color: rgba(185,28,28,.62);
+  box-shadow: 0 0 0 2px rgba(185,28,28,.45), 0 0 26px rgba(185,28,28,.22);
 }
 @keyframes bossExecDramaBrokenPulse{
   0%, 100%{ filter: brightness(1); }
   50%{ filter: brightness(1.06); }
 }
 #playerCard.fighter-card.boss-exec-drama--menace{
-  border-color: rgba(239,68,68,.82);
-  box-shadow: 0 0 0 3px rgba(239,68,68,.38), 0 0 30px rgba(239,68,68,.28);
+  border-color: rgba(185,28,28,.82);
+  box-shadow: 0 0 0 3px rgba(185,28,28,.38), 0 0 30px rgba(185,28,28,.28);
 }
 .fighter-card.enemy-card.boss-exec-drama--executor{
   animation: bossExecDramaExecutorGlow 0.88s ease-in-out infinite;
-  border-color: rgba(251,113,133,.88) !important;
+  border-color: rgba(200,100,120,.88) !important;
   box-shadow:
-    0 0 0 2px rgba(239,68,68,.48),
-    0 0 28px rgba(239,68,68,.32) !important;
+    0 0 0 2px rgba(185,28,28,.48),
+    0 0 28px rgba(185,28,28,.32) !important;
 }
 @keyframes bossExecDramaExecutorGlow{
   0%, 100%{
-    box-shadow: 0 0 0 2px rgba(239,68,68,.42), 0 0 24px rgba(239,68,68,.28);
+    box-shadow: 0 0 0 2px rgba(185,28,28,.42), 0 0 24px rgba(185,28,28,.28);
   }
   50%{
-    box-shadow: 0 0 0 3px rgba(251,113,133,.58), 0 0 34px rgba(239,68,68,.42);
+    box-shadow: 0 0 0 3px rgba(200,100,120,.58), 0 0 34px rgba(185,28,28,.42);
   }
 }
 @media (prefers-reduced-motion: reduce){
@@ -7216,7 +7216,7 @@ body.ending-slowmo .panel-hint-blink{
   letter-spacing: 0.14em;
   border-radius: 12px;
   border: 1px solid rgba(212, 175, 105, 0.42);
-  background: linear-gradient(180deg, #7f1c1c 0%, #5c1014 38%, #3a080c 72%, #240508 100%);
+  background: linear-gradient(180deg, #601818 0%, #480e10 38%, #30060a 72%, #180408 100%);
   color: rgba(255, 248, 242, 0.98);
   box-shadow:
     inset 0 1px 0 rgba(255, 220, 200, 0.12),
@@ -7257,7 +7257,7 @@ body.ending-slowmo .panel-hint-blink{
   margin-top: 0;
   margin-bottom: 8px;
   font-size: 12px;
-  color: rgba(148,163,184,.9);
+  color: rgba(154,142,122,.9);
   min-height: 1.3em;
 }
 @media (max-width: 480px){
@@ -7267,4 +7267,184 @@ body.ending-slowmo .panel-hint-blink{
   .name-dialog-field{
     margin: 22px 0 18px;
   }
+}
+
+/* ═══════════════════════════════════════════════════════
+   戦国テーマ — Sengoku Atmosphere Overlay
+   日本古代戦国時期の視覚効果
+   ═══════════════════════════════════════════════════════ */
+
+/* 全局和紙質感：body 上疊加一層極淡噪點紋理 */
+body::before{
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(201,169,110,.012) 0px,
+      transparent 1px,
+      transparent 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(201,169,110,.008) 0px,
+      transparent 1px,
+      transparent 5px
+    );
+  mix-blend-mode: overlay;
+}
+body > .app{
+  position: relative;
+  z-index: 1;
+}
+
+/* 面板：添加微弱的金色內發光邊框，模擬漆器鑲嵌 */
+.panel{
+  border-image: linear-gradient(
+    180deg,
+    rgba(201,169,110,.18) 0%,
+    rgba(201,169,110,.06) 40%,
+    rgba(120,80,40,.08) 100%
+  ) 1;
+  box-shadow:
+    var(--shadow),
+    inset 0 1px 0 rgba(201,169,110,.06),
+    inset 0 -1px 0 rgba(0,0,0,.15);
+}
+
+/* 頂部標題欄：加深漆木質感 */
+.topbar{
+  border-image: linear-gradient(
+    90deg,
+    rgba(201,169,110,.22) 0%,
+    rgba(201,169,110,.08) 50%,
+    rgba(201,169,110,.22) 100%
+  ) 1;
+}
+
+/* 標題文字：更濃的書法風格 */
+.kicker{
+  letter-spacing: .25em;
+}
+.h1{
+  letter-spacing: .15em;
+}
+
+/* 面板標題加上書道風下劃線 */
+.panel-title{
+  letter-spacing: .12em;
+}
+.panel-subtitle{
+  letter-spacing: .08em;
+  font-style: normal;
+}
+
+/* 按鈕：更銳利的邊角，漆器扁平風格 */
+.btn{
+  border-radius: 6px;
+  letter-spacing: .06em;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0,0,0,.4);
+}
+
+/* 戰鬥日誌底色：和紙暖色底 */
+.scrollbox{
+  background: rgba(13,10,18,.3);
+}
+
+/* 結算評級卡片：金箔邊框效果 */
+.chapter-settle-merit-card{
+  border-image: linear-gradient(
+    135deg,
+    rgba(201,169,110,.35) 0%,
+    rgba(160,130,80,.12) 30%,
+    rgba(201,169,110,.25) 60%,
+    rgba(120,90,40,.10) 100%
+  ) 1;
+}
+
+/* 勝利橫幅的金色裝飾 */
+.win-accent-bar{
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(201,169,110,.5) 20%,
+    rgba(232,201,122,.6) 50%,
+    rgba(201,169,110,.5) 80%,
+    transparent
+  ) !important;
+}
+
+/* 戰功飛行粒子：更溫暖的金色 */
+.merit-fly-particle{
+  background: radial-gradient(circle at 30% 26%, #fff8e1, #f0d060 38%, #c9a96e 72%, #8b6914 100%) !important;
+}
+
+/* 連線路線圖裝飾 */
+.chapter-roadmap{
+  scrollbar-color: rgba(201,169,110,.25) transparent;
+}
+
+/* 選取卡片時的金邊發光 */
+.pick-card.is-selected{
+  box-shadow:
+    inset 0 0 0 2px rgba(201,169,110,.55),
+    0 0 24px rgba(201,169,110,.18),
+    0 8px 24px rgba(0,0,0,.3) !important;
+}
+
+/* 名字對話框：更濃的漆木和金裝飾 */
+.name-dialog-card{
+  border-image: linear-gradient(
+    180deg,
+    rgba(201,169,110,.3),
+    rgba(120,80,40,.15),
+    rgba(201,169,110,.2)
+  ) 1;
+}
+
+/* 戰意文字 & 決鬥結算：書法韻味 */
+.resolution-label{
+  letter-spacing: .15em;
+  font-weight: 900;
+}
+
+/* VS 分割條裝飾 */
+.vs-divider-badge{
+  letter-spacing: .08em;
+  text-shadow: 0 0 12px rgba(201,169,110,.3);
+}
+
+/* 武將魂名片風格增強 */
+.soul-hero-name{
+  letter-spacing: .18em;
+}
+
+/* 血條底部邊框：金箔線 */
+.meter-bar::after{
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,169,110,.15), transparent);
+  pointer-events: none;
+}
+
+/* 日誌文字更有古風 */
+.log{
+  letter-spacing: .03em;
+}
+
+/* 技能卡片：漆器風格邊框 */
+.wh-card{
+  border-image: linear-gradient(
+    180deg,
+    rgba(201,169,110,.12),
+    rgba(80,60,40,.06)
+  ) 1;
 }
