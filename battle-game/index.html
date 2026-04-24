@@ -11,7 +11,21 @@
   </head>
   <body>
     <div class="app">
-      <header class="topbar">
+      <section id="homeScreen" class="home-screen" hidden aria-label="主菜单">
+        <div class="home-screen__backdrop" aria-hidden="true"></div>
+        <div class="home-screen__content">
+          <div class="home-screen__actions">
+            <button id="btnHomeStart" class="btn btn-offense home-screen__btn" type="button">开始游戏</button>
+            <button id="btnHomeWarehouse" class="btn btn-secondary home-screen__btn" type="button">卡牌仓库</button>
+            <button id="btnHomeLeaderboard" class="btn btn-secondary home-screen__btn" type="button">天下排行榜</button>
+          </div>
+          <p class="home-screen__desc">
+            此乃三国乱世中的文字战阵。敌将各有意图，你须在“快攻、重击、防御、盾反、调息”之间择机而动，破其架势，乘隙处决，方可夺胜。
+          </p>
+        </div>
+      </section>
+
+      <header id="appTopbar" class="topbar">
         <div class="topbar-row topbar-row--main">
           <div class="title">
             <div class="kicker">乱世试锋录</div>
@@ -32,9 +46,9 @@
 
       <!-- 标题栏下方的“推进/成长模块”已取消；成长按钮改放在战斗信息内 -->
 
-      <main class="main">
+      <main id="appMain" class="main">
         <section class="left-col" id="leftCol">
-          <section class="panel">
+          <section class="panel panel--chronicle">
             <div class="panel-header panel-header--intro-hero-actions">
               <div class="panel-header-text">
                 <div id="battleLogPanelTitle" class="panel-title">阵前纪事</div>
@@ -56,7 +70,7 @@
             <div id="battleLog" class="scrollbox" aria-live="polite"></div>
           </section>
 
-          <section id="settlePanelSection" class="panel panel--settle-split">
+          <section id="settlePanelSection" class="panel panel--settle-split panel--war-report">
             <div class="panel-header">
               <div id="settleLogPanelTitle" class="panel-title">战后军报</div>
               <div id="settleLogPanelSubtitle" class="panel-subtitle">功过赏罚</div>
@@ -74,7 +88,7 @@
         </section>
 
         <section class="right-col">
-          <section id="battleInfoPanel" class="panel battle-info-panel">
+          <section id="battleInfoPanel" class="panel battle-info-panel panel--battle-stage">
             <div
               id="meritGradeUpgradeBanner"
               class="merit-grade-upgrade-banner"
@@ -82,7 +96,7 @@
               aria-hidden="true"
               role="status"
             ></div>
-            <div class="panel-header">
+            <div class="panel-header panel-header--battle-stage">
               <div class="panel-title">阵前形势</div>
               <div class="panel-subtitle" id="turnInfo"></div>
             </div>
@@ -172,8 +186,8 @@
                     </div>
                   </div>
                   <div id="introTop3" class="intro-top3" aria-label="英雄榜节选"></div>
-                  <div class="intro-dare">乱世功名，敢来争先否？</div>
-                  <div class="intro-dare-actions">
+                  <div id="introDareCopy" class="intro-dare">乱世功名，敢来争先否？</div>
+                  <div id="introDareActions" class="intro-dare-actions">
                     <button id="btnIntroDare" class="btn btn-offense intro-dare-btn" type="button">我敢试锋</button>
                     <button id="btnIntroContinue" class="btn btn-secondary intro-dare-btn" type="button" hidden>仍以旧名出战</button>
                     <button id="btnIntroNew" class="btn btn-secondary intro-dare-btn" type="button" hidden>另立名号</button>
@@ -224,11 +238,20 @@
 
             <div id="battleCombatMain" class="battle-combat-main">
               <div id="battleCombatStage" class="battle-combat-stage">
+                <div class="battle-stage-backdrop" aria-hidden="true">
+                  <div class="battle-stage-backdrop__scene"></div>
+                  <div class="battle-stage-backdrop__ornaments"></div>
+                  <div class="battle-stage-backdrop__vignette"></div>
+                </div>
+                <div class="battle-stage-vs-crest" aria-hidden="true">
+                  <img src="./ui-stage-vs-crest.png" alt="" />
+                </div>
             <div id="enemyRowWrap" class="enemy-row">
               <div id="enemyCardA" class="fighter-card enemy-card" role="button" tabindex="0" aria-label="选择目标：守卫刀兵甲">
                 <div id="enemyRestFxOverlayA" class="rest-fx-overlay" aria-hidden="true"></div>
                 <div id="enemyCardFxLayerA" class="card-fx-layer" aria-hidden="true"></div>
                 <div id="enemyCardFxTokenA" class="card-fx-token" aria-hidden="true"></div>
+                <div id="enemyAvatarFrameA" class="card-avatar-frame card-avatar-frame--enemy" aria-hidden="true"></div>
                 <span id="enemyFieldBadgeA" class="enemy-field-badge"></span>
                 <div class="enemy-card-body">
                   <div class="card-title" id="enemyAName"></div>
@@ -256,6 +279,7 @@
                 <div id="enemyRestFxOverlayB" class="rest-fx-overlay" aria-hidden="true"></div>
                 <div id="enemyCardFxLayerB" class="card-fx-layer" aria-hidden="true"></div>
                 <div id="enemyCardFxTokenB" class="card-fx-token" aria-hidden="true"></div>
+                <div id="enemyAvatarFrameB" class="card-avatar-frame card-avatar-frame--enemy" aria-hidden="true"></div>
                 <span id="enemyFieldBadgeB" class="enemy-field-badge"></span>
                 <div class="enemy-card-body">
                   <div class="card-title" id="enemyBName"></div>
@@ -286,6 +310,7 @@
                 <div id="enemyRestFxOverlayC" class="rest-fx-overlay" aria-hidden="true"></div>
                 <div id="enemyCardFxLayerC" class="card-fx-layer" aria-hidden="true"></div>
                 <div id="enemyCardFxTokenC" class="card-fx-token" aria-hidden="true"></div>
+                <div id="enemyAvatarFrameC" class="card-avatar-frame card-avatar-frame--enemy" aria-hidden="true"></div>
                 <span id="enemyFieldBadgeC" class="enemy-field-badge"></span>
                 <div class="enemy-card-body">
                   <div class="card-title" id="enemyCName"></div>
@@ -324,6 +349,7 @@
                 <div id="restFxOverlay" class="rest-fx-overlay" aria-hidden="true"></div>
                 <div id="playerCardFxLayer" class="card-fx-layer" aria-hidden="true"></div>
                 <div id="playerCardFxToken" class="card-fx-token" aria-hidden="true"></div>
+                <div id="playerAvatarFrame" class="card-avatar-frame card-avatar-frame--player" aria-hidden="true"></div>
                 <div id="playerBrokenBanner" class="player-status-banner" hidden>破绽</div>
                 <div id="playerDeadBanner" class="player-status-banner player-status-banner--dead" hidden></div>
                 <div id="playerMeritTurnWarn" class="player-merit-turn-warn" hidden aria-live="polite"></div>
@@ -347,7 +373,7 @@
                 <div id="pFlags" class="flags"></div>
                 <div id="playerCardFlavor" class="player-card-flavor">—</div>
               </div>
-              <section class="mini-panel skill-icons-panel" aria-label="招式">
+              <section class="mini-panel mini-panel--commands skill-icons-panel" aria-label="招式">
                 <div class="mini-title">招式</div>
                 <div class="skill-icons">
                   <div class="skill-icons-row">
@@ -430,11 +456,11 @@
 
             <div id="dividerBeforeBelowActions" class="panel-divider"></div>
             <div id="belowActionsWrap" class="below-actions">
-              <section class="mini-panel">
+              <section class="mini-panel mini-panel--arsenal">
                 <div class="mini-title">战法卷</div>
                 <div id="warehouseCards" class="warehouse-cards warehouse-cards--only"></div>
               </section>
-              <section id="tipsPanel" class="mini-panel">
+              <section id="tipsPanel" class="mini-panel mini-panel--tips">
                 <div class="mini-title mini-title--tips-head">
                   <span>军前提要</span>
                   <label class="beginner-mode-toggle">

@@ -583,22 +583,22 @@ const CHAPTERS = {
         subtitle: "",
         body: "",
         objective: "",
-        options: [{ id: "boss", title: "进入Boss战", desc: "开始Boss战。", next: "BOSS" }],
+        options: [{ id: "boss", title: "迎战管亥", desc: "开始Boss战。", next: "BOSS" }],
       },
       BOSS: {
         id: "BOSS",
         type: /** @type {NodeType} */ ("E"),
-        title: "边寨渠帅",
+        title: "管亥",
         subtitle: "此战定名",
-        body: "边寨渠帅亲自出手，刀法沉狠，且善以守制攻。你若失衡露隙，他必乘机取命。此战若胜，方称首功。",
-        objective: "斩渠帅，夺军需。",
+        body: "管亥亲自出手，刀法沉狠，且善以守制攻。你若失衡露隙，他必乘机取命。此战若胜，方称首功。",
+        objective: "斩管亥，夺军需。",
         battle: {
           waves: [
             {
               name: "头目",
               slots: [
                 {
-                  name: "边寨渠帅",
+                  name: "管亥",
                   archetype: "boss",
                   hp: ns(10),
                   staggerThreshold: 8,
@@ -2680,7 +2680,7 @@ function turnMeritEventLabel(code) {
     enemy_broken: "本回合打入破绽",
     execute_normal: "处决（普通敌）",
     execute_elite: "处决（精英）",
-    execute_boss: "处决（渠帅）",
+    execute_boss: "处决（管亥）",
     execute_finish_bonus: "处决收束额外奖励",
     pressure_chain: "连续压制链",
     interrupt_to_break: "一回合内打断并打入破绽",
@@ -2699,7 +2699,7 @@ function turnMeritEventLabel(code) {
     heavy_interrupted: "重击被快攻打断",
     block_whiff: "对非重击盾反挥空",
     self_broken: "进入破绽",
-    boss_execute_taken: "被渠帅处决",
+    boss_execute_taken: "被管亥处决",
     rest_hit: "调息时仍被命中",
     empty_turn: "无有效收益空回合",
   };
@@ -2766,7 +2766,7 @@ function ensureChapter1LeaderboardRecord(state) {
   const heroPrimaryId = report._heroArchetype?.primary?.id || "";
   const list = loadChapter1MeritLeaderboard();
   const entryAt = Date.now();
-  const origName = (state._playerName || "").trim() || "无名侠客";
+  const origName = FIXED_PLAYER_NAME;
   const heroNameSnap = String(report.heroVerdict?.heroPrimaryName || "").trim();
   state._chapterSettleLbEntryAt = entryAt;
   state._chapter1LbRowDisplayPatch = {
@@ -2800,7 +2800,7 @@ function ensureChapter1LeaderboardRecord(state) {
   // 同步提交在线排行榜（异步，不阻塞）
   if (typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured()) {
     OnlineLeaderboard.submitScore({
-      name: (state._playerName || "").trim() || "无名侠客",
+      name: FIXED_PLAYER_NAME,
       finalMerit: report.final_merit_score,
       grade: report.grade,
       runSum: state.runMeritScore ?? 0,
@@ -2822,7 +2822,7 @@ function ensureChapter1EarlyCampLeaderboardRecord(state) {
   const heroPrimaryId = report._heroArchetype?.primary?.id || "";
   const list = loadChapter1MeritLeaderboard();
   const entryAt = Date.now();
-  const origName = (state._playerName || "").trim() || "无名侠客";
+  const origName = FIXED_PLAYER_NAME;
   const heroNameSnap = String(report.heroVerdict?.heroPrimaryName || "").trim();
   state._chapterSettleLbEntryAt = entryAt;
   state._chapter1LbRowDisplayPatch = {
@@ -2855,7 +2855,7 @@ function ensureChapter1EarlyCampLeaderboardRecord(state) {
   appendMainBehaviorHistory(state, report.heroVerdict?.soulBehavior);
   if (typeof OnlineLeaderboard !== "undefined" && OnlineLeaderboard.isConfigured()) {
     OnlineLeaderboard.submitScore({
-      name: (state._playerName || "").trim() || "无名侠客",
+      name: FIXED_PLAYER_NAME,
       finalMerit: report.final_merit_score,
       grade: report.grade,
       runSum: state.runMeritScore ?? 0,
@@ -2891,7 +2891,7 @@ function patchChapterSettleLeaderboardLocalRowName(state, newName) {
  */
 function applyChapter1LbDisplayNamePatch(e, state) {
   const p = state?._chapter1LbRowDisplayPatch;
-  const nick = String(state?._playerName || "").trim();
+  const nick = FIXED_PLAYER_NAME;
   if (!p || !nick) return e;
   if (state._chapterSettleLbEntryAt != null && e && e.at === state._chapterSettleLbEntryAt) {
     return { ...e, name: nick };
@@ -3151,7 +3151,7 @@ function renderLocalLeaderboardToSettlePanel(ui, state) {
   } else if (onlineOk && Array.isArray(saved) && saved.length) {
     saved = enrichOnlineLbRowsWithLocalNames(saved);
   }
-  const nick = (state?._playerName || "").trim() || "你";
+  const nick = FIXED_PLAYER_NAME;
   const reduced =
     typeof window !== "undefined" &&
     window.matchMedia &&
@@ -3314,7 +3314,7 @@ function resetChapter1NewGame(state) {
   state._chapterRemainMeritAnimScheduled = false;
   delete state._chapterRemainMeritAnimPending;
   const p = state.player;
-  const fresh = mkFighter({ name: "我", hp: ns(6), stagger: 0, staggerThreshold: 4, level: 1 });
+  const fresh = mkFighter({ name: FIXED_PLAYER_NAME, hp: ns(6), stagger: 0, staggerThreshold: 4, level: 1 });
   p.hp = fresh.hp;
   p.hpMax = fresh.hpMax;
   p.stagger = 0;
@@ -3404,7 +3404,7 @@ const CHAPTER_ROADMAP = {
     { id: "B2", label: "寨门", title: "寨门拒战", boss: false },
     { id: "E1", label: "精英", title: "仓廪之前", boss: false },
     { id: "B3", label: "合围", title: "亲兵合围", boss: false },
-    { id: "BOSS", label: "渠帅", title: "边寨渠帅", boss: true },
+    { id: "BOSS", label: "管亥", title: "管亥", boss: true },
   ],
 };
 
@@ -3794,7 +3794,7 @@ function runBossExecutePlayerDrama(state, ui, payload) {
   const exId = executor.id;
 
   const prefaceLine1 = "你的失衡条顶至极限，虎口发麻。";
-  const prefaceLine2 = "边寨渠帅的目光锁住你的空门——这一刀躲不掉了。";
+  const prefaceLine2 = "管亥的目光锁住你的空门——这一刀躲不掉了。";
 
   state.phase = BOSS_EXEC_PLAYER_DRAMA_PHASE;
   state.battleLog.push(formatLineForTurn(state, action, targetId, intents, details));
@@ -7566,7 +7566,7 @@ function intentDeltaHtml(state, enemyObj) {
 }
 
 function mkInitialState() {
-  const player = mkFighter({ name: "我", hp: ns(6), stagger: 0, staggerThreshold: 4, level: 1 });
+  const player = mkFighter({ name: FIXED_PLAYER_NAME, hp: ns(6), stagger: 0, staggerThreshold: 4, level: 1 });
   player.atkBonus = 0;
   player.defendMitigationBonus = 0;
   player.heavyStgBonus = 0; // 装备/橙卡：重击额外失衡（可叠加）
@@ -7600,7 +7600,7 @@ function mkInitialState() {
     chapterHeroProfile: createEmptyChapterHeroProfile(),
     _leaderboardSavedForThisRun: false,
     _leaderboardEarlyCampSaved: false,
-    _playerName: prof?.name || "",
+    _playerName: FIXED_PLAYER_NAME,
     _playerFaction: prof?.faction || "qun",
     _playerProvince: prof?.province || "",
     _playerCity: prof?.city || "",
@@ -7661,6 +7661,7 @@ function mkInitialState() {
     /** 主界面左侧英雄榜：用于取消过期的异步填充 */
     _introLeftHeroSession: 0,
     _introLeftHeroLoading: false,
+    homeView: "menu",
     player,
     enemies: [
       {
@@ -7963,6 +7964,33 @@ const BOSS_EXEC_PLAYER_DRAMA_PHASE = "bossExecuteDrama";
 
 const CH1_MERIT_LEADERBOARD_KEY = "mud_ch1_merit_leaderboard_v1";
 const CH1_PLAYER_PROFILE_KEY = "mud_ch1_player_profile_v1";
+const FIXED_PLAYER_NAME = "秦烈";
+const ENEMY_AVATAR_BY_NAME = {
+  "守卫刀兵甲": "./enemy-avatar-guard-a.png",
+  "守卫刀兵乙": "./enemy-avatar-guard-b.png",
+  "守卫刀兵": "./enemy-avatar-guard-c.png",
+  "守卫枪兵": "./enemy-avatar-guard-spear.png",
+  "亲兵盾": "./enemy-avatar-elite-shield.png",
+  "亲兵刀": "./enemy-avatar-elite-blade.png",
+  "亲兵枪": "./enemy-avatar-elite-spear.png",
+  "管亥": "./enemy-avatar-guanhai.png",
+};
+
+function getEnemyDisplayName(name) {
+  const v = String(name || "").trim();
+  return v === "边寨渠帅" ? "管亥" : v;
+}
+
+function getEnemyAvatarAsset(name) {
+  const displayName = getEnemyDisplayName(name);
+  return ENEMY_AVATAR_BY_NAME[displayName] || "";
+}
+
+function applyEnemyAvatar(el, name) {
+  if (!el) return;
+  const asset = getEnemyAvatarAsset(name);
+  el.style.backgroundImage = asset ? `url("${asset}")` : "";
+}
 
 function loadPlayerProfile() {
   try {
@@ -7970,12 +7998,8 @@ function loadPlayerProfile() {
     if (!raw) return null;
     const obj = JSON.parse(raw);
     if (!obj || typeof obj !== "object") return null;
-    const nameRaw = String(obj.name || "").trim();
-    if (!nameRaw) return null;
-    const name = clampPlayerNameValue(nameRaw);
-    if (!name) return null;
     return {
-      name,
+      name: FIXED_PLAYER_NAME,
       faction: normalizeFactionKey(obj.faction || "qun"),
       province: String(obj.province || "").trim(),
       city: String(obj.city || "").trim(),
@@ -7999,14 +8023,14 @@ function loadPlayerProfile() {
 function applyStoredPlayerProfileToState(state) {
   const prof = loadPlayerProfile();
   if (prof) {
-    state._playerName = prof.name;
+    state._playerName = FIXED_PLAYER_NAME;
     state._playerFaction = prof.faction;
     state._playerProvince = prof.province;
     state._playerCity = prof.city;
     state._playerCountry = prof.country;
     state._chapter1Cleared = !!prof.chapter1Cleared;
   } else {
-    state._playerName = "";
+    state._playerName = FIXED_PLAYER_NAME;
     state._playerFaction = "qun";
     state._playerProvince = "";
     state._playerCity = "";
@@ -8023,13 +8047,13 @@ function appendMainBehaviorHistory(state, behaviorName) {
   h.push(b);
   while (h.length > 5) h.shift();
   state._mainBehaviorHistory = h;
-  if (state._playerName) savePlayerProfile(state);
+  savePlayerProfile(state);
 }
 
 function savePlayerProfile(state) {
   try {
     const payload = {
-      name: clampPlayerNameValue(String(state?._playerName || "").trim()),
+      name: FIXED_PLAYER_NAME,
       faction: normalizeFactionKey(state?._playerFaction || "qun"),
       province: String(state?._playerProvince || "").trim(),
       city: String(state?._playerCity || "").trim(),
@@ -8040,8 +8064,7 @@ function savePlayerProfile(state) {
         : [],
       at: Date.now(),
     };
-    if (!payload.name) return;
-    state._playerName = payload.name;
+    state._playerName = FIXED_PLAYER_NAME;
     localStorage.setItem(CH1_PLAYER_PROFILE_KEY, JSON.stringify(payload));
   } catch {
     // ignore
@@ -8055,7 +8078,7 @@ function clearPlayerProfile(state) {
     // ignore
   }
   if (state) {
-    state._playerName = "";
+    state._playerName = FIXED_PLAYER_NAME;
     state._playerFaction = "qun";
     state._playerProvince = "";
     state._playerCity = "";
@@ -8467,6 +8490,12 @@ function setCombatBodyVisibility(ui, visible) {
 function dom() {
   const $ = (id) => document.getElementById(id);
   return {
+    appTopbar: $("appTopbar"),
+    appMain: $("appMain"),
+    homeScreen: $("homeScreen"),
+    btnHomeStart: $("btnHomeStart"),
+    btnHomeWarehouse: $("btnHomeWarehouse"),
+    btnHomeLeaderboard: $("btnHomeLeaderboard"),
     leftCol: $("leftCol"),
     settlePanelSection: $("settlePanelSection"),
     pageTitle: $("pageTitle"),
@@ -8518,6 +8547,8 @@ function dom() {
     bossExecPlayerDramaLine2: $("bossExecPlayerDramaLine2"),
     introOverlay: $("introOverlay"),
     introTop3: $("introTop3"),
+    introDareCopy: $("introDareCopy"),
+    introDareActions: $("introDareActions"),
     btnIntroLbRefresh: $("btnIntroLbRefresh"),
     btnIntroDare: $("btnIntroDare"),
     btnIntroContinue: $("btnIntroContinue"),
@@ -8579,14 +8610,17 @@ function dom() {
     warehouseCards: $("warehouseCards"),
     actionDesc: $("actionDesc"),
     enemyCardA: $("enemyCardA"),
+    enemyAvatarFrameA: $("enemyAvatarFrameA"),
     enemyRestFxOverlayA: $("enemyRestFxOverlayA"),
     enemyCardFxLayerA: $("enemyCardFxLayerA"),
     enemyCardFxTokenA: $("enemyCardFxTokenA"),
     enemyCardB: $("enemyCardB"),
+    enemyAvatarFrameB: $("enemyAvatarFrameB"),
     enemyRestFxOverlayB: $("enemyRestFxOverlayB"),
     enemyCardFxLayerB: $("enemyCardFxLayerB"),
     enemyCardFxTokenB: $("enemyCardFxTokenB"),
     enemyCardC: $("enemyCardC"),
+    enemyAvatarFrameC: $("enemyAvatarFrameC"),
     enemyRestFxOverlayC: $("enemyRestFxOverlayC"),
     enemyCardFxLayerC: $("enemyCardFxLayerC"),
     enemyCardFxTokenC: $("enemyCardFxTokenC"),
@@ -8726,6 +8760,13 @@ function render(state, ui) {
   lastSkillTipUiPhase = state.phase;
   syncMeritGradeUpgradeBannerVisibility(ui, state);
 
+  const showHomeMenu = state.homeView === "menu";
+  const showHomeLeaderboard = state.homeView === "leaderboard";
+  if (ui.homeScreen) ui.homeScreen.hidden = !showHomeMenu;
+  if (ui.appTopbar) ui.appTopbar.hidden = showHomeMenu;
+  if (ui.appMain) ui.appMain.hidden = showHomeMenu;
+  ui.appMain?.classList.toggle("main--leaderboard", showHomeLeaderboard);
+
   const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
   const node = chapter.nodes[state.nodeId] || chapter.nodes[chapter.startNodeId];
   /** 第一章通关结算页：阵前形势下内嵌胜利条 + 结算区（不再用 growth 浮层战功榜） */
@@ -8817,7 +8858,11 @@ function render(state, ui) {
       if (ui.winGrowthNextSubtitle) ui.winGrowthNextSubtitle.textContent = (p && p.label) || "";
     }
   }
-  const showIntro = state.chapterId === "chapter1" && node.id === "B1" && state.phase === "ready" && !state.introDismissed;
+  const showIntro =
+    state.chapterId === "chapter1" &&
+    node.id === "B1" &&
+    state.phase === "ready" &&
+    (!state.introDismissed || showHomeLeaderboard);
   const introNeedsName = showIntro && !String(state._playerName || "").trim();
   /** 主界面左侧：天下英雄榜（在线前 1000；离线则本机至多 30 条） */
   const introHeroLbLimit = 1000;
@@ -8933,18 +8978,12 @@ function render(state, ui) {
       }
     }
   }
-  const hasProfileName = !!String(state._playerName || "").trim();
-  const canShowProfileButtons = !!(hasProfileName && state._chapter1Cleared);
-  // intro 下只允许出现「我敢！」或「继续/新角色」，不显示“开始战斗”
-  if (ui.btnIntroDare) ui.btnIntroDare.hidden = !(showIntro && !canShowProfileButtons);
-  if (ui.btnIntroContinue) {
-    const show = showIntro && canShowProfileButtons;
-    ui.btnIntroContinue.hidden = !show;
-    if (show) ui.btnIntroContinue.textContent = "仍以旧名出战";
-  }
-  if (ui.btnIntroNew) {
-    ui.btnIntroNew.hidden = !(showIntro && canShowProfileButtons);
-  }
+  if (ui.btnIntroDare) ui.btnIntroDare.hidden = !showIntro || showHomeLeaderboard;
+  if (ui.btnIntroContinue) ui.btnIntroContinue.hidden = true;
+  if (ui.btnIntroNew) ui.btnIntroNew.hidden = true;
+  if (ui.introDareActions) ui.introDareActions.hidden = showHomeLeaderboard;
+  if (ui.introDareCopy) ui.introDareCopy.hidden = showHomeLeaderboard;
+  if (ui.btnChapterSettleRename) ui.btnChapterSettleRename.hidden = true;
   if (ui.btnWinContinue) {
     const isBattle = node.type === "B" || node.type === "E";
     const showWinBtn = isBattle && state.phase === "win" && state.winReady && !state.winGrowthEmbed;
@@ -8968,12 +9007,14 @@ function render(state, ui) {
     if (!isBattleNode || winScreen || showIntro) {
       ui.preFightStartWrap.hidden = true;
       ui.preFightStartWrap.classList.remove("pre-fight-start--placeholder");
+      ui.preFightStartWrap.classList.remove("pre-fight-start--lose-center");
     } else {
       ui.preFightStartWrap.hidden = false;
       ui.preFightStartWrap.classList.toggle(
         "pre-fight-start--placeholder",
         !inReady && state.phase !== "lose",
       );
+      ui.preFightStartWrap.classList.toggle("pre-fight-start--lose-center", state.phase === "lose");
     }
   }
   if (ui.btnStartBattle) ui.btnStartBattle.hidden = !(isBattleNode && state.phase === "ready" && !showIntro);
@@ -9069,7 +9110,7 @@ function render(state, ui) {
       ui.nodeOptions.innerHTML = "";
       ui.growthOverlay?.classList.add("growth-overlay--boss-alert");
       const bossNode = chapter.nodes["BOSS"];
-      const bossName = bossNode?.battle?.waves?.[0]?.slots?.[0]?.name || "边寨渠帅";
+      const bossName = getEnemyDisplayName(bossNode?.battle?.waves?.[0]?.slots?.[0]?.name || "管亥");
       const alert = document.createElement("div");
       alert.className = "boss-alert";
       alert.innerHTML = [
@@ -9310,8 +9351,7 @@ function render(state, ui) {
   }
 
   if (ui.playerName) {
-    const nick = String(state._playerName || "").trim();
-    ui.playerName.textContent = nick ? `${p.name}（${nick}）` : p.name;
+    ui.playerName.textContent = p.name;
   }
   if (ui.playerLevel) ui.playerLevel.textContent = "";
   // 濒死：卡片框红光呼吸
@@ -9367,25 +9407,31 @@ function render(state, ui) {
   // ending 动画时的数值由 runEndingHealMeterAnim 驱动
 
   const revealA = state._winKillRevealEnemyIds?.includes("A");
-  ui.enemyAName.textContent = `${eA.name}${
+  const eADisplayName = getEnemyDisplayName(eA.name);
+  ui.enemyAName.textContent = `${eADisplayName}${
     eA.hp <= 0 && !revealA ? "（已倒下）" : eA.broken ? "（破绽）" : ""
   }`;
+  applyEnemyAvatar(ui.enemyAvatarFrameA, eADisplayName);
   ui.eAHpText.textContent = eA.hpMax > 0 ? `${eA.hp}/${eA.hpMax}` : "—";
   ui.eAHpBar.style.width = percent(eA.hpMax > 0 ? eA.hp / eA.hpMax : 0);
   ui.eAStaggerText.textContent = `${eA.stagger}/${eA.staggerThreshold}`;
   ui.eAStaggerBar.style.width = percent(clamp(eA.stagger / Math.max(1, eA.staggerThreshold || 1), 0, 1));
 
   if (eoBFight.waitingToEnter) {
-    ui.enemyBName.textContent = `${eB.name}`;
+    const eBDisplayName = getEnemyDisplayName(eB.name);
+    ui.enemyBName.textContent = `${eBDisplayName}`;
+    applyEnemyAvatar(ui.enemyAvatarFrameB, eBDisplayName);
     ui.eBHpText.textContent = "—";
     ui.eBHpBar.style.width = "0%";
     ui.eBStaggerText.textContent = "—";
     ui.eBStaggerBar.style.width = "0%";
   } else {
     const revealB = state._winKillRevealEnemyIds?.includes("B");
-    ui.enemyBName.textContent = `${eB.name}${
+    const eBDisplayName = getEnemyDisplayName(eB.name);
+    ui.enemyBName.textContent = `${eBDisplayName}${
       eB.hp <= 0 && !revealB ? "（已倒下）" : eB.broken ? "（破绽）" : ""
     }`;
+    applyEnemyAvatar(ui.enemyAvatarFrameB, eBDisplayName);
     ui.eBHpText.textContent = eB.hpMax > 0 ? `${eB.hp}/${eB.hpMax}` : "—";
     ui.eBHpBar.style.width = percent(eB.hpMax > 0 ? eB.hp / eB.hpMax : 0);
     ui.eBStaggerText.textContent = `${eB.stagger}/${eB.staggerThreshold}`;
@@ -9395,15 +9441,19 @@ function render(state, ui) {
   if (eoCFight) {
     const eC = eoCFight.fighter;
     const revealC = state._winKillRevealEnemyIds?.includes("C");
+    const eCDisplayName = getEnemyDisplayName(eC.name);
     if (ui.enemyCName)
-      ui.enemyCName.textContent = `${eC.name}${
+      ui.enemyCName.textContent = `${eCDisplayName}${
         eC.hp <= 0 && !revealC ? "（已倒下）" : eC.broken ? "（破绽）" : ""
       }`;
+    applyEnemyAvatar(ui.enemyAvatarFrameC, eCDisplayName);
     if (ui.eCHpText) ui.eCHpText.textContent = eC.hpMax > 0 ? `${eC.hp}/${eC.hpMax}` : "—";
     if (ui.eCHpBar) ui.eCHpBar.style.width = percent(eC.hpMax > 0 ? eC.hp / eC.hpMax : 0);
     if (ui.eCStaggerText) ui.eCStaggerText.textContent = `${eC.stagger}/${eC.staggerThreshold}`;
     if (ui.eCStaggerBar)
       ui.eCStaggerBar.style.width = percent(clamp(eC.stagger / Math.max(1, eC.staggerThreshold || 1), 0, 1));
+  } else {
+    applyEnemyAvatar(ui.enemyAvatarFrameC, "");
   }
 
   function setFieldBadge(el, eo) {
@@ -9886,7 +9936,7 @@ function startBattleFromNode(state, node) {
     tutorialOnce(state, "E1_exam", "考试：防御中的敌人要用重击；重击中的敌人要用盾反；打出破绽就果断处决。");
   }
   if (node.battle?.tutorial?.includes("BOSS_full_loop")) {
-    tutorialOnce(state, "BOSS_full_loop", "警告：渠帅会盾反你的重击，也会在你破绽时处决你——必须读招控节奏。");
+    tutorialOnce(state, "BOSS_full_loop", "警告：管亥会盾反你的重击，也会在你破绽时处决你——必须读招控节奏。");
   }
 
   state.battleSnapshot = { nodeId: node.id, player: snapshotPlayerForRetry(state.player) };
@@ -11600,7 +11650,7 @@ function boot() {
     });
   }
 
-  function hardRestart() {
+  function hardRestart(view = "menu") {
     cancelResolutionAnimation(ui);
     resetOnlineLeaderboardCache();
     if (state._winKillRevealTimer) {
@@ -11613,11 +11663,40 @@ function boot() {
     state._winKillRevealGen += 1;
     clearBattleEntranceB1(state, ui);
     state = mkInitialState();
-    gotoNode(state, ui, state.chapterId, CHAPTERS[state.chapterId]?.startNodeId || "B1");
+    state.homeView = view;
+    const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
+    const startNodeId = chapter.startNodeId || "B1";
+    const startNode = chapter.nodes[startNodeId] || chapter.nodes.B1;
+    gotoNode(state, ui, state.chapterId, startNodeId);
     // 开局从外哨直接接战：序章节点视为已跳过
     markRoadmapNodeDone(state, "N0");
     markRoadmapNodeDone(state, "N1");
+    if (view === "game" && startNode) {
+      state.introDismissed = true;
+      try {
+        startBattleFromNode(state, startNode);
+      } catch (e) {
+        const msg = e && typeof e === "object" && "message" in e ? String(e.message) : String(e);
+        state.settleLog.push(`{r}开阵失败：${msg}{/r}`);
+      }
+    }
     render(state, ui);
+  }
+
+  if (ui.btnHomeStart) {
+    ui.btnHomeStart.addEventListener("click", () => {
+      hardRestart("game");
+    });
+  }
+  if (ui.btnHomeLeaderboard) {
+    ui.btnHomeLeaderboard.addEventListener("click", () => {
+      hardRestart("leaderboard");
+    });
+  }
+  if (ui.btnHomeWarehouse) {
+    ui.btnHomeWarehouse.addEventListener("click", () => {
+      window.alert("卡牌仓库功能暂未开放，等待后续任务书。");
+    });
   }
 
   if (ui.btnRestart) {
@@ -11685,6 +11764,23 @@ function boot() {
       openNameDialog("chapterSettleRename");
     });
   }
+  function startIntroBattleDirectly() {
+    const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
+    const nodeId = state.nodeId;
+    const node = chapter.nodes[nodeId] || chapter.nodes[chapter.startNodeId];
+    const isBattle = node.type === "B" || node.type === "E";
+    state.introDismissed = true;
+    if (isBattle) {
+      try {
+        startBattleFromNode(state, node);
+      } catch (e) {
+        const msg = e && typeof e === "object" && "message" in e ? String(e.message) : String(e);
+        state.settleLog.push(`{r}开阵失败：${msg}{/r}`);
+      }
+    }
+    render(state, ui);
+  }
+
   /** 关闭起名弹窗且不保存（intro：可再次点「我敢」；postBoss：回到胜利层） */
   function closeNameDialogWithoutSave() {
     if (!ui.nameDialog || ui.nameDialog.hidden) return;
@@ -11697,32 +11793,8 @@ function boot() {
 
   function openNameDialog(mode) {
     if (!ui.nameDialog) return;
-    state._nameDialogMode = mode;
-    if (mode === "chapterSettleRename") {
-      if (ui.nameDialogTitle) ui.nameDialogTitle.textContent = "更改名号";
-      if (ui.nameDialogSub) ui.nameDialogSub.textContent = "天下英雄榜与本机记录将使用该名号。";
-      if (ui.nameDialogOk) ui.nameDialogOk.textContent = "确定";
-      if (ui.nameDialogInput) {
-        ui.nameDialogInput.value = String(state._playerName || "").trim();
-        ui.nameDialogInput.placeholder = "汉字至多 6 字，字母至多 12 个";
-      }
-    } else {
-      if (ui.nameDialogTitle) {
-        ui.nameDialogTitle.textContent = mode === "intro" ? "请留名号" : "恭喜录入英雄榜！";
-      }
-      if (ui.nameDialogSub) {
-        ui.nameDialogSub.textContent = "敢问壮士尊号？";
-      }
-      if (ui.nameDialogOk) {
-        ui.nameDialogOk.textContent = mode === "intro" ? "定名出战" : "定名";
-      }
-      if (ui.nameDialogInput) {
-        ui.nameDialogInput.value = "";
-        ui.nameDialogInput.placeholder = "汉字至多 6 字，字母至多 12 个";
-      }
-    }
-    ui.nameDialog.hidden = false;
-    ui.nameDialogInput?.focus();
+    state._nameDialogMode = null;
+    ui.nameDialog.hidden = true;
   }
 
   document.addEventListener("keydown", (e) => {
@@ -11738,7 +11810,7 @@ function boot() {
 
   if (ui.btnIntroDare) {
     ui.btnIntroDare.addEventListener("click", () => {
-      openNameDialog("intro");
+      startIntroBattleDirectly();
     });
   }
   const assignBattleGameHome = () => window.location.assign(BATTLE_GAME_HOME_URL);
@@ -11750,29 +11822,13 @@ function boot() {
   }
   if (ui.btnIntroContinue) {
     ui.btnIntroContinue.addEventListener("click", () => {
-      // 继续战斗：使用已保存的玩家信息，不再弹出输入框
-      const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
-      const nodeId = state.nodeId;
-      const node = chapter.nodes[nodeId] || chapter.nodes[chapter.startNodeId];
-      const isBattle = node.type === "B" || node.type === "E";
-      state.introDismissed = true;
-      if (isBattle) {
-        try {
-          startBattleFromNode(state, node);
-        } catch (e) {
-          const msg = e && typeof e === "object" && "message" in e ? String(e.message) : String(e);
-          state.settleLog.push(`{r}开阵失败：${msg}{/r}`);
-        }
-      }
-      render(state, ui);
+      startIntroBattleDirectly();
     });
   }
   if (ui.btnIntroNew) {
     ui.btnIntroNew.addEventListener("click", () => {
-      // 新角色：清空档案并重新输入
       clearPlayerProfile(state);
-      render(state, ui);
-      openNameDialog("intro");
+      startIntroBattleDirectly();
     });
   }
   if (ui.btnWinClaim) {
@@ -11801,10 +11857,9 @@ function boot() {
       }
     }
     ui.nameDialogOk.addEventListener("click", () => {
-      const rawName = (ui.nameDialogInput?.value || "").trim();
-      const name = clampPlayerNameValue(rawName) || "无名侠客";
       const mode = state._nameDialogMode || "postBoss";
-      state._playerName = name;
+      const name = FIXED_PLAYER_NAME;
+      state._playerName = FIXED_PLAYER_NAME;
       if (mode !== "chapterSettleRename") {
         state._playerFaction = normalizeFactionKey("qun");
       }
@@ -12076,7 +12131,7 @@ function boot() {
   }
 
   // 初始进入章节
-  hardRestart();
+  hardRestart("menu");
 }
 
 boot();
