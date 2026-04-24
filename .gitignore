@@ -1,0 +1,6 @@
+.DS_Store
+Thumbs.db
+*.log
+
+# 模拟脚本导出的统计表（可选生成）
+soul_100_runs.csv

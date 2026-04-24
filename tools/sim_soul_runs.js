@@ -1,7 +1,7 @@
 /**
  * 将魂结果蒙特卡洛：复用 sim_merit_20 的战功生成口径，并累计 chapterHeroProfile + 实调 resolveGeneralSoul105。
  * 运行：node tools/sim_soul_runs.js [局数]，默认 100。
- * 导出表：加 --csv 写入 battle-game/soul_100_runs.csv；或 --out=D:\\path\\x.csv
+ * 导出表：加 --csv 写入项目根目录 soul_100_runs.csv（已 .gitignore）；或 --out=D:\\path\\x.csv
  */
 /* eslint-disable no-console */
 
