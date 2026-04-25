@@ -1,7 +1,7 @@
-// B1：边寨外哨 — 纯前端规则原型（无依赖，可直接打开 index.html 运行）
+// 第一章：过五关斩六将（秦烈线）— 纯前端规则原型（无依赖，可直接打开 index.html 运行）
 
 /** @typedef {"attack"|"heavy"|"defend"|"block"|"execute"|"rest"} PlayerAction */
-/** @typedef {"quick"|"heavy"|"defend"|"block"|"adjust"} EnemyIntent */
+/** @typedef {"quick"|"heavy"|"defend"|"block"|"adjust"|"skill"} EnemyIntent */
 /** @typedef {"A"|"B"|"C"} EnemyId */
 /** @typedef {"N"|"B"|"E"|"R"|"S"} NodeType */
 
@@ -40,6 +40,8 @@ function ns(n) {
   return Math.round(n * NUM_SCALE);
 }
 
+const ENEMY_BROKEN_EXECUTE_REVEAL_DELAY_MS = 220;
+
 /**
  * 意图 UI 标签。注意：不是四种各有一套独立「攻防面板」——
  * - 快攻/重击：共用 `strikeBase`（打击基伤）；**同基伤档则意图名一致**，高一档（≥ ns(3)）用「快攻·疾 / 重击·沉」与标准档区分。
@@ -51,6 +53,7 @@ const INTENT_NAME = {
   defend: "防御",
   block: "盾反",
   adjust: "调整",
+  skill: "将领技",
 };
 
 /** 打击基伤 ≥ 此值时，快攻/重击在 UI 上用带后缀名称（与 ns(2) 标准档区分） */
@@ -99,7 +102,7 @@ const INTERRUPT_QUICK_VS_HEAVY = 0.5;
 /** 调息：每次使用后需再经过若干玩家回合才能再次使用 */
 const REST_COOLDOWN_TURNS = 3;
 
-/** @type {{ id:string, perk:string, title:string, desc:string, primary:"offense"|"defense"|"sustain"|"tempo", extraTags:string[] }[]} */
+/** @type {{ id:string, perk:string, title:string, desc:string, primary:"offense"|"defense"|"sustain"|"tempo", extraTags:string[], frontArt?: string }[]} */
 const SKILL_CARDS =
   typeof SkillCardsConfig !== "undefined" && typeof SkillCardsConfig.buildSkillCards === "function"
     ? SkillCardsConfig.buildSkillCards(ns)
@@ -172,6 +175,42 @@ function perkCardById(perk) {
   return SKILL_CARDS.find((c) => c.perk === perk) || { perk, title: perk, desc: "" };
 }
 
+function isAttrCardId(id) {
+  if (!id) return false;
+  return !!ATTR_CARDS.find((x) => x && x.id === id);
+}
+
+function mixedDraftPool(state) {
+  // 技法卡（perk）+ 属性卡（A_ATK 等）混抽；属性卡遵循“一局只拿一次”的去重（attrDraftPool）
+  const tech = skillDraftPool(state);
+  const attr = attrDraftPool(state);
+  return [...new Set([...tech, ...attr])];
+}
+
+function pickWeightedDistinct(fromPool, n, weightOf) {
+  const pool = [...new Set((fromPool || []).filter(Boolean))];
+  const out = [];
+  const wOf = typeof weightOf === "function" ? weightOf : () => 1;
+  for (let i = 0; i < n && pool.length; i++) {
+    const ws = pool.map((x) => Math.max(0, Number(wOf(x)) || 0));
+    let sum = 0;
+    for (const w of ws) sum += w;
+    if (sum <= 0) break;
+    let r = nowR01() * sum;
+    let pickIdx = 0;
+    for (let j = 0; j < pool.length; j++) {
+      r -= ws[j];
+      if (r <= 0) {
+        pickIdx = j;
+        break;
+      }
+    }
+    out.push(pool[pickIdx]);
+    pool.splice(pickIdx, 1);
+  }
+  return out;
+}
+
 function ensureDraftOffer(state, nodeId, fromPool, drawN) {
   state.draftOffers = state.draftOffers || {};
   if (Array.isArray(state.draftOffers[nodeId]) && state.draftOffers[nodeId].length) return state.draftOffers[nodeId];
@@ -190,21 +229,11 @@ function ensureR1TechOffer(state) {
   state.draftOffers = state.draftOffers || {};
   if (Array.isArray(state.draftOffers[nodeId]) && state.draftOffers[nodeId].length) return state.draftOffers[nodeId];
 
-  const pool = skillDraftPool(state);
-  const maxTry = 24;
-  for (let t = 0; t < maxTry; t++) {
-    const pick = pickRandomDistinct(pool, 3);
-    const cards = pick.map((perk) => SKILL_CARDS.find((c) => c.perk === perk)).filter(Boolean);
-    const hasOff = cards.some(cardIsOffenseLeanTech);
-    const hasOther = cards.some(cardIsNonOffenseLeanTech);
-    if (pick.length === 3 && hasOff && hasOther) {
-      state.draftOffers[nodeId] = pick;
-      return pick;
-    }
-  }
-  const fallback = pickRandomDistinct(pool, 3);
-  state.draftOffers[nodeId] = fallback;
-  return fallback;
+  const pool = mixedDraftPool(state);
+  // 每局结束“可能”抽到属性卡：略降低属性权重，避免每次都刷满属性
+  const pick = pickWeightedDistinct(pool, 3, (id) => (isAttrCardId(id) ? 0.65 : 1));
+  state.draftOffers[nodeId] = pick;
+  return pick;
 }
 
 /**
@@ -216,21 +245,10 @@ function ensureR3TechOffer(state) {
   state.draftOffers = state.draftOffers || {};
   if (Array.isArray(state.draftOffers[nodeId]) && state.draftOffers[nodeId].length) return state.draftOffers[nodeId];
 
-  const pool = skillDraftPool(state);
-  const maxTry = 24;
-  for (let t = 0; t < maxTry; t++) {
-    const pick = pickRandomDistinct(pool, 3);
-    const cards = pick.map((perk) => SKILL_CARDS.find((c) => c.perk === perk)).filter(Boolean);
-    const hasOff = cards.some(cardIsOffenseLeanTech);
-    const hasOther = cards.some(cardIsNonOffenseLeanTech);
-    if (pick.length === 3 && hasOff && hasOther) {
-      state.draftOffers[nodeId] = pick;
-      return pick;
-    }
-  }
-  const fallback = pickRandomDistinct(pool, 3);
-  state.draftOffers[nodeId] = fallback;
-  return fallback;
+  const pool = mixedDraftPool(state);
+  const pick = pickWeightedDistinct(pool, 3, (id) => (isAttrCardId(id) ? 0.65 : 1));
+  state.draftOffers[nodeId] = pick;
+  return pick;
 }
 
 function applyStatGrowth(state, kind) {
@@ -314,6 +332,43 @@ function escapeHtml(s) {
     .replaceAll("'", "&#39;");
 }
 
+/** 换卡面时 bump 一次，避免 file:// 下 PNG 被浏览器强缓存 */
+const CARD_ART_VER = "20260425-cardart-d";
+
+function cardArtUrl(url) {
+  const u = String(url || "").trim();
+  if (!u) return "";
+  if (u.includes("?") || u.includes("#")) return u;
+  return `${u}?v=${encodeURIComponent(CARD_ART_VER)}`;
+}
+
+function growthOptionFrontArt(opt) {
+  if (!opt) return "";
+  let raw = "";
+  if (opt.frontArt) raw = String(opt.frontArt);
+  else if (opt.perk) raw = String(perkCardById(opt.perk).frontArt || "");
+  else if (opt._stat) {
+    const ac = ATTR_CARDS.find((x) => x._stat === opt._stat);
+    raw = ac?.frontArt ? String(ac.frontArt) : "";
+  } else if (opt.id && String(opt.id).startsWith("attr_")) {
+    const id = String(opt.id).slice("attr_".length);
+    const ac = ATTR_CARDS.find((x) => x.id === id);
+    raw = ac?.frontArt ? String(ac.frontArt) : "";
+  }
+  return cardArtUrl(raw);
+}
+
+/** 叙事黑屏：节点 body 按空行分段为段落 */
+function narrativeBodyToHtml(text) {
+  if (!text || !String(text).trim()) return "";
+  return String(text)
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br/>")}</p>`)
+    .join("");
+}
+
 /** Boss 警戒说明：关键短语加大加亮（仅用于节点配置原文，分段转义） */
 function bossAlertFlavorHighlightHtml(body) {
   const raw = body || "";
@@ -368,6 +423,7 @@ function hintBonusTier(text, tierIndex) {
 /** 快攻/重击「伤」：base 为基础档（2/3），atkBonus 为已×10 的加成存值；显示与 HP 一致 */
 function hintShangWithAtkHighlight(baseDmgDesign, atkBonusScaled) {
   const n = ns(baseDmgDesign) + (atkBonusScaled || 0);
+  // UI 显示与 HP 同标尺（×10）：基础 20/30；拿到 ATK+10 后应变为 30/40
   if (!atkBonusScaled || atkBonusScaled <= 0) return `伤${n}`;
   return `伤${hintBonusTier(String(n), 0)}`;
 }
@@ -391,59 +447,56 @@ function mkFighter({ name, hp, stagger, staggerThreshold, level = 1 }) {
   };
 }
 
-// 第一章·边寨首功（章节节点数据，先内嵌在 main.js）
+// 第一章·过五关斩六将（秦烈线；叙事节点带 narrativeScreen + body）
 const CHAPTERS = {
   chapter1: {
     id: "chapter1",
-    title: "第一章·边寨首功",
-    startNodeId: "B1",
+    title: "第一章·过五关斩六将",
+    startNodeId: "STORY_OPEN",
     nodes: {
-      N0: {
-        id: "N0",
+      STORY_OPEN: {
+        id: "STORY_OPEN",
         type: /** @type {NodeType} */ ("N"),
-        title: "乱世将启",
+        narrativeScreen: true,
+        prologueTypewriter: true,
+        title: "第一关　双将截关",
         subtitle: "",
-        body: "",
+        body:
+          "洛阳外郭，关门紧闭。\n" +
+          "韩福据关，孟坦拦路。\n" +
+          "秦烈没有将令，只有一封不能丢的信。\n" +
+          "这一关，只能硬闯。",
         objective: "",
-        options: [{ id: "start", title: "乱世将启", desc: "进入外哨战斗。", next: "N1" }],
-      },
-      N1: {
-        id: "N1",
-        type: /** @type {NodeType} */ ("N"),
-        title: "上马入阵",
-        subtitle: "",
-        body: "",
-        objective: "",
-        options: [{ id: "ack", title: "进入外哨", desc: "开始战斗。", next: "B1" }],
+        options: [],
       },
       B1: {
         id: "B1",
         type: /** @type {NodeType} */ ("B"),
-        title: "边寨外哨",
-        subtitle: "初试锋镝",
-        body: "边寨之外，两名守兵已察觉你的行踪。前者当面拦路，后者伏于侧后，伺机而动。此战虽小，亦是你乱世立名的第一步。",
-        objective: "击破外哨，取首功。",
+        title: "第一关：洛阳外郭",
+        subtitle: "双将截关",
+        body: "洛阳外郭，关门紧闭。\n韩福据关，孟坦拦路。\n秦烈没有将令，只有一封不能丢的信。\n这一关，只能硬闯。",
+        objective: "击破韩福、孟坦。",
         battle: {
           waves: [
             {
-              name: "外哨",
+              name: "洛阳",
               sequentialTwoSlots: true,
               slots: [
                 {
-                  name: "守卫刀兵甲",
-                  archetype: "sentryA",
-                  hp: ns(4),
+                  name: "韩福",
+                  archetype: "saber",
+                  hp: ns(5),
                   staggerThreshold: 3,
                   atk: ns(2),
-                  ai: { quick: 35, heavy: 25, defend: 20, adjust: 20 },
+                  ai: { quick: 30, heavy: 25, defend: 25, adjust: 20 },
                 },
                 {
-                  name: "守卫刀兵乙",
-                  archetype: "sentryB",
-                  hp: ns(4),
-                  staggerThreshold: 3,
+                  name: "孟坦",
+                  archetype: "spear",
+                  hp: ns(5),
+                  staggerThreshold: 4,
                   atk: ns(2),
-                  ai: { quick: 45, heavy: 20, defend: 15, adjust: 20 },
+                  ai: { quick: 15, heavy: 55, defend: 15, adjust: 15 },
                 },
               ],
               reserve: [],
@@ -453,6 +506,20 @@ const CHAPTERS = {
           reward: { merit: 1 },
           tutorial: ["B1_turn1_intent", "B1_block_vs_heavy", "B1_block_vs_quick", "B1_broken_execute"],
         },
+      },
+      N_BRIDGE_1: {
+        id: "N_BRIDGE_1",
+        type: /** @type {NodeType} */ ("N"),
+        narrativeScreen: true,
+        prologueTypewriter: true,
+        title: "第二关　暗宴藏刀",
+        subtitle: "",
+        body:
+          "汜水关外，卞喜设宴相迎。\n" +
+          "酒是热的，刀也是。\n" +
+          "秦烈知道，这不是送行，是杀局。",
+        objective: "",
+        options: [{ id: "meet", title: "迎敌", desc: "", next: "B2" }],
       },
       R1_DRAFT: {
         id: "R1_DRAFT",
@@ -466,17 +533,40 @@ const CHAPTERS = {
       B2: {
         id: "B2",
         type: /** @type {NodeType} */ ("B"),
-        title: "寨门拒战",
-        subtitle: "刀枪并至",
-        body: "寨门火光摇动，刀兵与枪兵轮番压来。若只知硬拼，顷刻便会失了阵脚。",
-        objective: "破寨门守兵。",
+        title: "第二关：汜水关",
+        subtitle: "暗宴藏刀",
+        body: "汜水关外，卞喜设宴相迎。\n酒是热的，刀也是。\n秦烈知道，这不是送行，是杀局。",
+        objective: "击破卞喜。",
         battle: {
           waves: [
             {
-              name: "寨门",
+              name: "汜水关",
               slots: [
-                { name: "守卫刀兵", archetype: "saber", hp: ns(4), staggerThreshold: 3, atk: ns(2), ai: { quick: 25, heavy: 25, defend: 30, adjust: 20 } },
-                { name: "守卫枪兵", archetype: "spear", hp: ns(4), staggerThreshold: 4, atk: ns(2), ai: { quick: 55, heavy: 15, defend: 10, adjust: 20 } },
+                {
+                  name: "卞喜",
+                  archetype: "saber",
+                  hp: ns(6),
+                  staggerThreshold: 5,
+                  atk: ns(2),
+                  enemySkill: {
+                    id: "ambush_blade",
+                    type: "passive",
+                    name: "伏刀快攻",
+                    shortName: "伏刀",
+                    icon: "伏",
+                    triggerText: "被动常驻。",
+                    effectText: "卞喜的快攻会 100% 打断你的重击。",
+                  },
+                  ai: { quick: 28, heavy: 26, defend: 22, adjust: 24 },
+                },
+                {
+                  name: "宴中刀手",
+                  archetype: "elite_shield",
+                  hp: ns(4),
+                  staggerThreshold: 3,
+                  atk: ns(2),
+                  ai: { quick: 12, heavy: 26, defend: 24, adjust: 38 },
+                },
               ],
               reserve: [],
             },
@@ -485,6 +575,20 @@ const CHAPTERS = {
           reward: { merit: 1 },
           tutorial: ["B2_feel_growth"],
         },
+      },
+      N_BRIDGE_2: {
+        id: "N_BRIDGE_2",
+        type: /** @type {NodeType} */ ("N"),
+        narrativeScreen: true,
+        prologueTypewriter: true,
+        title: "第三关　夜火围杀",
+        subtitle: "",
+        body:
+          "荥阳夜深，驿馆火起。\n" +
+          "王植不敢明拦，便想暗杀。\n" +
+          "火光照亮秦烈的刀，也照亮了他的去路。",
+        objective: "",
+        options: [{ id: "meet", title: "迎敌", desc: "", next: "B3" }],
       },
       R2_STAT: {
         id: "R2_STAT",
@@ -495,28 +599,36 @@ const CHAPTERS = {
         objective: "",
         options: [],
       },
-      E1: {
-        id: "E1",
-        type: /** @type {NodeType} */ ("E"),
-        title: "仓廪之前",
-        subtitle: "伍长拦路",
-        body: "仓区之外，伍长持盾立于正中，另有刀兵游走一侧。此战不止看勇，更看读势。",
-        objective: "斩伍长，破其阵。",
+      B3: {
+        id: "B3",
+        type: /** @type {NodeType} */ ("B"),
+        title: "第三关：荥阳城",
+        subtitle: "夜火围杀",
+        body: "荥阳夜深，驿馆火起。\n王植不敢明拦，便想暗杀。\n火光照亮秦烈的刀，也照亮了他的去路。",
+        objective: "击破王植。",
         battle: {
           waves: [
             {
-              name: "伍长",
+              name: "荥阳城",
               slots: [
                 {
-                  name: "亲兵盾",
-                  archetype: "elite_shield",
-                  hp: ns(7),
-                  staggerThreshold: 6,
-                  atk: ns(3),
-                  canBlockHeavy: true,
-                  ai: { quick: 10, heavy: 28, defend: 26, block: 22, adjust: 14 },
+                  name: "王植",
+                  archetype: "saber",
+                  hp: ns(6),
+                  staggerThreshold: 5,
+                  atk: ns(2),
+                  enemySkill: {
+                    id: "fire_encirclement",
+                    type: "passive",
+                    name: "火阵固守",
+                    shortName: "火守",
+                    icon: "火",
+                    triggerText: "被动常驻。",
+                    effectText: "王植防御时，额外减伤 +10。",
+                  },
+                  ai: { quick: 32, heavy: 24, defend: 22, adjust: 22 },
                 },
-                { name: "守卫刀兵", archetype: "saber", hp: ns(4), staggerThreshold: 3, atk: ns(2), ai: { quick: 30, heavy: 20, defend: 30, adjust: 20 } },
+                { name: "纵火兵", archetype: "spear", hp: ns(4), staggerThreshold: 3, atk: ns(2), ai: { quick: 52, heavy: 18, defend: 12, adjust: 18 } },
               ],
               reserve: [],
             },
@@ -525,6 +637,20 @@ const CHAPTERS = {
           reward: { merit: 2 },
           tutorial: ["E1_exam"],
         },
+      },
+      N_BRIDGE_3: {
+        id: "N_BRIDGE_3",
+        type: /** @type {NodeType} */ ("N"),
+        narrativeScreen: true,
+        prologueTypewriter: true,
+        title: "第四关　断渡拦江",
+        subtitle: "",
+        body:
+          "黄河在前，追兵在后。\n" +
+          "秦琪横枪守渡，不许一人过河。\n" +
+          "秦烈只问了一句：杀了你，船是不是就能走？",
+        objective: "",
+        options: [{ id: "meet", title: "迎敌", desc: "", next: "B4" }],
       },
       R3_LOOT: {
         id: "R3_LOOT",
@@ -535,37 +661,67 @@ const CHAPTERS = {
         objective: "",
         options: [],
       },
-      B3: {
-        id: "B3",
+      B4: {
+        id: "B4",
         type: /** @type {NodeType} */ ("B"),
-        title: "亲兵合围",
-        subtitle: "三面压阵",
-        body: "盾兵当先，刀兵与枪兵自两翼迫近，三人合势而来。若不能先断其一角，便要被其层层压住。",
-        objective: "破亲兵围阵。",
+        title: "第四关：黄河渡口",
+        subtitle: "断渡拦江",
+        body: "黄河在前，追兵在后。\n秦琪横枪守渡，不许一人过河。\n秦烈只问了一句：杀了你，船是不是就能走？",
+        objective: "击破秦琪。",
         battle: {
           waves: [
             {
-              name: "亲兵",
+              name: "黄河渡口",
               slots: [
                 {
-                  name: "亲兵盾",
-                  archetype: "shield",
-                  hp: ns(7),
+                  name: "秦琪",
+                  archetype: "spear",
+                  hp: ns(6),
                   staggerThreshold: 6,
                   atk: ns(2),
-                  canBlockHeavy: true,
-                  ai: { quick: 8, heavy: 28, defend: 24, block: 25, adjust: 15 },
+                  enemySkill: {
+                    id: "river_spear_lock",
+                    type: "passive",
+                    name: "横枪破守",
+                    shortName: "横枪",
+                    icon: "枪",
+                    triggerText: "被动常驻。",
+                    effectText: "秦琪的重击无视你的防御减伤。",
+                  },
+                  ai: { quick: 30, heavy: 26, defend: 20, adjust: 24 },
                 },
-                { name: "亲兵刀", archetype: "saber", hp: ns(5), staggerThreshold: 3, atk: ns(2), ai: { quick: 30, heavy: 25, defend: 25, adjust: 20 } },
-                { name: "亲兵枪", archetype: "spear", hp: ns(6), staggerThreshold: 4, atk: ns(2), ai: { quick: 55, heavy: 15, defend: 10, adjust: 20 } },
+                {
+                  name: "守渡兵",
+                  archetype: "saber",
+                  hp: ns(5),
+                  staggerThreshold: 4,
+                  atk: ns(2),
+                  canBlockHeavy: true,
+                  ai: { quick: 22, heavy: 24, defend: 24, block: 10, adjust: 20 },
+                },
               ],
               reserve: [],
             },
           ],
           onWinNext: "R4_DRAFT",
           reward: { merit: 2 },
-          tutorial: ["B3_mixed_problem"],
+          tutorial: [],
         },
+      },
+      N_BRIDGE_4: {
+        id: "N_BRIDGE_4",
+        type: /** @type {NodeType} */ ("N"),
+        narrativeScreen: true,
+        prologueTypewriter: true,
+        title: "第五关　孤身破围",
+        subtitle: "",
+        body:
+          "五关将尽，杀声未止。\n" +
+          "最后一队追兵堵住古道。\n" +
+          "秦烈已满身血污，却仍把那封信护在怀中。\n" +
+          "过了这一关，北路才算真正打开。",
+        objective: "",
+        options: [{ id: "meet", title: "迎敌", desc: "", next: "B5" }],
       },
       R4_DRAFT: {
         id: "R4_DRAFT",
@@ -576,45 +732,52 @@ const CHAPTERS = {
         objective: "",
         options: [],
       },
-      N4: {
-        id: "N4",
-        type: /** @type {NodeType} */ ("N"),
-        title: "头目当前",
-        subtitle: "",
-        body: "",
-        objective: "",
-        options: [{ id: "boss", title: "迎战管亥", desc: "开始Boss战。", next: "BOSS" }],
-      },
-      BOSS: {
-        id: "BOSS",
-        type: /** @type {NodeType} */ ("E"),
-        title: "管亥",
-        subtitle: "此战定名",
-        body: "管亥亲自出手，刀法沉狠，且善以守制攻。你若失衡露隙，他必乘机取命。此战若胜，方称首功。",
-        objective: "斩管亥，夺军需。",
+      B5: {
+        id: "B5",
+        type: /** @type {NodeType} */ ("B"),
+        title: "第五关：古道终关",
+        subtitle: "孤身破围",
+        body: "五关将尽，杀声未止。\n最后一队追兵堵住古道。\n秦烈已满身血污，却仍把那封信护在怀中。\n过了这一关，北路才算真正打开。",
+        objective: "击破孔秀与追兵头领，通关。",
         battle: {
           waves: [
             {
-              name: "头目",
+              name: "古道终关",
               slots: [
                 {
-                  name: "管亥",
-                  archetype: "boss",
-                  hp: ns(10),
-                  staggerThreshold: 8,
-                  atk: ns(3),
-                  ai: { quick: 30, heavy: 25, defend: 15, block: 20, adjust: 10 },
+                  name: "孔秀",
+                  archetype: "saber",
+                  hp: ns(7),
+                  staggerThreshold: 7,
+                  atk: ns(2),
                   canExecutePlayer: true,
-                  canBlockHeavy: true,
+                  enemySkill: {
+                    id: "flaw_execute",
+                    type: "passive",
+                    name: "破绽处决",
+                    shortName: "处决",
+                    icon: "斩",
+                    triggerText: "被动常驻。",
+                    effectText: "只要你失衡满进入破绽，孔秀会立刻处决你。",
+                  },
+                  ai: { quick: 48, heavy: 22, defend: 12, adjust: 18 },
                 },
-                { name: "亲兵刀", archetype: "saber", hp: ns(5), staggerThreshold: 3, atk: ns(2), ai: { quick: 35, heavy: 20, defend: 25, adjust: 20 } },
+                {
+                  name: "追兵头领",
+                  archetype: "shield",
+                  hp: ns(6),
+                  staggerThreshold: 5,
+                  atk: ns(2),
+                  canBlockHeavy: true,
+                  ai: { quick: 10, heavy: 28, defend: 22, block: 22, adjust: 18 },
+                },
               ],
               reserve: [],
             },
           ],
           onWinNext: "S1",
           reward: { merit: 3 },
-          tutorial: ["BOSS_full_loop"],
+          tutorial: ["B5_finale"],
         },
       },
       S1: {
@@ -633,13 +796,13 @@ const CHAPTERS = {
         subtitle: "",
         body: "",
         objective: "",
-        options: [{ id: "restart", title: "再入乱世", desc: "回到开场。", next: "N0" }],
+        options: [{ id: "restart", title: "再入乱世", desc: "回到开场。", next: "STORY_OPEN" }],
       },
     },
   },
 };
 
-/** 第一章战功：单战配置与章节聚合（终版 v1.0） */
+/** 第一章战功：单战配置与章节聚合（过五关 B1–B5） */
 const MERIT_BATTLES = {
   B1: {
     base_score: 60,
@@ -649,7 +812,6 @@ const MERIT_BATTLES = {
     survival_score_max: 20,
     break_score_max: 15,
     break_penalty_each: 8,
-    /** 玩家行动次数上限（与战功逐回合 `turnIndex` 对齐；超限判负） */
     merit_turn_limit: 10,
   },
   B2: {
@@ -662,7 +824,7 @@ const MERIT_BATTLES = {
     break_penalty_each: 8,
     merit_turn_limit: 10,
   },
-  E1: {
+  B3: {
     base_score: 100,
     turn_target: 6,
     turn_score_max: 40,
@@ -672,7 +834,7 @@ const MERIT_BATTLES = {
     break_penalty_each: 10,
     merit_turn_limit: 10,
   },
-  B3: {
+  B4: {
     base_score: 110,
     turn_target: 8,
     turn_score_max: 40,
@@ -682,7 +844,7 @@ const MERIT_BATTLES = {
     break_penalty_each: 10,
     merit_turn_limit: 15,
   },
-  BOSS: {
+  B5: {
     base_score: 150,
     turn_target: 8,
     turn_score_max: 60,
@@ -1337,6 +1499,30 @@ function enqueueBattleMeritFx(state, events) {
   }
 }
 
+/** 敌将被动触发：中央战功层短暂显示技能名（与战功条目共用队列播放器） */
+function queueEnemyPassiveSkillFx(state, line) {
+  if (!state || !line) return;
+  state._enemyPassiveFxQueue = state._enemyPassiveFxQueue || [];
+  state._enemyPassiveFxQueue.push(String(line));
+}
+
+function flushEnemyPassiveSkillFxQueue(state, ui) {
+  const q = state._enemyPassiveFxQueue;
+  state._enemyPassiveFxQueue = [];
+  if (!ui || !q?.length) return;
+  enqueueBattleMeritFx(
+    state,
+    q.map((judgement) => ({
+      judgement,
+      delta: 0,
+      combo: 0,
+      tone: "enemy_passive",
+      strong: true,
+    })),
+  );
+  playNextBattleMeritFx(state, ui);
+}
+
 function clearBattleMeritFx(ui) {
   if (!ui?.battleMeritFxLayer) return;
   ui.battleInfoPanel?.classList.remove("battle-info-panel--merit-fx-active");
@@ -1461,8 +1647,8 @@ function meritLogPlayerExecute(state, tgt, clinchKill) {
   const bid = state.battle.battleNodeId;
   /** @type {"normal"|"elite"|"boss"} */
   let kind = "normal";
-  if (bid === "E1") kind = "elite";
-  else if (bid === "BOSS" && tgt.archetype === "boss" && clinchKill) kind = "boss";
+  if (["B2", "B3", "B4", "B5"].includes(bid)) kind = "elite";
+  else if (tgt.archetype === "boss" && clinchKill) kind = "boss";
   state._meritSession.executeLog.push(kind);
 }
 
@@ -1760,13 +1946,13 @@ function computeChapterMerit(state) {
   const total_death_retry = Object.values(state.meritChapter?.retries || {}).reduce((a, x) => a + (x || 0), 0);
   if (total_death_retry === 0) chapterBonus += 100 * S;
 
-  const bossTurns = logs.filter((r) => r?.battleId === "BOSS");
+  const bossTurns = logs.filter((r) => r?.battleId === "B5");
   if (bossTurns.length) {
     const bossHadBroken = bossTurns.some((r) => (r.negativeEvents || []).some((e) => e.code === "self_broken"));
     const bossHadExecTaken = bossTurns.some((r) => (r.negativeEvents || []).some((e) => e.code === "boss_execute_taken"));
     const bossWinHpOk =
-      state.meritChapter?.records?.BOSS?.max_hp > 0 &&
-      state.meritChapter.records.BOSS.win_hp >= Math.floor(state.meritChapter.records.BOSS.max_hp * 0.5);
+      state.meritChapter?.records?.B5?.max_hp > 0 &&
+      state.meritChapter.records.B5.win_hp >= Math.floor(state.meritChapter.records.B5.max_hp * 0.5);
     if (bossWinHpOk && !bossHadBroken && !bossHadExecTaken) chapterBonus += 120 * S;
   }
 
@@ -2415,6 +2601,13 @@ function buildMeritHeroVerdictHtml(v) {
 </div>`;
 }
 
+/** S1 结算页：同步战功与英雄榜（不依赖将魂 UI 是否渲染） */
+function syncChapterSettleMeritBackend(state, ui) {
+  const report = syncRunMeritToChapterFinal(state, ui);
+  if (state.meritChapter?.records?.B5) ensureChapter1LeaderboardRecord(state);
+  return report;
+}
+
 /** 将累计战功与「本章总战功」对齐（S1 结算 / 败阵提前结算回营共用） */
 function syncRunMeritToChapterFinal(state, ui) {
   const report = computeChapterMerit(state);
@@ -2453,12 +2646,11 @@ function syncRunMeritToChapterFinal(state, ui) {
 
 /** 第一章 S1：内嵌于「阵前形势」下方的通关结算（不含排行榜） */
 function populateChapterSettleInline(state, ui) {
-  const report = syncRunMeritToChapterFinal(state, ui);
-  if (state.meritChapter?.records?.BOSS) ensureChapter1LeaderboardRecord(state);
+  const report = syncChapterSettleMeritBackend(state, ui);
 
   applyChapterSettleStackGradeTheme(ui.chapterSettleStack, report.grade);
   if (ui.chapterSettleStack) {
-    ui.chapterSettleStack.classList.toggle("chapter-settle-stack--early", !state.meritChapter?.records?.BOSS);
+    ui.chapterSettleStack.classList.toggle("chapter-settle-stack--early", !state.meritChapter?.records?.B5);
   }
   if (ui.chapterSettleMeritHero) {
     ui.chapterSettleMeritHero.innerHTML = buildChapterSettleMeritHeroPanelHtml(report.grade, report.gradeLine);
@@ -2511,7 +2703,7 @@ function populateChapterSettleInline(state, ui) {
   if (ui.chapterSettleVictory) {
     const kicker = ui.chapterSettleVictory.querySelector(".win-kicker");
     const winText = ui.chapterSettleVictory.querySelector(".win-text");
-    if (state.meritChapter?.records?.BOSS) {
+    if (state.meritChapter?.records?.B5) {
       if (kicker) kicker.textContent = "VICTORY";
       if (winText) winText.textContent = "此战得胜";
     } else {
@@ -2535,6 +2727,69 @@ function populateChapterSettleInline(state, ui) {
       });
     });
   }
+}
+
+function cancelChapterEpilogueTimers(st) {
+  const timers = st?._chapter1EpilogueTimers;
+  if (Array.isArray(timers)) {
+    for (const id of timers) {
+      if (typeof id === "number") window.clearTimeout(id);
+    }
+    st._chapter1EpilogueTimers = [];
+  }
+}
+
+function resetChapterEpilogueDom(ui) {
+  if (!ui.chapterEndEpilogue) return;
+  ui.chapterEndEpilogue.querySelectorAll(".chapter-end-epilogue__line").forEach((el) => {
+    el.classList.remove("is-visible");
+  });
+  if (ui.chapterEndEpilogueTitle) ui.chapterEndEpilogueTitle.classList.remove("is-visible");
+  if (ui.chapterEndEpilogueActions) {
+    ui.chapterEndEpilogueActions.classList.remove("is-visible");
+    ui.chapterEndEpilogueActions.hidden = true;
+  }
+}
+
+function skipChapterEpilogueToEnd(state, ui) {
+  cancelChapterEpilogueTimers(state);
+  if (ui.chapterEndEpilogueTitle) ui.chapterEndEpilogueTitle.classList.add("is-visible");
+  ui.chapterEndEpilogue?.querySelectorAll(".chapter-end-epilogue__line").forEach((el) => {
+    el.classList.add("is-visible");
+  });
+  if (ui.chapterEndEpilogueActions) {
+    ui.chapterEndEpilogueActions.hidden = false;
+    // 触发淡入
+    ui.chapterEndEpilogueActions.classList.remove("is-visible");
+    void ui.chapterEndEpilogueActions.offsetWidth;
+    ui.chapterEndEpilogueActions.classList.add("is-visible");
+  }
+}
+
+function scheduleChapterEpilogueReveal(state, ui, onComplete) {
+  cancelChapterEpilogueTimers(state);
+  resetChapterEpilogueDom(ui);
+  state._chapter1EpilogueTimers = [];
+  const push = (fn, delay) => {
+    const id = window.setTimeout(() => {
+      fn();
+    }, delay);
+    state._chapter1EpilogueTimers.push(id);
+  };
+  push(() => ui.chapterEndEpilogueTitle?.classList.add("is-visible"), 500);
+  push(() => ui.chapterEndEpilogue?.querySelector('[data-line="1"]')?.classList.add("is-visible"), 1400);
+  push(() => ui.chapterEndEpilogue?.querySelector('[data-line="2"]')?.classList.add("is-visible"), 2400);
+  push(() => ui.chapterEndEpilogue?.querySelector('[data-line="3"]')?.classList.add("is-visible"), 3400);
+  push(() => ui.chapterEndEpilogue?.querySelector('[data-line="5"]')?.classList.add("is-visible"), 4600);
+  push(() => {
+    if (ui.chapterEndEpilogueActions) {
+      ui.chapterEndEpilogueActions.hidden = false;
+      ui.chapterEndEpilogueActions.classList.remove("is-visible");
+      void ui.chapterEndEpilogueActions.offsetWidth;
+      ui.chapterEndEpilogueActions.classList.add("is-visible");
+    }
+    if (typeof onComplete === "function") onComplete();
+  }, 6400);
 }
 
 function buildMeritReportHtml(report) {
@@ -2680,7 +2935,7 @@ function turnMeritEventLabel(code) {
     enemy_broken: "本回合打入破绽",
     execute_normal: "处决（普通敌）",
     execute_elite: "处决（精英）",
-    execute_boss: "处决（管亥）",
+    execute_boss: "处决（头目）",
     execute_finish_bonus: "处决收束额外奖励",
     pressure_chain: "连续压制链",
     interrupt_to_break: "一回合内打断并打入破绽",
@@ -2699,7 +2954,7 @@ function turnMeritEventLabel(code) {
     heavy_interrupted: "重击被快攻打断",
     block_whiff: "对非重击盾反挥空",
     self_broken: "进入破绽",
-    boss_execute_taken: "被管亥处决",
+    boss_execute_taken: "被敌将处决",
     rest_hit: "调息时仍被命中",
     empty_turn: "无有效收益空回合",
   };
@@ -3356,6 +3611,8 @@ function resetChapter1NewGame(state) {
   state._leaderboardEarlyCampSaved = false;
   state._chapterSettleLbEntryAt = null;
   state._chapter1LbRowDisplayPatch = null;
+  state._chapter1EpilogueActive = false;
+  state._chapter1EpilogueAnimState = null;
   state.battle = null;
   state.battleLog = [];
   state.settleLog = [];
@@ -3375,36 +3632,47 @@ function resetChapter1NewGame(state) {
   state.winGrowthEmbed = false;
   state.winGrowthEmbedNodeId = null;
   state.winGrowthPendingAdvance = null;
+  state.winRewardPickNodeId = null;
+  state.winRewardSixVisible = false;
+  state.winRewardPicked = false;
+  state.winRewardPickedOption = null;
+  state.winRewardSelectedIndex = null;
+  state.winRewardSelectedOption = null;
+  state.winRewardReadyToContinue = false;
+  state.winRewardContinueNextId = null;
+  resetPrologueTypewriter(state);
 }
 
 /** 章节剧情顺序（含非战斗节点）：用于战斗线路图判断「未到 / 未来」 */
 const CHAPTER_STORY_ORDER = {
   chapter1: [
-    "N0",
-    "N1",
+    "STORY_OPEN",
     "B1",
     "R1_DRAFT",
+    "N_BRIDGE_1",
     "B2",
     "R2_STAT",
-    "E1",
-    "R3_LOOT",
+    "N_BRIDGE_2",
     "B3",
+    "R3_LOOT",
+    "N_BRIDGE_3",
+    "B4",
     "R4_DRAFT",
-    "N4",
-    "BOSS",
+    "N_BRIDGE_4",
+    "B5",
     "S1",
     "HOOK",
   ],
 };
 
-/** 标题栏线路图：仅战斗节点；头目略大（见 CSS .roadmap-step--boss） */
+/** 标题栏线路图：仅战斗节点；最后一关略大（见 CSS .roadmap-step--boss） */
 const CHAPTER_ROADMAP = {
   chapter1: [
-    { id: "B1", label: "外哨", title: "边寨外哨", boss: false },
-    { id: "B2", label: "寨门", title: "寨门拒战", boss: false },
-    { id: "E1", label: "精英", title: "仓廪之前", boss: false },
-    { id: "B3", label: "合围", title: "亲兵合围", boss: false },
-    { id: "BOSS", label: "管亥", title: "管亥", boss: true },
+    { id: "B1", label: "洛阳外郭", title: "第一关：洛阳外郭", boss: false },
+    { id: "B2", label: "汜水关", title: "第二关：汜水关", boss: false },
+    { id: "B3", label: "荥阳城", title: "第三关：荥阳城", boss: false },
+    { id: "B4", label: "黄河渡口", title: "第四关：黄河渡口", boss: false },
+    { id: "B5", label: "古道终关", title: "第五关：古道终关", boss: true },
   ],
 };
 
@@ -3486,6 +3754,10 @@ function renderChapterRoadmap(state, ui) {
   if (ui.runMeritHint) {
     ui.runMeritHint.innerHTML = buildRunMeritTooltipHtml(state);
   }
+
+  if (state.chapterId === "chapter1" && state.nodeId === "STORY_OPEN" && state.phase === "node") {
+    if (ui.runMeritWidget) ui.runMeritWidget.hidden = true;
+  }
 }
 
 const BASE_TIPS = [
@@ -3508,6 +3780,7 @@ const INTENT_RULES = {
   defend: `防御意图：本回合先守不攻；被你打到时固定伤−${ns(1)}、被上失衡−1（无单独「防御力」面板；若本回合未受伤：回合末失衡+1）。`,
   block: `盾反意图：本回合不按快攻/重击线出手；专候你重击以反制（无单独「盾反值」；对敌方重击盾反成功时自己失衡+1，可叠加，与本回合是否被其他来源打伤无关）。`,
   adjust: `调整：回血与自减失衡，非进攻意图。`,
+  skill: "将领被动：敌将卡上的技能图标为被动，随意图与基础行动在结算中触发；悬浮查看说明。",
 };
 
 const INTENT_TEXT = {
@@ -3526,6 +3799,7 @@ const INTENT_TEXT = {
   defend: `收势固守，以刀与身法护住正面，预备硬接你的攻势。`,
   block: `横刀立势，专候你的重击，伺机反制。`,
   adjust: `暂缓抢攻，挪步调息，压下失衡再图反打。`,
+  skill: `敌将气势陡变，正要发动将领技。`,
   /** 打击基伤高一档（ns(3)）时的快攻/重击旁白，与「快攻·疾」「重击·沉」对应，凡同档基伤共用 */
   tierHigh_quick: `这一路数更重：刀路紧、势更狠。`,
   tierHigh_heavy: `蓄势更深，劈落时压迫感更强。`,
@@ -3578,6 +3852,85 @@ function htmlIntentPillWithHint(eo) {
     ? `<span class="intent-pill-hint" aria-hidden="true">${escapeHtml(tip).replaceAll("\n", "<br>")}</span>`
     : "";
   return `<span class="intent-pill-wrap">${hintHtml}<span class="intent-pill ${intentCategoryClass(intent)}">${escapeHtml(intentNameForEnemy(eo, intent))}</span></span>`;
+}
+
+function enemySkillTooltipText(skill, typeLabel) {
+  const shortLines = {
+    ambush_blade: ["被动常驻。", "卞喜意图为快攻时，其快攻 100% 打断你的重击。", "不影响宴中刀手意图。"],
+    fire_encirclement: ["被动常驻。", "王植意图为防御时，本次防御额外减伤 +10。", "不影响纵火兵。"],
+    river_spear_lock: ["被动常驻。", "秦琪意图为重击时，若你用防御承伤，", "其重击无视防御减伤；盾反与快攻打断仍有效。"],
+    flaw_execute: ["被动常驻。", "你失衡满进入破绽且孔秀存活时，", "孔秀将立刻处决你。"],
+  };
+  const lines = shortLines[skill?.id] || [skill?.effectText || skill?.triggerText || ""].filter(Boolean);
+  return [`${skill?.name || "将领技"}｜${typeLabel}`, ...lines].join("\n");
+}
+
+function enemyPassiveSkillIconRelevant(state, eo) {
+  const sk = eo?.enemySkill;
+  if (!sk || eo.waitingToEnter || !eo.fighter || eo.fighter.hp <= 0) return false;
+  if (sk.id === "ambush_blade" && eo.intent === "quick") return true;
+  if (sk.id === "fire_encirclement" && eo.intent === "defend") return true;
+  if (sk.id === "river_spear_lock" && eo.intent === "heavy") return true;
+  if (sk.id === "flaw_execute") {
+    const p = state.player;
+    if (!p || p.broken) return false;
+    const thr = p.staggerThreshold ?? 4;
+    const st = p.stagger | 0;
+    return st >= thr - 1;
+  }
+  return false;
+}
+
+function enemySkillIconHtml(state, eo) {
+  const skill = eo?.enemySkill;
+  if (!skill) return "";
+
+  const dead = eo.fighter?.hp <= 0;
+  const passive = skill.type === "passive";
+  const highlight = passive && enemyPassiveSkillIconRelevant(state, eo);
+
+  const markText =
+    passive && skill.id === "river_spear_lock"
+      ? "重"
+      : passive && skill.id === "fire_encirclement"
+        ? "防"
+        : passive && skill.id === "ambush_blade"
+          ? "快"
+          : passive && skill.id === "flaw_execute"
+            ? "斩"
+            : (skill.icon || "技");
+
+  const cls = [
+    "enemy-skill-icon",
+    passive ? "enemy-skill-icon--passive" : "enemy-skill-icon--active",
+    passive && skill.id === "flaw_execute" ? "enemy-skill-icon--passive-elite" : "",
+    highlight ? "enemy-skill-icon--relevant" : "",
+    dead ? "enemy-skill-icon--dead" : "",
+  ].filter(Boolean).join(" ");
+
+  /** 胶囊文案：用更直观的“意图强化 / 处决”提示 */
+  const typeLabel =
+    passive && skill.id === "river_spear_lock"
+      ? "强化"
+      : passive && skill.id === "fire_encirclement"
+        ? "强化"
+        : passive && skill.id === "ambush_blade"
+          ? "强化"
+          : passive && skill.id === "flaw_execute"
+            ? "破绽处决"
+            : passive
+              ? "被动"
+              : "将技";
+  const tip = enemySkillTooltipText(skill, typeLabel);
+
+  return `
+<span class="enemy-skill-wrap">
+  <span class="enemy-skill-tip" aria-hidden="true">${escapeHtml(tip).replaceAll("\n", "<br>")}</span>
+  <span class="${cls}" title="${escapeHtml(skill.name)}">
+    <span class="enemy-skill-icon__mark">${escapeHtml(markText)}</span>
+    <span class="enemy-skill-icon__label">${escapeHtml(typeLabel)}</span>
+  </span>
+</span>`;
 }
 
 function computeEnemyIntentFromAi(ai) {
@@ -3736,6 +4089,33 @@ function pushBattleMeterFloats(state, ui, start) {
   }
 }
 
+function enemyBrokenExecuteRevealReady(state, ui, enemyId, fighter) {
+  if (!state || !enemyId || !fighter || fighter.hp <= 0 || !fighter.broken) {
+    if (state?._enemyBrokenExecuteRevealUntil) delete state._enemyBrokenExecuteRevealUntil[enemyId];
+    if (state?._enemyBrokenExecuteRevealStarted) delete state._enemyBrokenExecuteRevealStarted[enemyId];
+    return false;
+  }
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return true;
+
+  state._enemyBrokenExecuteRevealUntil ||= {};
+  state._enemyBrokenExecuteRevealStarted ||= {};
+  const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+  if (!state._enemyBrokenExecuteRevealStarted[enemyId]) {
+    state._enemyBrokenExecuteRevealStarted[enemyId] = true;
+    state._enemyBrokenExecuteRevealUntil[enemyId] = now + ENEMY_BROKEN_EXECUTE_REVEAL_DELAY_MS;
+  }
+
+  const until = state._enemyBrokenExecuteRevealUntil[enemyId] || now;
+  if (now >= until) return true;
+
+  if (state._enemyBrokenExecuteRevealTimer) window.clearTimeout(state._enemyBrokenExecuteRevealTimer);
+  state._enemyBrokenExecuteRevealTimer = window.setTimeout(() => {
+    state._enemyBrokenExecuteRevealTimer = null;
+    render(state, ui);
+  }, Math.max(0, until - now));
+  return false;
+}
+
 function meritMarkBossExecutePlayer(state) {
   if (state._meritSession) state._meritSession.bossExecutePlayer = 1;
 }
@@ -3786,6 +4166,12 @@ function runBossExecutePlayerDrama(state, ui, payload) {
   const executor = findBossExecutePlayerExecutor(state);
   if (!executor) return;
 
+  if (executor.enemySkill?.id === "flaw_execute") {
+    details.push("→ {r}破绽暴露！孔秀【破绽处决】发动！{/r}");
+    queueEnemyPassiveSkillFx(state, "破绽处决");
+    flushEnemyPassiveSkillFxQueue(state, ui);
+  }
+
   clearBossExecutePlayerDramaTimers(state);
   stripBossExecutePlayerDramaFx(ui);
   state._bossExecPlayerDramaGen = (state._bossExecPlayerDramaGen || 0) + 1;
@@ -3794,7 +4180,7 @@ function runBossExecutePlayerDrama(state, ui, payload) {
   const exId = executor.id;
 
   const prefaceLine1 = "你的失衡条顶至极限，虎口发麻。";
-  const prefaceLine2 = "管亥的目光锁住你的空门——这一刀躲不掉了。";
+  const prefaceLine2 = "敌将的目光锁住你的空门——这一击躲不掉了。";
 
   state.phase = BOSS_EXEC_PLAYER_DRAMA_PHASE;
   state.battleLog.push(formatLineForTurn(state, action, targetId, intents, details));
@@ -3936,10 +4322,10 @@ function applyPlayerToEnemy(state, enemyObj, playerAction, targetId) {
       stg += 1;
       out.notes.push("乘隙追命：对失衡未破绽目标快攻额外失衡 +1。");
     }
-    // T06：快攻命中失衡值不为 0 的目标时，额外 +1 伤害
+    // T06：攻击命中失衡值不为 0 的目标时，额外 +1 伤害
     if (state.perks?.includes("perk_staggerstrike") && (e.broken || e.stagger > 0)) {
       dmg += ns(1);
-      out.notes.push(`夺命追击：快攻命中失衡值不为 0 的目标，伤害 +${ns(1)}。`);
+      out.notes.push(`夺命追击：攻击命中失衡值不为 0 的目标，伤害 +${ns(1)}。`);
     }
     // T11：快攻命中未处于防御意图的目标时，额外 +1 失衡
     if (state.perks?.includes("perk_follow_attack") && intent !== "defend") {
@@ -3951,6 +4337,11 @@ function applyPlayerToEnemy(state, enemyObj, playerAction, targetId) {
       dmg = Math.max(0, dmg - ns(1));
       stg = Math.max(0, stg - 1);
       out.notes.push(`${e.name}防御：受到伤害 -${ns(1)}，受到失衡 -1。`);
+      if (enemyObj.enemySkill?.id === "fire_encirclement" && e.name === "王植") {
+        dmg = Math.max(0, dmg - ns(1));
+        out.notes.push("王植【火阵固守】触发：防御减伤额外 +10。");
+        queueEnemyPassiveSkillFx(state, "火阵固守");
+      }
       // T31：快攻命中防御目标额外伤害
       if (state.perks?.includes("perk_quick_vs_defend_dmg")) {
         dmg += ns(1);
@@ -4032,10 +4423,10 @@ function applyPlayerToEnemy(state, enemyObj, playerAction, targetId) {
       stg += 1;
       out.notes.push("乘隙追命：对失衡未破绽目标重击额外失衡 +1。");
     }
-    // T12：重击命中失衡值不为 0 的目标时，额外 +1 伤害
-    if (state.perks?.includes("perk_heavy_vs_staggered") && (e.broken || e.stagger > 0)) {
+    // T06：攻击命中失衡值不为 0 的目标时，额外 +1 伤害（合并原 T12）
+    if (state.perks?.includes("perk_staggerstrike") && (e.broken || e.stagger > 0)) {
       dmg += ns(1);
-      out.notes.push(`断脉沉击：重击命中失衡值不为 0 的目标，伤害 +${ns(1)}。`);
+      out.notes.push(`夺命追击：攻击命中失衡值不为 0 的目标，伤害 +${ns(1)}。`);
     }
     // T25/T27/T29：蓄势重击额外伤害
     if (state._restNextHeavyBonusPending) {
@@ -4070,6 +4461,11 @@ function applyPlayerToEnemy(state, enemyObj, playerAction, targetId) {
       stg += 1;
       out.notes.push("重击压制防御：额外失衡 +1。");
       out.notes.push(`${e.name}防御：受到伤害 -${ns(1)}，受到失衡 -1。`);
+      if (enemyObj.enemySkill?.id === "fire_encirclement" && e.name === "王植") {
+        dmg = Math.max(0, dmg - ns(1));
+        out.notes.push("王植【火阵固守】触发：防御减伤额外 +10。");
+        queueEnemyPassiveSkillFx(state, "火阵固守");
+      }
       // T04：对防御中敌人重击额外 +1 伤害
       if (state.perks?.includes("perk_heavybreakdef")) {
         dmg += ns(1);
@@ -4287,16 +4683,25 @@ function resolveEnemyAgainstPlayer(
       const beforeStg = stg;
       const extraMit = state.player?.defendMitigationBonus || 0;
       const beforeDmg = dmg;
-      dmg = Math.max(0, dmg - ns(1 + extraMit));
-      if ((state._restDefendBonusCharges || 0) > 0) {
-        dmg = Math.max(0, dmg - ns(1));
-        state._restDefendBonusCharges = 0;
-        out.notes.push(`凝神守气：调息余韵仍在，本次承伤额外 -${ns(1)}。`);
+      const qinIgnoresDef =
+        effectiveIntent === "heavy" &&
+        enemyObj.enemySkill?.id === "river_spear_lock" &&
+        e.name === "秦琪";
+      if (!qinIgnoresDef) {
+        dmg = Math.max(0, dmg - ns(1 + extraMit));
+        if ((state._restDefendBonusCharges || 0) > 0) {
+          dmg = Math.max(0, dmg - ns(1));
+          state._restDefendBonusCharges = 0;
+          out.notes.push(`凝神守气：调息余韵仍在，本次承伤额外 -${ns(1)}。`);
+        }
+        out.meritMitigatedHp += Math.max(0, beforeDmg - dmg);
+        out.notes.push(`防御：本回合受到伤害 -${ns(1 + extraMit)}，受到失衡 -1。`);
+      } else {
+        out.notes.push("秦琪【横枪破守】触发：重击无视防御！");
+        queueEnemyPassiveSkillFx(state, "横枪破守");
       }
-      out.meritMitigatedHp += Math.max(0, beforeDmg - dmg);
       stg = Math.max(0, stg - 1);
       defendStaggerReduced = beforeStg - stg;
-      out.notes.push(`防御：本回合受到伤害 -${ns(1 + extraMit)}，受到失衡 -1。`);
     }
 
     // 护势已取消：不再触发“护势为 0 额外失衡”
@@ -4402,7 +4807,7 @@ function buildActionButtonEffectHints(state) {
     attackLines.push(hintBonusTier(`以守待变：下回合首次快攻额外伤害 +${ns(1)}`, aHi++));
   }
   if (p.includes("perk_staggerstrike"))
-    attackLines.push(hintBonusTier(`夺命追击：快攻命中失衡值不为 0 的目标时伤害 +${ns(1)}`, aHi++));
+    attackLines.push(hintBonusTier(`夺命追击：攻击命中失衡目标时伤害 +${ns(1)}`, aHi++));
   if (p.includes("perk_attackvsadjust")) attackLines.push(hintBonusTier("乘势压攻：敌调整时攻击失衡 +1", aHi++));
   if (p.includes("perk_kill_next_attack"))
     attackLines.push(hintBonusTier(`夺势突进：战斗开始后首次快攻伤害 +${ns(1)}`, aHi++));
@@ -4425,8 +4830,8 @@ function buildActionButtonEffectHints(state) {
   const heavyLines = [heavyLine0, `敌防御：伤−${ns(2)}｜失衡先−1再+压制1`];
   if (p.includes("perk_armorbreak")) heavyLines.push(hintBonusTier("破甲发力：重击额外 +1 失衡", heavyHi++));
   if (p.includes("perk_heavybreakdef")) heavyLines.push(hintBonusTier(`断势重斩：对防御目标重击伤害 +${ns(1)}`, heavyHi++));
-  if (p.includes("perk_heavy_vs_staggered"))
-    heavyLines.push(hintBonusTier(`断脉沉击：重击命中失衡目标伤害 +${ns(1)}`, heavyHi++));
+  if (p.includes("perk_staggerstrike"))
+    heavyLines.push(hintBonusTier(`夺命追击：攻击命中失衡目标伤害 +${ns(1)}`, heavyHi++));
   if (p.includes("perk_attack_vs_broken"))
     heavyLines.push(hintBonusTier("乘隙追命：对失衡未破绽目标重击额外失衡 +1", heavyHi++));
   if (br) heavyLines.push(hintBonusTier(`破阵：下一次重击额外+伤${ns(1)}、+失衡1`, heavyHi++));
@@ -4523,6 +4928,7 @@ function getActionEnhancementSources(state) {
     add(attack, "atkstat");
     add(heavy, "atkstat");
   }
+  if (p.includes("perk_staggerstrike")) add(heavy, "staggerstrike");
   if (p.includes("perk_heavy_vs_staggered")) add(heavy, "heavy_vs_staggered");
   if (p.includes("perk_attack_vs_broken")) add(heavy, "attack_vs_broken");
   if (p.includes("perk_kill_reduce_stagger")) add(heavy, "kill_reduce_stagger");
@@ -4551,6 +4957,7 @@ function intentCategoryClass(intent) {
   if (intent === "defend") return "intent-defend";
   if (intent === "block") return "intent-block";
   if (intent === "adjust") return "intent-rest";
+  if (intent === "skill") return "intent-skill";
   return "";
 }
 
@@ -5306,7 +5713,9 @@ function rollTurnResolutionRng(state, action) {
     defendFailed: false,
     blockFailed: false,
     heavyQuickInterruptSuccess:
-      action === "heavy" && enemyQuickThreatensPlayerHeavy(state) && Math.random() < INTERRUPT_QUICK_VS_HEAVY,
+      action === "heavy" &&
+      (ambushBladeForcesHeavyInterrupt(state) ||
+        (enemyQuickThreatensPlayerHeavy(state) && Math.random() < INTERRUPT_QUICK_VS_HEAVY)),
     /** 你对目标快攻时，是否打断其重击（与 resolveEnemyAgainstPlayer 内判定一致） */
     attackVsHeavyTargetInterrupt: Math.random() < INTERRUPT_QUICK_VS_HEAVY,
     restEvadeByEnemyId,
@@ -5328,6 +5737,9 @@ function previewRawDamageToPlayerWhenDefending(state, enemyObj, defendFailed) {
     intent === "quick" ? base : base + ENEMY_STRIKE_HEAVY_EXTRA_DAMAGE;
 
   if (defending) {
+    const qinIgnores =
+      intent === "heavy" && enemyObj.enemySkill?.id === "river_spear_lock" && e.name === "秦琪";
+    if (qinIgnores) return dmg;
     const extraMit = state.player?.defendMitigationBonus || 0;
     dmg = Math.max(0, dmg - ns(1 + extraMit));
     if ((state._restDefendBonusCharges || 0) > 0) dmg = Math.max(0, dmg - ns(1));
@@ -5370,6 +5782,7 @@ function previewRawDamageToEnemyVsDefend(state, tgt, action, targetId, rng) {
       dmg += ns(1);
     }
     dmg = Math.max(0, dmg - ns(1));
+    if (tgt.enemySkill?.id === "fire_encirclement" && e.name === "王植") dmg = Math.max(0, dmg - ns(1));
     if (state.perks?.includes("perk_quick_vs_defend_dmg")) dmg += ns(1);
     if (state.firstQuickAttackBonusPending) dmg += ns(1);
     return dmg;
@@ -5377,6 +5790,7 @@ function previewRawDamageToEnemyVsDefend(state, tgt, action, targetId, rng) {
   if (effectiveAction === "heavy") {
     let dmg = ns(3) + (state.player.atkBonus || 0);
     let stg = 2;
+    if (state.perks?.includes("perk_staggerstrike") && (e.broken || e.stagger > 0)) dmg += ns(1);
     if (state.perks?.includes("perk_armorbreak")) stg += 1;
     stg += state.player.heavyStgBonus || 0;
     if (state.battleBuffs?.breaklineReady) {
@@ -5385,6 +5799,7 @@ function previewRawDamageToEnemyVsDefend(state, tgt, action, targetId, rng) {
     }
     if (intent === "defend") {
       dmg = Math.max(0, dmg - ns(1));
+      if (tgt.enemySkill?.id === "fire_encirclement" && e.name === "王植") dmg = Math.max(0, dmg - ns(1));
       stg = Math.max(0, stg - 1);
       stg += 1;
       if (state.perks?.includes("perk_heavybreakdef")) dmg += ns(1);
@@ -5439,6 +5854,7 @@ function previewRawEnemyHpDamageFromPlayer(state, tgt, action, targetId, rng) {
     if (state.perks?.includes("perk_staggerstrike") && (e.broken || e.stagger > 0)) dmg += ns(1);
     if (intent === "defend") {
       dmg = Math.max(0, dmg - ns(1));
+      if (tgt.enemySkill?.id === "fire_encirclement" && e.name === "王植") dmg = Math.max(0, dmg - ns(1));
       if (state.perks?.includes("perk_quick_vs_defend_dmg")) dmg += ns(1);
     }
     if (state.firstQuickAttackBonusPending) dmg += ns(1);
@@ -5451,11 +5867,13 @@ function previewRawEnemyHpDamageFromPlayer(state, tgt, action, targetId, rng) {
     if (intent === "block") return 0;
     let dmg = ns(3) + (state.player.atkBonus || 0);
     let stg = 2;
+    if (state.perks?.includes("perk_staggerstrike") && (e.broken || e.stagger > 0)) dmg += ns(1);
     if (state.perks?.includes("perk_armorbreak")) stg += 1;
     stg += state.player.heavyStgBonus || 0;
     if (state.battleBuffs?.breaklineReady) dmg += ns(1);
     if (intent === "defend") {
       dmg = Math.max(0, dmg - ns(1));
+      if (tgt.enemySkill?.id === "fire_encirclement" && e.name === "王植") dmg = Math.max(0, dmg - ns(1));
       if (state.perks?.includes("perk_heavybreakdef")) dmg += ns(1);
     }
     if (state._restNextHeavyBonusPending) dmg += ns(1);
@@ -6713,6 +7131,10 @@ function applyBattleTurnResolutionSegment(state, ui, turnCtx, bundle, segments, 
       if (tgt && tgt.fighter.hp > 0) {
         const heavyQuickInterruptSuccess = turnCtx.heavyQuickInterruptSuccess;
         if (action === "heavy" && heavyQuickInterruptSuccess) {
+          if (ambushBladeForcesHeavyInterrupt(state)) {
+            details.push("→ 卞喜【伏刀快攻】触发：你的重击被打断！");
+            queueEnemyPassiveSkillFx(state, "伏刀快攻");
+          }
           const st0 = tgt.fighter.stagger | 0;
           const br0 = !!tgt.fighter.broken;
           const r = applyPlayerToEnemy(state, tgt, "attack", targetId);
@@ -6804,6 +7226,7 @@ function applyBattleTurnResolutionSegment(state, ui, turnCtx, bundle, segments, 
   if ((enemyRow.intent ?? intentHeld) === "adjust") {
     triggerEnemyAdjustRestFxOnCard(ui, eo.id);
   }
+  flushEnemyPassiveSkillFxQueue(state, ui);
 }
 
 /**
@@ -6986,6 +7409,9 @@ function finalizeBattleTurnAfterResolutionSegments(state, ui, bundle, turnCtx, o
       slot.fighter = replaced.fighter;
       slot.ai = replaced.ai;
       slot.archetype = replaced.archetype;
+      slot.canExecutePlayer = replaced.canExecutePlayer;
+      slot.canBlockHeavy = replaced.canBlockHeavy;
+      slot.enemySkill = replaced.enemySkill;
       slot.intent = /** @type {EnemyIntent} */ ("adjust");
       details.push(
         `→ {o}后备敌人加入：${slotReserveLabel[slot.id] || String(slot.id)}替换为${slot.fighter.name}。{/o}`,
@@ -6999,7 +7425,7 @@ function finalizeBattleTurnAfterResolutionSegments(state, ui, bundle, turnCtx, o
     const ctx = state._meritTurnContext;
     const battleId = state.battle?.battleNodeId || ctx?.battleId || null;
     const isMeritBattle =
-      battleId === "B1" || battleId === "B2" || battleId === "E1" || battleId === "B3" || battleId === "BOSS";
+      battleId === "B1" || battleId === "B2" || battleId === "B3" || battleId === "B4" || battleId === "B5";
     if (ctx && isMeritBattle) {
       const aliveEnemies = state.enemies.filter((eo) => !eo.waitingToEnter && eo.fighter.hp > 0);
       const aliveEnemyCountEnd = aliveEnemies.length;
@@ -7261,12 +7687,12 @@ function initBattleTurnContextForResolving(state, ui, action, bundle = null) {
   const fallbackEnemyName = { A: "敌人甲", B: "敌人乙", C: "敌人丙" };
   const targetName = tgtObj?.fighter?.name || fallbackEnemyName[state.targetId] || "敌人";
   const actionFlavor = {
-    attack: `你踏前半步，刀光一闪，直取${targetName}的破绽。`,
-    heavy: `你沉肩蓄力，横刀猛压，试图击溃${targetName}的架势。`,
-    defend: "你收刀护身，稳住下盘，准备接下对方的来势。",
-    block: "你抬刀立势，试图用盾反打乱对方重击的节奏。",
-    execute: `你逼近一步，寻找能一刀了结${targetName}的机会。`,
-    rest: "你深吸一口气，调匀呼吸与步伐，重新稳住架势。",
+    attack: `快刀直取${targetName}破绽。`,
+    heavy: `沉肩重击，压垮${targetName}架势。`,
+    defend: "收刀护身，稳守来势。",
+    block: "横刀立势，专反重击。",
+    execute: `逼近${targetName}，一刀收束。`,
+    rest: "调匀呼吸，稳住架势。",
   };
   state.actionDesc = actionFlavor[action] || "—";
   state.battleLog.push(state.actionDesc);
@@ -7284,7 +7710,9 @@ function initBattleTurnContextForResolving(state, ui, action, bundle = null) {
 
   const heavyQuickInterruptSuccess =
     rolled?.heavyQuickInterruptSuccess ??
-    (action === "heavy" && enemyQuickThreatensPlayerHeavy(state) && Math.random() < INTERRUPT_QUICK_VS_HEAVY);
+    (action === "heavy" &&
+      (ambushBladeForcesHeavyInterrupt(state) ||
+        (enemyQuickThreatensPlayerHeavy(state) && Math.random() < INTERRUPT_QUICK_VS_HEAVY)));
 
   const defendFailedThisTurn = false;
   const blockFailedThisTurn = false;
@@ -7327,12 +7755,12 @@ function previewActionDescText(state, action) {
   const fallbackEnemyName = { A: "敌人甲", B: "敌人乙", C: "敌人丙" };
   const targetName = tgtObj?.fighter?.name || fallbackEnemyName[state.targetId] || "敌人";
   const actionFlavor = {
-    attack: `你踏前半步，刀光一闪，直取${targetName}的破绽。`,
-    heavy: `你沉肩蓄力，横刀猛压，试图击溃${targetName}的架势。`,
-    defend: "你收刀护身，稳住下盘，准备接下对方的来势。",
-    block: "你抬刀立势，试图用盾反打乱对方重击的节奏。",
-    execute: `你逼近一步，寻找能一刀了结${targetName}的机会。`,
-    rest: "你深吸一口气，调匀呼吸与步伐，重新稳住架势。",
+    attack: `快刀直取${targetName}破绽。`,
+    heavy: `沉肩重击，压垮${targetName}架势。`,
+    defend: "收刀护身，稳守来势。",
+    block: "横刀立势，专反重击。",
+    execute: `逼近${targetName}，一刀收束。`,
+    rest: "调匀呼吸，稳住架势。",
   };
   return actionFlavor[action] || "—";
 }
@@ -7620,6 +8048,10 @@ function mkInitialState() {
     _chapter1LbRowDisplayPatch: /** @type {{ finalMerit: number, runSum: number, retries: number, heroName: string, origName: string } | null} */ (
       null
     ),
+    /** 第五关胜利后点「通关结算」：进入黑幕终章，不再展示将魂结算块 */
+    _chapter1EpilogueActive: false,
+    /** @type {null | "running" | "complete"} */
+    _chapter1EpilogueAnimState: null,
     battleMeritFxQueue: /** @type {any[]} */ ([]),
     battleMeritFxPlaying: false,
     visibleCombo: 0,
@@ -7749,7 +8181,7 @@ function mkInitialState() {
     /** 战斗胜利后同屏嵌入成长翻牌（phase 仍为 win） */
     winGrowthEmbed: false,
     winGrowthEmbedNodeId: /** @type {string|null} */ (null),
-    /** 胜利内嵌成长选毕：待点击「进入下一关」再推进（R4→N4 除外，直接进 Boss 战前简报） */
+    /** 胜利内嵌成长选毕：待点击「进入下一关」再推进 */
     winGrowthPendingAdvance: /** @type {{ chapterId: string, fromNodeId: string, nextId: string, label: string } | null} */ (
       null
     ),
@@ -7965,7 +8397,29 @@ const BOSS_EXEC_PLAYER_DRAMA_PHASE = "bossExecuteDrama";
 const CH1_MERIT_LEADERBOARD_KEY = "mud_ch1_merit_leaderboard_v1";
 const CH1_PLAYER_PROFILE_KEY = "mud_ch1_player_profile_v1";
 const FIXED_PLAYER_NAME = "秦烈";
+const ENEMY_CARD_ART_BY_NAME = {
+  "韩福": "./enemy-card-hanfu.png",
+  "孟坦": "./enemy-card-mengtan.png",
+  "卞喜": "./enemy-card-bianxi.png",
+  "王植": "./enemy-card-wangzhi.png",
+  "秦琪": "./enemy-card-qinqi.png",
+  "孔秀": "./enemy-card-kongxiu.png",
+  "宴中刀手": "./enemy-card-banquet-blade.png",
+  "纵火兵": "./enemy-card-arson-spear.png",
+  "守渡兵": "./enemy-card-ferry-guard.png",
+  "追兵头领": "./enemy-card-pursuit-leader.png",
+};
 const ENEMY_AVATAR_BY_NAME = {
+  "韩福": "./enemy-avatar-hanfu.png",
+  "孟坦": "./enemy-avatar-mengtan.png",
+  "卞喜": "./enemy-avatar-bianxi.png",
+  "王植": "./enemy-avatar-wangzhi.png",
+  "秦琪": "./enemy-avatar-qinqi.png",
+  "孔秀": "./enemy-avatar-kongxiu.png",
+  "宴中刀手": "./enemy-avatar-banquet-blade.png",
+  "纵火兵": "./enemy-avatar-arson-spear.png",
+  "守渡兵": "./enemy-avatar-ferry-guard.png",
+  "追兵头领": "./enemy-avatar-pursuit-leader.png",
   "守卫刀兵甲": "./enemy-avatar-guard-a.png",
   "守卫刀兵乙": "./enemy-avatar-guard-b.png",
   "守卫刀兵": "./enemy-avatar-guard-c.png",
@@ -7981,15 +8435,80 @@ function getEnemyDisplayName(name) {
   return v === "边寨渠帅" ? "管亥" : v;
 }
 
-function getEnemyAvatarAsset(name) {
+function getEnemyAvatarAsset(name, archetype) {
   const displayName = getEnemyDisplayName(name);
-  return ENEMY_AVATAR_BY_NAME[displayName] || "";
+  const fromTable = ENEMY_AVATAR_BY_NAME[displayName];
+  if (fromTable) return fromTable;
+
+  const arch = String(archetype || "");
+  const dn = displayName;
+  if (!dn) return "";
+  // 亲兵系列：名称或兵种兜底（避免表外异体字/空格等导致查表失败）
+  if (dn.includes("亲兵")) {
+    if (arch === "elite_shield" || arch === "shield" || dn.includes("盾"))
+      return "./enemy-avatar-elite-shield.png";
+    if (arch === "spear" || dn.includes("枪")) return "./enemy-avatar-elite-spear.png";
+    if (arch === "saber" || dn.includes("刀")) return "./enemy-avatar-elite-blade.png";
+  }
+  return "";
 }
 
-function applyEnemyAvatar(el, name) {
+function getEnemyCardArtAsset(name) {
+  const displayName = getEnemyDisplayName(name);
+  return ENEMY_CARD_ART_BY_NAME[displayName] || "";
+}
+
+function resolveAssetUrl(asset) {
+  let url = asset;
+  if (typeof URL !== "undefined" && typeof document !== "undefined" && document.baseURI) {
+    try {
+      url = new URL(asset.replace(/^\.\//, ""), document.baseURI).href;
+    } catch (_) {
+      /* 保持相对路径 */
+    }
+  }
+  return url;
+}
+
+function applyEnemyAvatar(el, name, archetype) {
   if (!el) return;
-  const asset = getEnemyAvatarAsset(name);
-  el.style.backgroundImage = asset ? `url("${asset}")` : "";
+  const asset = getEnemyAvatarAsset(name, archetype);
+  const cardAsset = getEnemyCardArtAsset(name);
+  const card = el.closest?.(".enemy-card");
+  if (card) {
+    if (cardAsset) {
+      const cardUrl = resolveAssetUrl(cardAsset);
+      card.style.setProperty("--enemy-card-art", `url("${cardUrl}")`);
+      card.style.setProperty("--enemy-card-art-position", "center 18%");
+      card.style.backgroundImage =
+        `linear-gradient(90deg, rgba(8,8,12,.62), rgba(8,8,12,.34) 48%, rgba(8,8,12,.10)), ` +
+        `linear-gradient(180deg, rgba(8,8,12,.16), rgba(8,8,12,.56)), ` +
+        `url("${cardUrl}")`;
+      card.style.backgroundSize = "cover, cover, cover";
+      card.style.backgroundPosition = "center, center, center 18%";
+      card.style.backgroundRepeat = "no-repeat";
+    } else {
+      card.style.removeProperty("--enemy-card-art");
+      card.style.removeProperty("--enemy-card-art-position");
+      card.style.removeProperty("background-image");
+      card.style.removeProperty("background-size");
+      card.style.removeProperty("background-position");
+      card.style.removeProperty("background-repeat");
+    }
+  }
+  if (!asset) {
+    el.style.backgroundImage = "";
+    el.style.backgroundSize = "";
+    el.style.backgroundPosition = "";
+    el.style.backgroundRepeat = "";
+    return;
+  }
+  const url = resolveAssetUrl(asset);
+  // 仅用立绘；解析为绝对 URL，避免在嵌套路径/部分浏览器下 background-image 不命中
+  el.style.backgroundImage = `url("${url}")`;
+  el.style.backgroundSize = "cover";
+  el.style.backgroundPosition = "center top";
+  el.style.backgroundRepeat = "no-repeat";
 }
 
 function loadPlayerProfile() {
@@ -8197,15 +8716,30 @@ function enemyQuickThreatensPlayerHeavy(state) {
   );
 }
 
+/** 卞喜【伏刀快攻】：本回合为重击时，若卞喜存活且意图为快攻，则 100% 触发重击被打断（与 rollTurnResolutionRng 一致）。 */
+function ambushBladeForcesHeavyInterrupt(state) {
+  const bian = findAliveEnemyByName(state, "卞喜");
+  return !!(
+    bian &&
+    bian.intent === "quick" &&
+    bian.enemySkill?.id === "ambush_blade" &&
+    bian.enemySkill?.type === "passive"
+  );
+}
+
 /**
  * 本回合若重击被快攻打断，视为哪位敌人打断你（与对拼动画顺序一致）。
- * 有非主攻目标的快攻时优先取该敌人；否则为场上唯一/第一个可威胁的快攻。
+ * 卞喜【伏刀快攻】优先为打断者；否则有非主攻目标的快攻时优先取该敌人；否则为场上第一个可威胁快攻。
  */
 function pickHeavyInterruptEnemyId(state, targetId) {
   const alive = state.enemies.filter(
     (eo) => !eo.waitingToEnter && eo.fighter.hp > 0 && !eo.fighter.broken && eo.intent === "quick",
   );
   if (!alive.length) return null;
+  const bian = alive.find(
+    (eo) => eo.fighter?.name === "卞喜" && eo.enemySkill?.id === "ambush_blade" && eo.enemySkill?.type === "passive",
+  );
+  if (bian) return bian.id;
   if (targetId) {
     const nonTarget = alive.find((eo) => eo.id !== targetId);
     if (nonTarget) return nonTarget.id;
@@ -8217,8 +8751,8 @@ function refreshIntents(state) {
   const isB1 = state.battle?.battleNodeId === "B1";
   const b1Pick = (eo) => {
     // B1 固定/半固定意图（仅 B1）：
-    // - 刀兵甲（A）：重击、快攻交替循环
-    // - 刀兵乙（B）：首次固定重击；之后按 AI 权重随机
+    // - 韩福（A）：重击 → 快攻固定循环，不使用随机 AI
+    // - 孟坦（B）：首次固定重击；之后按 AI 权重随机
     const idx = typeof eo._fixedIntentIdx === "number" ? eo._fixedIntentIdx : 0;
     const seqA = /** @type {EnemyIntent[]} */ (["heavy", "quick"]);
     if (eo.id === "A") {
@@ -8248,6 +8782,16 @@ function refreshIntents(state) {
     }
     eo.intent = isB1 ? b1Pick(eo) : computeEnemyIntentFromAi(eo.ai);
   }
+}
+
+function findAliveEnemyByName(state, name) {
+  return (state.enemies || []).find(
+    (eo) =>
+      !eo.waitingToEnter &&
+      eo.fighter &&
+      eo.fighter.hp > 0 &&
+      eo.fighter.name === name,
+  );
 }
 
 /** @returns {{ lines: string[], hintBar: PlayerAction[], hintExecuteOn: EnemyId|null }} */
@@ -8494,8 +9038,6 @@ function dom() {
     appMain: $("appMain"),
     homeScreen: $("homeScreen"),
     btnHomeStart: $("btnHomeStart"),
-    btnHomeWarehouse: $("btnHomeWarehouse"),
-    btnHomeLeaderboard: $("btnHomeLeaderboard"),
     leftCol: $("leftCol"),
     settlePanelSection: $("settlePanelSection"),
     pageTitle: $("pageTitle"),
@@ -8529,6 +9071,11 @@ function dom() {
     chapterSettleHeroBlock: $("chapterSettleHeroBlock"),
     btnChapterSettleReplay: $("btnChapterSettleReplay"),
     btnChapterSettleRename: $("btnChapterSettleRename"),
+    chapterEndEpilogue: $("chapterEndEpilogue"),
+    chapterEndEpilogueTitle: $("chapterEndEpilogueTitle"),
+    chapterEndEpilogueActions: $("chapterEndEpilogueActions"),
+    btnChapterEndReplayMenu: $("btnChapterEndReplayMenu"),
+    btnChapterEndNextChapter: $("btnChapterEndNextChapter"),
     resolutionLayer: $("resolutionLayer"),
     resolutionPrimary: $("resolutionPrimary"),
     playerActionCapsule: $("playerActionCapsule"),
@@ -8555,6 +9102,7 @@ function dom() {
     btnIntroNew: $("btnIntroNew"),
     battleWinInline: $("battleWinInline"),
     battleWinInlineVictory: $("battleWinInlineVictory"),
+    winRewardSixPick: $("winRewardSixPick"),
     winGrowthEmbed: $("winGrowthEmbed"),
     battleWinInlineAdvance: $("battleWinInlineAdvance"),
     btnWinGrowthNextBattle: $("btnWinGrowthNextBattle"),
@@ -8587,6 +9135,7 @@ function dom() {
     btnGrowthNextBattle: $("btnGrowthNextBattle"),
     nodeTitle: $("nodeTitle"),
     nodeSubtitle: $("nodeSubtitle"),
+    nodeNarrativeBody: $("nodeNarrativeBody"),
     nodeOptions: $("nodeOptions"),
     playerCard: $("playerCard"),
     playerCardFxLayer: $("playerCardFxLayer"),
@@ -8699,10 +9248,13 @@ function renderWarehouseSummaryTable(state) {
   return `<table><tbody>${trs}</tbody></table>`;
 }
 
-function renderWarehouseCardHtml(tag, title, desc, cls = "", extrasLine = "") {
+function renderWarehouseCardHtml(tag, title, desc, cls = "", extrasLine = "", frontArt = "") {
   const c = cls ? ` wh-card--${escapeHtml(String(cls))}` : "";
   const ex = extrasLine ? `<div class="wh-card-extras">${escapeHtml(extrasLine)}</div>` : "";
-  return `<div class="wh-card${c}">${ex}<div class="wh-card-title">${escapeHtml(title)}</div><div class="wh-card-desc">${escapeHtml(desc)}</div></div>`;
+  const artSrc = cardArtUrl(frontArt);
+  const art = artSrc ? `<img class="wh-card-art" src="${escapeHtml(String(artSrc))}" alt="" />` : "";
+  const artCls = artSrc ? " wh-card--art" : "";
+  return `<div class="wh-card${c}${artCls}">${art}<div class="wh-card-kicker">${escapeHtml(tag || "卡牌")}</div>${ex}<div class="wh-card-title">${escapeHtml(title)}</div><div class="wh-card-desc">${escapeHtml(desc)}</div></div>`;
 }
 
 function renderWarehouseCards(state) {
@@ -8712,7 +9264,9 @@ function renderWarehouseCards(state) {
   for (const c of tech) {
     const p = c?.primary || "tech";
     const tagText = techPrimaryLabel(p);
-    cards.push(renderWarehouseCardHtml(tagText, c.title, c.desc, techTagCssForPerk(c.perk), techExtraTagsLine(c)));
+    cards.push(
+      renderWarehouseCardHtml(tagText, c.title, c.desc, techTagCssForPerk(c.perk), techExtraTagsLine(c), c.frontArt || ""),
+    );
   }
   if (state.orangeLoot) {
     cards.push(renderWarehouseCardHtml("橙卡", state.orangeLoot.name, state.orangeLoot.desc, "orange"));
@@ -8726,7 +9280,7 @@ function renderWarehouseCards(state) {
   // 属性成长卡
   const attrGrowths = state._attrGrowthLog || [];
   for (const g of attrGrowths) {
-    cards.push(renderWarehouseCardHtml("属性", g.title, g.desc, "attr"));
+    cards.push(renderWarehouseCardHtml("属性", g.title, g.desc, "attr", "", g.frontArt || ""));
   }
   if (!cards.length) {
     return `<div class="wh-empty">暂无卡片</div>`;
@@ -8766,19 +9320,48 @@ function render(state, ui) {
   if (ui.appTopbar) ui.appTopbar.hidden = showHomeMenu;
   if (ui.appMain) ui.appMain.hidden = showHomeMenu;
   ui.appMain?.classList.toggle("main--leaderboard", showHomeLeaderboard);
+  /* 主菜单时节点仍是 STORY_OPEN，勿启动序章打字机 / 全屏叙事层，避免与「开始游戏」首点竞态 */
+  if (showHomeMenu && state._prologueTypewriter) resetPrologueTypewriter(state);
 
   const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
   const node = chapter.nodes[state.nodeId] || chapter.nodes[chapter.startNodeId];
   /** 第一章通关结算页：阵前形势下内嵌胜利条 + 结算区（不再用 growth 浮层战功榜） */
   const chapter1S1Inline = state.chapterId === "chapter1" && node.id === "S1";
+  const chapter1S1Epilogue =
+    chapter1S1Inline &&
+    !!state.meritChapter?.records?.B5 &&
+    !!state._chapter1EpilogueActive &&
+    state.homeView === "game";
   /** 须尽早同步：render 后部存在 early return，否则会沿用上一帧的 hidden=false，把通关块叠在首页 intro 上 */
   if (ui.chapterSettleStack) {
-    const showDock = chapter1S1Inline;
+    const showDock = chapter1S1Inline && !chapter1S1Epilogue;
     ui.chapterSettleStack.hidden = !showDock;
     ui.chapterSettleStack.setAttribute("aria-hidden", showDock ? "false" : "true");
     if (showDock) populateChapterSettleInline(state, ui);
+    else if (chapter1S1Epilogue) syncChapterSettleMeritBackend(state, ui);
   }
-  ui.battleInfoPanel?.classList.toggle("battle-info-panel--chapter1-s1-settle", !!chapter1S1Inline);
+  if (ui.chapterEndEpilogue) {
+    const showEpi = !!chapter1S1Epilogue;
+    ui.chapterEndEpilogue.hidden = !showEpi;
+    ui.chapterEndEpilogue.setAttribute("aria-hidden", showEpi ? "false" : "true");
+    document.body.classList.toggle("chapter-end-epilogue-open", showEpi);
+    if (showEpi) {
+      if (state._chapter1EpilogueAnimState == null) {
+        state._chapter1EpilogueAnimState = "running";
+        scheduleChapterEpilogueReveal(state, ui, () => {
+          state._chapter1EpilogueAnimState = "complete";
+        });
+      }
+    } else {
+      cancelChapterEpilogueTimers(state);
+      resetChapterEpilogueDom(ui);
+      state._chapter1EpilogueAnimState = null;
+    }
+  }
+  ui.battleInfoPanel?.classList.toggle(
+    "battle-info-panel--chapter1-s1-settle",
+    !!chapter1S1Inline && !chapter1S1Epilogue,
+  );
   state.nodeMeta = { type: node.type, title: node.title || "", subtitle: node.subtitle || "" };
   // 容错：若停留在战斗节点却处于 node 相位，会导致“没有开始战斗按钮/卡片空白”的假死界面
   if ((node.type === "B" || node.type === "E") && state.phase === "node") {
@@ -8823,20 +9406,12 @@ function render(state, ui) {
       state.phase === "endingLose" ||
       (!!state._winKillRevealEnemyIds && state._winKillRevealEnemyIds.length > 0),
   );
-  // 战斗胜利后：若下一节点是成长(R)，直接弹出三选一奖励，不再点「领取奖励」
-  if (state.phase === "win" && state.winReady && !state.winGrowthEmbed && state.pendingWinNextNodeId) {
-    const nextNode = chapter.nodes[state.pendingWinNextNodeId];
-    if (nextNode && nextNode.type === "R") {
-      markRoadmapNodeDone(state, state.nodeId);
-      state.winReady = true;
-      state.winGrowthEmbed = true;
-      state.winGrowthEmbedNodeId = state.pendingWinNextNodeId;
-      state.pendingWinNextNodeId = null;
-    }
-  }
   const showWinOverlayPanel =
     state.phase === "win" &&
-    (state.winReady || state.winGrowthEmbed || state.winGrowthPendingAdvance);
+    (state.winReady ||
+      state.winRewardSixVisible ||
+      state.winGrowthEmbed ||
+      state.winGrowthPendingAdvance);
   if (ui.battleWinInline) {
     const isBattle = node.type === "B" || node.type === "E";
     const show = isBattle && showWinOverlayPanel;
@@ -8846,6 +9421,13 @@ function render(state, ui) {
       ui.battleWinInlineVictory.hidden =
         !show ||
         (!state.winReady && !state.winGrowthEmbed);
+    }
+    if (ui.winRewardSixPick) {
+      const rewardNode = state.winRewardPickNodeId ? chapter.nodes[state.winRewardPickNodeId] : null;
+      const showRewardPick = show && !!state.winRewardSixVisible && !!rewardNode;
+      ui.winRewardSixPick.hidden = !showRewardPick;
+      if (showRewardPick) renderWinSixRewardCards(state, ui, chapter, rewardNode);
+      else ui.winRewardSixPick.innerHTML = "";
     }
     if (ui.battleWinInlineAdvance) {
       const p = state.winGrowthPendingAdvance;
@@ -8986,9 +9568,14 @@ function render(state, ui) {
   if (ui.btnChapterSettleRename) ui.btnChapterSettleRename.hidden = true;
   if (ui.btnWinContinue) {
     const isBattle = node.type === "B" || node.type === "E";
-    const showWinBtn = isBattle && state.phase === "win" && state.winReady && !state.winGrowthEmbed;
+    const showWinBtn =
+      isBattle &&
+      state.phase === "win" &&
+      state.winReady &&
+      !state.winGrowthEmbed &&
+      !state.winRewardSixVisible;
     ui.btnWinContinue.hidden = !showWinBtn;
-    ui.btnWinContinue.textContent = showWinBtn && node.id === "BOSS" ? "通关结算" : "领赏";
+    ui.btnWinContinue.textContent = showWinBtn && node.id === "B5" ? "通关结算" : "领赏";
   }
   // 「恭喜进入战功名人堂」不应在每场胜利弹层出现：改到 Boss 通关后的 S1 积分结算页展示
   if (ui.btnWinClaim) ui.btnWinClaim.hidden = true;
@@ -9042,7 +9629,13 @@ function render(state, ui) {
     else ui.playerRowWrap.removeAttribute("inert");
   }
   const showGrowth = state.phase === "node" && (node.type === "R" || node.type === "S" || node.type === "N");
-  const showGrowthOverlay = showGrowth && !chapter1S1Inline;
+  const showGrowthOverlay = showGrowth && !chapter1S1Inline && state.homeView === "game";
+  const appPrologueOpen =
+    showGrowthOverlay &&
+    state.chapterId === "chapter1" &&
+    state.nodeId === "STORY_OPEN" &&
+    !!(node.prologueTypewriter && node.narrativeScreen && node.type === "N");
+  document.body.classList.toggle("app-prologue-open", appPrologueOpen);
   // 必须在可能 early-return 的成长分支之前同步，否则非战斗/成长界面仍会露出占位血条
   if (!inReady) {
     setCombatBodyVisibility(ui, showCombatBody);
@@ -9095,48 +9688,94 @@ function render(state, ui) {
 
   // 成长面板：用战斗信息内展示（替代标题栏下方模块）
   if (ui.growthOverlay) ui.growthOverlay.hidden = !showGrowthOverlay;
+  if (!showGrowthOverlay) {
+    ui.growthOverlay?.classList.remove("growth-overlay--narrative");
+    ui.growthOverlay?.classList.remove("growth-overlay--prologue");
+    if (ui.nodeNarrativeBody) {
+      ui.nodeNarrativeBody.hidden = true;
+      ui.nodeNarrativeBody.innerHTML = "";
+      ui.nodeNarrativeBody.textContent = "";
+      ui.nodeNarrativeBody.className = "growth-narrative-body";
+    }
+  }
   ui.growthOverlay?.classList.remove("growth-overlay--boss-alert");
   if (ui.nodeOptions && chapter1S1Inline) ui.nodeOptions.innerHTML = "";
   if (showGrowthOverlay && ui.nodeTitle && ui.nodeSubtitle && ui.nodeOptions) {
     ui.nodeTitle.textContent = node.title || "成长";
     ui.nodeSubtitle.textContent = node.subtitle || "";
     ui.nodeOptions.innerHTML = "";
+    const narr = !!(node.narrativeScreen && node.type === "N");
+    const prologueTw = !!(narr && node.prologueTypewriter);
+    ui.growthOverlay?.classList.toggle("growth-overlay--narrative", narr);
+    ui.growthOverlay?.classList.toggle("growth-overlay--prologue", prologueTw);
+    ui.nodeOptions.className = prologueTw ? "node-options node-options--prologue-cta" : "node-options";
+
+    if (prologueTw && ui.nodeNarrativeBody) {
+      ui.nodeNarrativeBody.hidden = false;
+      ui.nodeNarrativeBody.className = "growth-narrative-body growth-narrative-body--typewriter";
+      const fullText = node.body || "";
+      let tw = state._prologueTypewriter;
+      if (!tw || tw.nodeId !== node.id || tw.sourceText !== fullText) {
+        resetPrologueTypewriter(state);
+        tw = {
+          nodeId: node.id,
+          sourceText: fullText,
+          chars: Array.from(fullText),
+          index: 0,
+          done: false,
+          intervalId: /** @type {ReturnType<typeof setInterval>|null} */ (null),
+        };
+        state._prologueTypewriter = tw;
+      }
+      ui.nodeNarrativeBody.textContent = tw.chars.slice(0, tw.index).join("");
+      if (!tw.done && tw.index < tw.chars.length && tw.intervalId == null) {
+        tw.intervalId = window.setInterval(() => {
+          tw.index += 1;
+          if (ui.nodeNarrativeBody) {
+            ui.nodeNarrativeBody.textContent = tw.chars.slice(0, tw.index).join("");
+          }
+          if (tw.index >= tw.chars.length) {
+            tw.done = true;
+            if (tw.intervalId != null) {
+              clearInterval(tw.intervalId);
+              tw.intervalId = null;
+            }
+            render(state, ui);
+          }
+        }, 36);
+      }
+      if (tw.done) {
+        const goBtn = document.createElement("button");
+        goBtn.type = "button";
+        goBtn.className = "btn btn-offense narrative-prologue-cta";
+        const firstOpt = (node.options || [])[0];
+        goBtn.textContent = firstOpt?.title || "上前迎敌";
+        goBtn.addEventListener("click", () => {
+          applyGrowthOption(
+            state,
+            ui,
+            chapter,
+            node,
+            firstOpt || { id: "to_b1", title: "上前迎敌", desc: "", next: "B1" },
+          );
+        });
+        ui.nodeOptions.appendChild(goBtn);
+      }
+    } else if (ui.nodeNarrativeBody) {
+      if (narr) {
+        ui.nodeNarrativeBody.hidden = false;
+        ui.nodeNarrativeBody.className = "growth-narrative-body";
+        ui.nodeNarrativeBody.innerHTML = narrativeBodyToHtml(node.body || "");
+      } else {
+        ui.nodeNarrativeBody.hidden = true;
+        ui.nodeNarrativeBody.innerHTML = "";
+        ui.nodeNarrativeBody.textContent = "";
+      }
+    }
+
     let opts = (node.options || []).slice();
     const rPick = buildRGrowthPickOptions(state, node);
     if (rPick) opts = rPick;
-    else if (node.id === "N4") {
-      ui.nodeTitle.textContent = "";
-      ui.nodeSubtitle.textContent = "";
-      ui.nodeOptions.innerHTML = "";
-      ui.growthOverlay?.classList.add("growth-overlay--boss-alert");
-      const bossNode = chapter.nodes["BOSS"];
-      const bossName = getEnemyDisplayName(bossNode?.battle?.waves?.[0]?.slots?.[0]?.name || "管亥");
-      const alert = document.createElement("div");
-      alert.className = "boss-alert";
-      alert.innerHTML = [
-        `<div class="boss-alert__accent"></div>`,
-        `<div class="boss-alert__icon">⚔</div>`,
-        `<div class="boss-alert__warn">WARNING</div>`,
-        `<div class="boss-alert__title">${escapeHtml(bossName)}来袭</div>`,
-        `<div class="boss-alert__flavor">${bossAlertFlavorHighlightHtml(bossNode?.body || "")}</div>`,
-        `<div class="boss-alert__divider"></div>`,
-      ].join("");
-      const engageBtn = document.createElement("button");
-      engageBtn.type = "button";
-      engageBtn.className = "btn btn-danger boss-alert__btn";
-      engageBtn.textContent = "迎击Boss";
-      engageBtn.addEventListener("click", () => {
-        applyGrowthOption(state, ui, chapter, node, {
-          id: "boss",
-          title: "迎击Boss",
-          desc: "",
-          next: "BOSS",
-        });
-      });
-      alert.appendChild(engageBtn);
-      ui.nodeOptions.appendChild(alert);
-      opts = [];
-    }
 
     // 成长节点统一用卡片交互（盖住→翻开→点选→显示确认按钮→确认生效）
     if (node.type === "R") {
@@ -9144,26 +9783,35 @@ function render(state, ui) {
       return;
     }
 
-    for (const opt of opts) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      const isS1Replay = node.id === "S1" && opt.id === "hook";
-      btn.className = isS1Replay ? "btn btn-offense merit-replay-cta" : "btn btn-secondary";
-      btn.innerHTML = isS1Replay
-        ? [
-            `<span class="merit-replay-cta__badge">再次出征</span>`,
-            `<span class="merit-replay-cta__title">${escapeHtml(opt.title || "再玩一局")}</span>`,
-            `<span class="merit-replay-cta__desc">从边寨外哨重新开局，刷新你的战功与评级。</span>`,
-          ].join("")
-        : [
-            `<span class="option-kicker">选择</span>`,
-            `<span class="option-title">${escapeHtml(opt.title || "继续")}</span>`,
-            `<span class="option-desc">${escapeHtml(opt.desc || "")}</span>`,
-          ].join("");
-      btn.addEventListener("click", () => {
-        applyGrowthOption(state, ui, chapter, node, opt);
-      });
-      ui.nodeOptions.appendChild(btn);
+    if (!prologueTw) {
+      for (const opt of opts) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        const isS1Replay = node.id === "S1" && opt.id === "hook";
+        const isBridgeMeet = narr && opt.id === "meet";
+        btn.className = isS1Replay
+          ? "btn btn-offense merit-replay-cta"
+          : isBridgeMeet
+            ? "btn btn-offense narrative-prologue-cta"
+            : "btn btn-secondary";
+        btn.innerHTML = isS1Replay
+          ? [
+              `<span class="merit-replay-cta__badge">再次出征</span>`,
+              `<span class="merit-replay-cta__title">${escapeHtml(opt.title || "再玩一局")}</span>`,
+              `<span class="merit-replay-cta__desc">从序章起重新开局，刷新你的战功与评级。</span>`,
+            ].join("")
+          : isBridgeMeet
+            ? escapeHtml(opt.title || "迎敌")
+            : [
+                `<span class="option-kicker">选择</span>`,
+                `<span class="option-title">${escapeHtml(opt.title || "继续")}</span>`,
+                `<span class="option-desc">${escapeHtml(opt.desc || "")}</span>`,
+              ].join("");
+        btn.addEventListener("click", () => {
+          applyGrowthOption(state, ui, chapter, node, opt);
+        });
+        ui.nodeOptions.appendChild(btn);
+      }
     }
   }
 
@@ -9186,7 +9834,7 @@ function render(state, ui) {
   const eoCFight = state.enemies.find((x) => x.id === "C");
   const hasThird = !!eoCFight;
   if (ui.enemyCardC) ui.enemyCardC.hidden = !hasThird;
-  /** 边寨头目战：头目卡占敌区两格宽度，亲兵占第三格 */
+  /** 边寨头目战：管亥与亲兵上下排；敌栏加宽与头像尺寸见 .enemy-row--boss-wide */
   if (ui.enemyRowWrap) {
     ui.enemyRowWrap.classList.toggle(
       "enemy-row--boss-wide",
@@ -9201,6 +9849,7 @@ function render(state, ui) {
       ui.endingMeritTicker.hidden = true;
       ui.endingMeritTicker.setAttribute("aria-hidden", "true");
     }
+    if (ui.endingMeritFlyAnchor) ui.endingMeritFlyAnchor.hidden = true;
     if (ui.turnInfo) ui.turnInfo.textContent = "—";
     if (showIntro) {
       if (ui.actionDesc) ui.actionDesc.hidden = true;
@@ -9261,11 +9910,25 @@ function render(state, ui) {
       state.phase === "endingLose" ||
       state.phase === "lose");
 
-  // 标题副行：战功关的回合数由下方固定条展示，此处留空以免与条重复
-  if (chapter1S1Inline && ui.turnInfo && state.phase !== "ending") {
-    ui.turnInfo.textContent = state.meritChapter?.records?.BOSS ? "边寨已定 · 战罢" : "提前结算 · 回营封卷";
+  // 标题副行：战功关的回合数由敌我分隔处展示，此处留空以免重复
+  if (chapter1S1Epilogue && ui.turnInfo && state.phase !== "ending") {
+    ui.turnInfo.textContent = "";
+  } else if (chapter1S1Inline && ui.turnInfo && state.phase !== "ending") {
+    ui.turnInfo.textContent = state.meritChapter?.records?.B5 ? "五关已过 · 战罢" : "提前结算 · 回营封卷";
   } else if (ui.turnInfo && state.phase !== "ending") {
     ui.turnInfo.textContent = showBattleMeritTurnStrip ? "" : "—";
+  }
+
+  const bidTurnUi = state.battle?.battleNodeId;
+  const limTurnUi = meritBattleTurnLimit(bidTurnUi);
+  const ctxTurnUi = state._meritTurnContext;
+  const usedTurnUi = ctxTurnUi ? Math.max(0, (ctxTurnUi.turnIndex || 1) - 1) : 0;
+  const showTurnLimitInline = showBattleMeritTurnStrip && limTurnUi != null;
+  if (ui.endingMeritFlyAnchor) {
+    ui.endingMeritFlyAnchor.hidden = !showTurnLimitInline;
+  }
+  if (ui.endingMeritBattleTurn && showTurnLimitInline) {
+    ui.endingMeritBattleTurn.textContent = `${usedTurnUi}/${limTurnUi}回合`;
   }
 
   if (ui.endingMeritTicker) {
@@ -9273,12 +9936,8 @@ function render(state, ui) {
     ui.endingMeritTicker.setAttribute("aria-hidden", showBattleMeritTurnStrip ? "false" : "true");
     const lockTurnDisplayForEndingAnim = state.phase === "ending" && state._endingHealAnimating;
     if (showBattleMeritTurnStrip && !lockTurnDisplayForEndingAnim) {
-      const bid = state.battle?.battleNodeId;
-      const limUi = meritBattleTurnLimit(bid);
-      const ctxUi = state._meritTurnContext;
-      const usedUi = ctxUi ? Math.max(0, (ctxUi.turnIndex || 1) - 1) : 0;
       if (ui.endingMeritBattleTurn) {
-        ui.endingMeritBattleTurn.textContent = limUi != null ? `${usedUi}/${limUi}` : "—";
+        ui.endingMeritBattleTurn.textContent = limTurnUi != null ? `${usedTurnUi}/${limTurnUi}回合` : "—";
       }
     }
   }
@@ -9411,7 +10070,7 @@ function render(state, ui) {
   ui.enemyAName.textContent = `${eADisplayName}${
     eA.hp <= 0 && !revealA ? "（已倒下）" : eA.broken ? "（破绽）" : ""
   }`;
-  applyEnemyAvatar(ui.enemyAvatarFrameA, eADisplayName);
+  applyEnemyAvatar(ui.enemyAvatarFrameA, eADisplayName, eoAFight.archetype);
   ui.eAHpText.textContent = eA.hpMax > 0 ? `${eA.hp}/${eA.hpMax}` : "—";
   ui.eAHpBar.style.width = percent(eA.hpMax > 0 ? eA.hp / eA.hpMax : 0);
   ui.eAStaggerText.textContent = `${eA.stagger}/${eA.staggerThreshold}`;
@@ -9420,7 +10079,7 @@ function render(state, ui) {
   if (eoBFight.waitingToEnter) {
     const eBDisplayName = getEnemyDisplayName(eB.name);
     ui.enemyBName.textContent = `${eBDisplayName}`;
-    applyEnemyAvatar(ui.enemyAvatarFrameB, eBDisplayName);
+    applyEnemyAvatar(ui.enemyAvatarFrameB, eBDisplayName, eoBFight.archetype);
     ui.eBHpText.textContent = "—";
     ui.eBHpBar.style.width = "0%";
     ui.eBStaggerText.textContent = "—";
@@ -9431,7 +10090,7 @@ function render(state, ui) {
     ui.enemyBName.textContent = `${eBDisplayName}${
       eB.hp <= 0 && !revealB ? "（已倒下）" : eB.broken ? "（破绽）" : ""
     }`;
-    applyEnemyAvatar(ui.enemyAvatarFrameB, eBDisplayName);
+    applyEnemyAvatar(ui.enemyAvatarFrameB, eBDisplayName, eoBFight.archetype);
     ui.eBHpText.textContent = eB.hpMax > 0 ? `${eB.hp}/${eB.hpMax}` : "—";
     ui.eBHpBar.style.width = percent(eB.hpMax > 0 ? eB.hp / eB.hpMax : 0);
     ui.eBStaggerText.textContent = `${eB.stagger}/${eB.staggerThreshold}`;
@@ -9446,14 +10105,14 @@ function render(state, ui) {
       ui.enemyCName.textContent = `${eCDisplayName}${
         eC.hp <= 0 && !revealC ? "（已倒下）" : eC.broken ? "（破绽）" : ""
       }`;
-    applyEnemyAvatar(ui.enemyAvatarFrameC, eCDisplayName);
+    applyEnemyAvatar(ui.enemyAvatarFrameC, eCDisplayName, eoCFight.archetype);
     if (ui.eCHpText) ui.eCHpText.textContent = eC.hpMax > 0 ? `${eC.hp}/${eC.hpMax}` : "—";
     if (ui.eCHpBar) ui.eCHpBar.style.width = percent(eC.hpMax > 0 ? eC.hp / eC.hpMax : 0);
     if (ui.eCStaggerText) ui.eCStaggerText.textContent = `${eC.stagger}/${eC.staggerThreshold}`;
     if (ui.eCStaggerBar)
       ui.eCStaggerBar.style.width = percent(clamp(eC.stagger / Math.max(1, eC.staggerThreshold || 1), 0, 1));
   } else {
-    applyEnemyAvatar(ui.enemyAvatarFrameC, "");
+    applyEnemyAvatar(ui.enemyAvatarFrameC, "", "");
   }
 
   function setFieldBadge(el, eo) {
@@ -9491,6 +10150,8 @@ function render(state, ui) {
   ui.enemyCardB.classList.toggle("selected", state.targetId === "B");
   ui.enemyCardA.classList.toggle("dead", eA.hp <= 0 && !revealA);
   ui.enemyCardB.classList.toggle("dead", !eoBFight.waitingToEnter && eB.hp <= 0 && !state._winKillRevealEnemyIds?.includes("B"));
+  ui.enemyCardA.classList.toggle("enemy-card--broken", eA.hp > 0 && !!eA.broken);
+  ui.enemyCardB.classList.toggle("enemy-card--broken", !eoBFight.waitingToEnter && eB.hp > 0 && !!eB.broken);
   ui.enemyCardB.classList.toggle("waiting", !!eoBFight.waitingToEnter);
   if (ui.enemyWaitingOverlayB) {
     ui.enemyWaitingOverlayB.setAttribute("aria-hidden", eoBFight.waitingToEnter ? "false" : "true");
@@ -9505,36 +10166,41 @@ function render(state, ui) {
     ui.enemyCardC.classList.toggle("selected", state.targetId === "C");
     ui.enemyCardC.classList.toggle("dead", eC.hp <= 0 && !state._winKillRevealEnemyIds?.includes("C"));
     ui.enemyCardC.classList.toggle("waiting", false);
+    ui.enemyCardC.classList.toggle("enemy-card--broken", eC.hp > 0 && !!eC.broken);
   }
 
   // enemy intent in card
+  const deadIntentText = (eo, fallbackName) => {
+    const name = getEnemyDisplayName(eo?.fighter?.name || "") || fallbackName;
+    return `意图：${escapeHtml(name)}已倒下`;
+  };
   ui.intentAInCard.innerHTML =
     eoAFight.fighter.hp <= 0 && !revealA
-      ? "意图：甲已倒下"
+      ? `${deadIntentText(eoAFight, "敌人甲")}${enemySkillIconHtml(state, eoAFight)}`
       : `意图：${
           eoAFight.fighter.broken
             ? "破绽"
             : htmlIntentPillWithHint(eoAFight)
-        }${intentDeltaHtml(state, eoAFight)}`;
+        }${intentDeltaHtml(state, eoAFight)}${enemySkillIconHtml(state, eoAFight)}`;
   ui.intentBInCard.innerHTML = eoBFight.waitingToEnter
     ? "意图：未上场"
     : eoBFight.fighter.hp <= 0 && !state._winKillRevealEnemyIds?.includes("B")
-      ? "意图：乙已倒下"
+      ? `${deadIntentText(eoBFight, "敌人乙")}${enemySkillIconHtml(state, eoBFight)}`
       : `意图：${
           eoBFight.fighter.broken
             ? "破绽"
             : htmlIntentPillWithHint(eoBFight)
-        }${intentDeltaHtml(state, eoBFight)}`;
+        }${intentDeltaHtml(state, eoBFight)}${enemySkillIconHtml(state, eoBFight)}`;
   if (ui.intentCInCard && eoCFight) {
     const eC = eoCFight.fighter;
     ui.intentCInCard.innerHTML =
       eC.hp <= 0 && !state._winKillRevealEnemyIds?.includes("C")
-        ? "意图：丙已倒下"
+        ? `${deadIntentText(eoCFight, "敌人丙")}${enemySkillIconHtml(state, eoCFight)}`
         : `意图：${
             eC.broken
               ? "破绽"
               : htmlIntentPillWithHint(eoCFight)
-          }${intentDeltaHtml(state, eoCFight)}`;
+          }${intentDeltaHtml(state, eoCFight)}${enemySkillIconHtml(state, eoCFight)}`;
   }
 
   // 总加成汇总 UI 已移除：改为技能图标面板
@@ -9612,15 +10278,19 @@ function render(state, ui) {
   ui.actHeavy.disabled = !canAct || playerBroken || execOnlyPend;
   ui.actDefend.disabled = !canAct || execOnlyPend;
   ui.actBlock.disabled = !canAct || execOnlyPend;
-  let canExecuteOnA = inFight && state.player.hp > 0 && eA.hp > 0 && eA.broken && !playerBroken;
+  const executeRevealReadyA = enemyBrokenExecuteRevealReady(state, ui, "A", eA);
+  const executeRevealReadyB = enemyBrokenExecuteRevealReady(state, ui, "B", eB);
+  const eC = eoCFight?.fighter;
+  const executeRevealReadyC = enemyBrokenExecuteRevealReady(state, ui, "C", eC);
+  let canExecuteOnA = inFight && state.player.hp > 0 && eA.hp > 0 && eA.broken && executeRevealReadyA && !playerBroken;
   let canExecuteOnB =
     inFight &&
     state.player.hp > 0 &&
     !eoBFight.waitingToEnter &&
     eB.hp > 0 &&
     eB.broken &&
+    executeRevealReadyB &&
     !playerBroken;
-  const eC = eoCFight?.fighter;
   let canExecuteOnC =
     !!eoCFight &&
     inFight &&
@@ -9628,6 +10298,7 @@ function render(state, ui) {
     !!eC &&
     eC.hp > 0 &&
     eC.broken &&
+    executeRevealReadyC &&
     !playerBroken;
   if (execOnlyPend) {
     canExecuteOnA = canExecuteOnA && pendExecId === "A";
@@ -9672,10 +10343,39 @@ function render(state, ui) {
   scheduleB1ActionHint(state, ui);
 }
 
+function resetPrologueTypewriter(state) {
+  const tw = state._prologueTypewriter;
+  if (tw?.intervalId != null) {
+    clearInterval(tw.intervalId);
+    tw.intervalId = null;
+  }
+  state._prologueTypewriter = null;
+}
+
+function skipPrologueTypewriterToEnd(state) {
+  const tw = state._prologueTypewriter;
+  if (!tw || tw.done) return;
+  if (tw.intervalId != null) {
+    clearInterval(tw.intervalId);
+    tw.intervalId = null;
+  }
+  tw.index = tw.chars.length;
+  tw.done = true;
+}
+
 function gotoNode(state, ui, chapterId, nodeId) {
+  resetPrologueTypewriter(state);
   state.winGrowthEmbed = false;
   state.winGrowthEmbedNodeId = null;
   state.winGrowthPendingAdvance = null;
+  state.winRewardPickNodeId = null;
+  state.winRewardSixVisible = false;
+  state.winRewardPicked = false;
+  state.winRewardPickedOption = null;
+  state.winRewardSelectedIndex = null;
+  state.winRewardSelectedOption = null;
+  state.winRewardReadyToContinue = false;
+  state.winRewardContinueNextId = null;
   state.battleMeritFxQueue = [];
   state.battleMeritFxPlaying = false;
   state.visibleCombo = 0;
@@ -9688,6 +10388,10 @@ function gotoNode(state, ui, chapterId, nodeId) {
   state.chapterId = chapter.id;
   state.nodeId = node.id;
   state.actionDesc = "—";
+  // 败阵「结算回营」已改为直回主界面；兜底：若仍进入 S1（且未通关 B5），直接落回主菜单
+  if (state.chapterId === "chapter1" && state.nodeId === "S1" && !state.meritChapter?.records?.B5) {
+    state.homeView = "menu";
+  }
 
   // switch phase by node type
   if (node.type === "B" || node.type === "E") {
@@ -9711,6 +10415,10 @@ function tutorialOnce(state, key, line) {
   return true;
 }
 
+function makeEnemySkillRuntime(def) {
+  return def.enemySkill ? { ...def.enemySkill } : null;
+}
+
 function mkEnemyFromDef(def, slotId) {
   const f = mkFighter({
     name: def.name || "敌人",
@@ -9728,6 +10436,7 @@ function mkEnemyFromDef(def, slotId) {
     archetype: def.archetype || "mob",
     canExecutePlayer: !!def.canExecutePlayer,
     canBlockHeavy: !!def.canBlockHeavy,
+    enemySkill: makeEnemySkillRuntime(def),
     waitingToEnter: false,
   };
 }
@@ -9751,6 +10460,7 @@ function mkWaitingEnemyEO(def, slotId) {
     archetype: def.archetype || "mob",
     canExecutePlayer: !!def.canExecutePlayer,
     canBlockHeavy: !!def.canBlockHeavy,
+    enemySkill: makeEnemySkillRuntime(def),
     waitingToEnter: true,
     pendingDef: def,
   };
@@ -9770,6 +10480,7 @@ function deploySequentialSecondIfNeeded(state, details) {
   eoB.archetype = real.archetype;
   eoB.canExecutePlayer = real.canExecutePlayer;
   eoB.canBlockHeavy = real.canBlockHeavy;
+  eoB.enemySkill = real.enemySkill;
   eoB.waitingToEnter = false;
   delete eoB.pendingDef;
   if (details) {
@@ -9783,6 +10494,14 @@ function startBattleFromNode(state, node) {
   state.winGrowthEmbed = false;
   state.winGrowthEmbedNodeId = null;
   state.winGrowthPendingAdvance = null;
+  state.winRewardPickNodeId = null;
+  state.winRewardSixVisible = false;
+  state.winRewardPicked = false;
+  state.winRewardPickedOption = null;
+  state.winRewardSelectedIndex = null;
+  state.winRewardSelectedOption = null;
+  state.winRewardReadyToContinue = false;
+  state.winRewardContinueNextId = null;
   state.battleMeritFxQueue = [];
   state.battleMeritFxPlaying = false;
   state.visibleCombo = 0;
@@ -9796,6 +10515,8 @@ function startBattleFromNode(state, node) {
   state._endingDeathGen += 1;
   state._endingDeathAnimating = false;
   state._endingDeathDone = false;
+  // 兜底：若上一场胜利 ending 提前打断，可能遗留 _endingHealAnimating=true 导致 HP/失衡文案不刷新
+  state._endingHealAnimating = false;
 
   const battle = node.battle;
   if (!battle || !battle.waves || !battle.waves.length) {
@@ -9876,6 +10597,7 @@ function startBattleFromNode(state, node) {
   state._interruptNextQuickBonusPending = false;
   state._peacefulHeartNoDamageTurns = 0;
   state._lastPlayerActionWasAttack = false;
+  state._enemyPassiveFxQueue = [];
 
   state.battleLog.push(`{g}战斗开始{/g}：${node.title || "本场战斗"}。`);
 
@@ -9935,8 +10657,8 @@ function startBattleFromNode(state, node) {
   if (node.battle?.tutorial?.includes("E1_exam")) {
     tutorialOnce(state, "E1_exam", "考试：防御中的敌人要用重击；重击中的敌人要用盾反；打出破绽就果断处决。");
   }
-  if (node.battle?.tutorial?.includes("BOSS_full_loop")) {
-    tutorialOnce(state, "BOSS_full_loop", "警告：管亥会盾反你的重击，也会在你破绽时处决你——必须读招控节奏。");
+  if (node.battle?.tutorial?.includes("B5_finale")) {
+    tutorialOnce(state, "B5_finale", "终关一战：孔秀会在你露出破绽时处决你；追兵头领会盾反重击。先控失衡，再破敌势。");
   }
 
   state.battleSnapshot = { nodeId: node.id, player: snapshotPlayerForRetry(state.player) };
@@ -10046,7 +10768,7 @@ function runEndingHealMeterAnim(state, ui, onComplete) {
     }
     if (ui.pHpText) ui.pHpText.textContent = `${hp1}/${hp1}`;
     if (ui.pStaggerText) ui.pStaggerText.textContent = `0/${stMax}`;
-    if (ui.endingMeritBattleTurn && lim != null) ui.endingMeritBattleTurn.textContent = `${lim}/${lim}`;
+    if (ui.endingMeritBattleTurn && lim != null) ui.endingMeritBattleTurn.textContent = `${lim}/${lim}回合`;
     else if (ui.endingMeritBattleTurn) ui.endingMeritBattleTurn.textContent = "—";
     if (totalMeritDelta > 0 && ui.runMeritValue) {
       ui.runMeritValue.textContent = String(meritTo);
@@ -10126,7 +10848,7 @@ function runEndingHealMeterAnim(state, ui, onComplete) {
         applyRemainGrantOnly();
         if (ui.runMeritValue) ui.runMeritValue.textContent = String(meritTo);
         renderLocalLeaderboardToSettlePanel(ui, state);
-        if (ui.endingMeritBattleTurn && lim != null) ui.endingMeritBattleTurn.textContent = `${lim}/${lim}`;
+        if (ui.endingMeritBattleTurn && lim != null) ui.endingMeritBattleTurn.textContent = `${lim}/${lim}回合`;
         finishEndingCleanup();
         onComplete();
         return;
@@ -10140,7 +10862,7 @@ function runEndingHealMeterAnim(state, ui, onComplete) {
         idx++;
         if (ui.runMeritValue) ui.runMeritValue.textContent = String(Math.round(meritAcc));
         if (ui.endingMeritBattleTurn && lim != null) {
-          ui.endingMeritBattleTurn.textContent = `${Math.min(lim, used + idx)}/${lim}`;
+          ui.endingMeritBattleTurn.textContent = `${Math.min(lim, used + idx)}/${lim}回合`;
         }
         renderLocalLeaderboardToSettlePanel(ui, state);
         tickMeritWidgetPulse();
@@ -10176,7 +10898,7 @@ function runEndingHealMeterAnim(state, ui, onComplete) {
     if (ui.pStaggerText) ui.pStaggerText.textContent = `${Math.round(st)}/${stMax}`;
 
     if (lim != null && ui.endingMeritBattleTurn) {
-      ui.endingMeritBattleTurn.textContent = `${used}/${lim}`;
+      ui.endingMeritBattleTurn.textContent = `${used}/${lim}回合`;
     }
 
     if (vicDelta > 0 && ui.runMeritValue) {
@@ -10213,7 +10935,7 @@ function runEndingHealMeterAnim(state, ui, onComplete) {
     }
     if (ui.pHpText) ui.pHpText.textContent = `${p.hp}/${p.hpMax}`;
     if (ui.pStaggerText) ui.pStaggerText.textContent = `${p.stagger}/${p.staggerThreshold}`;
-    if (ui.endingMeritBattleTurn && lim != null) ui.endingMeritBattleTurn.textContent = `${used}/${lim}`;
+    if (ui.endingMeritBattleTurn && lim != null) ui.endingMeritBattleTurn.textContent = `${used}/${lim}回合`;
     if (vicDelta > 0 && ui.runMeritValue) ui.runMeritValue.textContent = String(meritFrom + vicDelta);
 
     if (remainSlots > 0 && remainDelta > 0 && ui.endingMeritBattleTurn && lim != null) {
@@ -10223,7 +10945,7 @@ function runEndingHealMeterAnim(state, ui, onComplete) {
 
     applyRemainGrantOnly();
     if (totalMeritDelta > 0 && ui.runMeritValue) ui.runMeritValue.textContent = String(meritTo);
-    if (ui.endingMeritBattleTurn && lim != null) ui.endingMeritBattleTurn.textContent = `${lim}/${lim}`;
+    if (ui.endingMeritBattleTurn && lim != null) ui.endingMeritBattleTurn.textContent = `${lim}/${lim}回合`;
     renderLocalLeaderboardToSettlePanel(ui, state);
     finishEndingCleanup();
     onComplete();
@@ -10338,7 +11060,7 @@ function finish(state, ui, outcome) {
     state.settleLog.push("战后休整：{g}体力已回满，失衡与破绽已清除。{/g}");
 
     // 第一章通关标记：用于回到主界面显示“继续战斗/新角色”两按钮
-    if (state.chapterId === "chapter1" && node.id === "BOSS") {
+    if (state.chapterId === "chapter1" && node.id === "B5") {
       state._chapter1Cleared = true;
       savePlayerProfile(state);
     }
@@ -10351,6 +11073,14 @@ function finish(state, ui, outcome) {
     state.pendingRetryBattleNodeId = null;
     state.battleSnapshot = null;
     state.pendingWinNextNodeId = battle?.onWinNext || null;
+    state.winRewardPickNodeId = null;
+    state.winRewardSixVisible = false;
+    state.winRewardPicked = false;
+    state.winRewardPickedOption = null;
+    state.winRewardSelectedIndex = null;
+    state.winRewardSelectedOption = null;
+    state.winRewardReadyToContinue = false;
+    state.winRewardContinueNextId = null;
 
     if (!state._winTimerArmed) {
       state._winTimerArmed = true;
@@ -10513,7 +11243,7 @@ function applyGrowthRewards(state, node, opt) {
     state._attrGrowthLog = state._attrGrowthLog || [];
     const ac = ATTR_CARDS.find((x) => x._stat === opt._stat);
     if (ac) {
-      state._attrGrowthLog.push({ title: ac.title, desc: ac.desc });
+      state._attrGrowthLog.push({ title: ac.title, desc: ac.desc, frontArt: ac.frontArt || "" });
       state._pickedAttrCardIds = state._pickedAttrCardIds || {};
       state._pickedAttrCardIds[ac.id] = true;
     }
@@ -10557,7 +11287,7 @@ function applyGrowthOption(state, ui, chapter, node, opt, advOpts) {
   const skipRewards = !!(advOpts && advOpts.skipRewards);
   if (node.id === "HOOK" && opt.id === "restart") {
     resetChapter1NewGame(state);
-    gotoNode(state, ui, chapter.id, opt.next || "N0");
+    gotoNode(state, ui, chapter.id, opt.next || "STORY_OPEN");
     render(state, ui);
     return;
   }
@@ -10565,9 +11295,8 @@ function applyGrowthOption(state, ui, chapter, node, opt, advOpts) {
   /** 章节结算页「再玩一局」：直接回到第一章外哨战前（玩法简介 + 开始战斗），不经 HOOK 结束页 */
   if (node.id === "S1" && opt.id === "hook") {
     resetChapter1NewGame(state);
-    markRoadmapNodeDone(state, "N0");
-    markRoadmapNodeDone(state, "N1");
-    gotoNode(state, ui, chapter.id, chapter.startNodeId || "B1");
+    markRoadmapNodeDone(state, "STORY_OPEN");
+    gotoNode(state, ui, chapter.id, chapter.startNodeId || "STORY_OPEN");
     render(state, ui);
     return;
   }
@@ -10636,78 +11365,111 @@ function applyGrowthOption(state, ui, chapter, node, opt, advOpts) {
 function buildRGrowthPickOptions(state, node) {
   if (node.id === "R1_DRAFT") {
     const offer = ensureR1TechOffer(state);
-    return offer.map((perk) => {
-      const c = perkCardById(perk);
+    return offer.map((id) => {
+      if (isAttrCardId(id)) {
+        const a = ATTR_CARDS.find((x) => x.id === id);
+        return {
+          id: `attr_${id}`,
+          title: `属性：${a?.title || id}`,
+          desc: a?.desc || "",
+          _stat: a?._stat,
+          frontArt: a?.frontArt || "",
+          next: "N_BRIDGE_1",
+        };
+      }
+      const c = perkCardById(id);
       return {
-        id: perk,
+        id,
         title: c.title,
         desc: c.desc,
-        perk,
+        perk: id,
+        frontArt: c.frontArt || "",
         tagLine: techExtraTagsLine(c),
-        cardClass: `pick-card--${techTagCssForPerk(perk)}`,
-        next: "B2",
+        cardClass: `pick-card--${techTagCssForPerk(id)}`,
+        next: "N_BRIDGE_1",
       };
     });
   }
   if (node.id === "R2_STAT") {
-    const offer = ensureDraftOffer(state, "R2_STAT", attrDraftPool(state), 3);
-    return offer
-      .map((id) => ATTR_CARDS.find((x) => x.id === id))
-      .filter(Boolean)
-      .map((c) => ({
-        id: `attr_${c.id}`,
-        title: `属性：${c.title}`,
+    const offer = ensureDraftOffer(state, "R2_STAT", mixedDraftPool(state), 3);
+    return offer.map((id) => {
+      if (isAttrCardId(id)) {
+        const a = ATTR_CARDS.find((x) => x.id === id);
+        return {
+          id: `attr_${id}`,
+          title: `属性：${a?.title || id}`,
+          desc: a?.desc || "",
+          _stat: a?._stat,
+          frontArt: a?.frontArt || "",
+          next: "N_BRIDGE_2",
+        };
+      }
+      const c = perkCardById(id);
+      return {
+        id,
+        title: c.title,
         desc: c.desc,
-        _stat: c._stat,
-        next: "E1",
-      }));
+        perk: id,
+        frontArt: c.frontArt || "",
+        tagLine: techExtraTagsLine(c),
+        cardClass: `pick-card--${techTagCssForPerk(id)}`,
+        next: "N_BRIDGE_2",
+      };
+    });
   }
   if (node.id === "R3_LOOT") {
     const offer = ensureR3TechOffer(state);
-    return offer.map((perk) => {
-      const c = perkCardById(perk);
+    return offer.map((id) => {
+      if (isAttrCardId(id)) {
+        const a = ATTR_CARDS.find((x) => x.id === id);
+        return {
+          id: `attr_${id}`,
+          title: `属性：${a?.title || id}`,
+          desc: a?.desc || "",
+          _stat: a?._stat,
+          frontArt: a?.frontArt || "",
+          next: "N_BRIDGE_3",
+        };
+      }
+      const c = perkCardById(id);
       return {
-        id: perk,
+        id,
         title: c.title,
         desc: c.desc,
-        perk,
+        perk: id,
+        frontArt: c.frontArt || "",
         tagLine: techExtraTagsLine(c),
-        cardClass: `pick-card--${techTagCssForPerk(perk)}`,
-        next: "B3",
+        cardClass: `pick-card--${techTagCssForPerk(id)}`,
+        next: "N_BRIDGE_3",
       };
     });
   }
   if (node.id === "R4_DRAFT") {
-    const techOffer = ensureDraftOffer(state, "R4_TECH", skillDraftPool(state), 2);
-    const attrOffer = ensureDraftOffer(state, "R4_ATTR", attrDraftPool(state), 1);
-    const merged = [...techOffer, ...attrOffer];
-    return merged
-      .map((k) => {
-        const a = ATTR_CARDS.find((x) => x.id === k);
-        if (a)
-          return {
-            kind: "attr",
-            id: `attr_${a.id}`,
-            title: `属性：${a.title}`,
-            desc: a.desc,
-            _stat: a._stat,
-            next: "N4",
-          };
-        const t = perkCardById(k);
-        if (t && t.perk)
-          return {
-            kind: "tech",
-            id: t.perk,
-            title: t.title,
-            desc: t.desc,
-            perk: t.perk,
-            tagLine: techExtraTagsLine(t),
-            cardClass: `pick-card--${techTagCssForPerk(t.perk)}`,
-            next: "N4",
-          };
-        return null;
-      })
-      .filter(Boolean);
+    const merged = ensureDraftOffer(state, "R4_MIXED", mixedDraftPool(state), 3);
+    return merged.map((id) => {
+      if (isAttrCardId(id)) {
+        const a = ATTR_CARDS.find((x) => x.id === id);
+        return {
+          id: `attr_${id}`,
+          title: `属性：${a?.title || id}`,
+          desc: a?.desc || "",
+          _stat: a?._stat,
+          frontArt: a?.frontArt || "",
+          next: "N_BRIDGE_4",
+        };
+      }
+      const t = perkCardById(id);
+      return {
+        id,
+        title: t.title,
+        desc: t.desc,
+        perk: id,
+        frontArt: t.frontArt || "",
+        tagLine: techExtraTagsLine(t),
+        cardClass: `pick-card--${techTagCssForPerk(id)}`,
+        next: "N_BRIDGE_4",
+      };
+    });
   }
   return null;
 }
@@ -10771,16 +11533,21 @@ function renderGrowthAsCards(state, ui, chapter, node, opts, optionsMount, pickO
     const tagLine = opt.tagLine ? `<div class="pick-card-tags">${escapeHtml(String(opt.tagLine))}</div>` : "";
     const kickerRaw = opt.kicker != null ? String(opt.kicker).trim() : "";
     const kickerHtml = kickerRaw ? `<div class="pick-card-kicker">${escapeHtml(kickerRaw)}</div>` : "";
+    const frontArt = growthOptionFrontArt(opt);
+    if (frontArt) card.classList.add("pick-card--art");
+    const frontBody = frontArt
+      ? `<img class="pick-card-art" src="${escapeHtml(String(frontArt))}" alt="" />`
+      : `${kickerHtml}
+          ${tagLine}
+          <div class="pick-card-title">${escapeHtml(opt.title || "成长")}</div>
+          <div class="pick-card-desc">${escapeHtml(opt.desc || "")}</div>`;
     card.innerHTML = `
       <div class="pick-card-inner">
         <div class="pick-card-face pick-card-back">
           <div class="pick-card-back-title">未揭示</div>
         </div>
         <div class="pick-card-face pick-card-front">
-          ${kickerHtml}
-          ${tagLine}
-          <div class="pick-card-title">${escapeHtml(opt.title || "成长")}</div>
-          <div class="pick-card-desc">${escapeHtml(opt.desc || "")}</div>
+          ${frontBody}
         </div>
       </div>
     `;
@@ -10872,6 +11639,146 @@ function renderGrowthAsCards(state, ui, chapter, node, opts, optionsMount, pickO
   }
 }
 
+function winRewardCardHtml(opt) {
+  const tagLine = opt?.tagLine ? `<div class="pick-card-tags">${escapeHtml(String(opt.tagLine))}</div>` : "";
+  const kicker = opt ? `<div class="pick-card-kicker">所得战法</div>` : "";
+  const title = opt ? escapeHtml(opt.title || "成长") : "";
+  const desc = opt ? escapeHtml(opt.desc || "") : "";
+  const frontArt = growthOptionFrontArt(opt);
+  const frontBody = frontArt
+    ? `<img class="pick-card-art" src="${escapeHtml(String(frontArt))}" alt="" />`
+    : `${kicker}
+        ${tagLine}
+        <div class="pick-card-title">${title}</div>
+        <div class="pick-card-desc">${desc}</div>`;
+  return `
+    <div class="pick-card-inner">
+      <div class="pick-card-face pick-card-back">
+        <div class="pick-card-back-title">未揭示</div>
+      </div>
+      <div class="pick-card-face pick-card-front">
+        ${frontBody}
+      </div>
+    </div>
+  `;
+}
+
+function renderWinSixRewardCards(state, ui, chapter, node) {
+  const mount = ui.winRewardSixPick;
+  if (!mount || !node) return;
+  mount.hidden = false;
+  mount.innerHTML = `<div class="win-reward-six-pick__title">择一封赏</div>`;
+  const grid = document.createElement("div");
+  grid.className = "win-reward-six-pick__grid";
+  mount.appendChild(grid);
+  const selectedIndex = state.winRewardSelectedIndex;
+  const selectedOpt = state.winRewardSelectedOption;
+
+  for (let i = 0; i < 6; i++) {
+    const selected = selectedIndex === i;
+    const revealed = selected && !!selectedOpt && !!state.winRewardPicked;
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = `pick-card win-reward-card${revealed ? "" : " is-facedown"}${selected ? " is-selected" : ""}`;
+    if (revealed && growthOptionFrontArt(selectedOpt)) card.classList.add("pick-card--art");
+    if (selected && !revealed) card.classList.add("is-reward-chosen");
+    if (revealed) card.classList.add("is-reward-picked", "is-pick-locked");
+    if (selectedIndex != null && !selected && state.winRewardPicked) {
+      card.classList.add("is-reward-unpicked");
+      card.disabled = true;
+    }
+    card.dataset.rewardIndex = String(i);
+    card.innerHTML = winRewardCardHtml(revealed ? selectedOpt : null);
+    card.addEventListener("click", () => {
+      if (state.winRewardPicked || card.disabled) return;
+      state.winRewardSelectedIndex = i;
+      state.winRewardSelectedOption = null;
+      render(state, ui);
+    });
+    grid.appendChild(card);
+  }
+
+  const confirmBtn = document.createElement("button");
+  confirmBtn.type = "button";
+  confirmBtn.className = "btn btn-offense win-reward-confirm";
+  confirmBtn.textContent = state.winRewardReadyToContinue ? "继续北上" : "确认领取";
+  confirmBtn.disabled =
+    state.winRewardReadyToContinue ? false : selectedIndex == null || !!state.winRewardPicked;
+  confirmBtn.addEventListener("click", () => {
+    if (state.winRewardReadyToContinue && state.winRewardContinueNextId) {
+      const nextId = state.winRewardContinueNextId;
+      state.winReady = false;
+      state.pendingWinNextNodeId = null;
+      state.winRewardPickNodeId = null;
+      state.winRewardSixVisible = false;
+      state.winRewardPicked = false;
+      state.winRewardPickedOption = null;
+      state.winRewardSelectedIndex = null;
+      state.winRewardSelectedOption = null;
+      state.winRewardReadyToContinue = false;
+      state.winRewardContinueNextId = null;
+      delete state.growthPickId?.[node.id];
+      delete state.growthRevealed?.[node.id];
+      gotoNode(state, ui, chapter.id, nextId);
+      return;
+    }
+    if (state.winRewardPicked || state.winRewardSelectedIndex == null) return;
+    const opts = buildRGrowthPickOptions(state, node) || [];
+    if (!opts.length) return;
+    const opt = opts[Math.floor(Math.random() * opts.length)];
+    state.winRewardPicked = true;
+    state.winRewardPickedOption = opt;
+    state.winRewardSelectedOption = opt;
+    state.growthRevealed = state.growthRevealed || {};
+    state.growthPickId = state.growthPickId || {};
+    state.growthRevealed[node.id] = true;
+    state.growthPickId[node.id] = opt.id;
+    const bad = applyGrowthRewards(state, node, opt);
+    if (bad === "abort") {
+      state.winRewardPicked = false;
+      state.winRewardPickedOption = null;
+      state.winRewardSelectedOption = null;
+      state.winRewardReadyToContinue = false;
+      state.winRewardContinueNextId = null;
+      delete state.growthPickId[node.id];
+      delete state.growthRevealed[node.id];
+      render(state, ui);
+      return;
+    }
+    const card = grid.querySelector(`.win-reward-card[data-reward-index="${state.winRewardSelectedIndex}"]`);
+    if (card) {
+      card.innerHTML = winRewardCardHtml(opt);
+      if (growthOptionFrontArt(opt)) card.classList.add("pick-card--art");
+      else card.classList.remove("pick-card--art");
+      card.classList.remove("is-reward-chosen");
+      card.classList.add("is-reward-picked", "is-pick-locked");
+      card.disabled = true;
+      void card.offsetWidth;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (card.isConnected) card.classList.remove("is-facedown");
+        });
+      });
+    }
+    grid.querySelectorAll(".win-reward-card").forEach((el) => {
+      if (el !== card) {
+        el.classList.add("is-reward-unpicked");
+        el.disabled = true;
+      }
+    });
+    confirmBtn.disabled = true;
+    window.setTimeout(() => {
+      animateCardToWarehouse(card, ui, () => {
+        paintWarehouseWithEnterFx(ui, state);
+        state.winRewardReadyToContinue = true;
+        state.winRewardContinueNextId = opt.next;
+        render(state, ui);
+      });
+    }, window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ? 0 : 1120);
+  });
+  mount.appendChild(confirmBtn);
+}
+
 function animateCardToWarehouse(cardEl, ui, onDone) {
   const warehouseEl = ui.warehouseCards;
   if (!cardEl || !warehouseEl) { onDone(); return; }
@@ -10893,7 +11800,7 @@ function animateCardToWarehouse(cardEl, ui, onDone) {
     left:${srcRect.left}px; top:${srcRect.top}px;
     width:${srcRect.width}px; height:${srcRect.height}px;
     border-radius:16px; overflow:hidden;
-    transition: all .45s cubic-bezier(.4,.0,.2,1);
+    transition: all .65s cubic-bezier(.22,.78,.18,1);
     opacity:1; transform:scale(1);
   `;
   document.body.appendChild(ghost);
@@ -10908,7 +11815,7 @@ function animateCardToWarehouse(cardEl, ui, onDone) {
     });
   });
   ghost.addEventListener("transitionend", finish, { once: true });
-  setTimeout(finish, 600);
+  setTimeout(finish, 800);
 }
 
 function onPlayerAction(state, ui, action, opts = {}) {
@@ -11004,12 +11911,12 @@ function onPlayerAction(state, ui, action, opts = {}) {
   const fallbackEnemyName = { A: "敌人甲", B: "敌人乙", C: "敌人丙" };
   const targetName = tgtObj?.fighter?.name || fallbackEnemyName[state.targetId] || "敌人";
   const actionFlavor = {
-    attack: `你踏前半步，刀光一闪，直取${targetName}的破绽。`,
-    heavy: `你沉肩蓄力，横刀猛压，试图击溃${targetName}的架势。`,
-    defend: "你收刀护身，稳住下盘，准备接下对方的来势。",
-    block: "你抬刀立势，试图用盾反打乱对方重击的节奏。",
-    execute: `你逼近一步，寻找能一刀了结${targetName}的机会。`,
-    rest: "你深吸一口气，调匀呼吸与步伐，重新稳住架势。",
+    attack: `快刀直取${targetName}破绽。`,
+    heavy: `沉肩重击，压垮${targetName}架势。`,
+    defend: "收刀护身，稳守来势。",
+    block: "横刀立势，专反重击。",
+    execute: `逼近${targetName}，一刀收束。`,
+    rest: "调匀呼吸，稳住架势。",
   };
   state.actionDesc = actionFlavor[action] || "—";
   state.battleLog.push(state.actionDesc);
@@ -11031,7 +11938,9 @@ function onPlayerAction(state, ui, action, opts = {}) {
   /** 本回合是否存在敌方快攻且判定打断重击成功（与己方快攻打断敌方重击同概率）。非重击时恒为 false。 */
   const heavyQuickInterruptSuccess =
     rolled?.heavyQuickInterruptSuccess ??
-    (action === "heavy" && enemyQuickThreatensPlayerHeavy(state) && Math.random() < INTERRUPT_QUICK_VS_HEAVY);
+    (action === "heavy" &&
+      (ambushBladeForcesHeavyInterrupt(state) ||
+        (enemyQuickThreatensPlayerHeavy(state) && Math.random() < INTERRUPT_QUICK_VS_HEAVY)));
 
   /** T15：须在 applyPlayerToEnemy 之前写入（resolve 阶段更晚才设 _attackInterruptedHeavyTargetId） */
   if (
@@ -11091,7 +12000,8 @@ function onPlayerAction(state, ui, action, opts = {}) {
       }
       // 即时战功：处决类型（按战斗 id 判定精英）
       if (tgt.archetype === "boss") meritTurn.executeKind = "execute_boss";
-      else if ((state.battle?.battleNodeId || state.nodeId) === "E1") meritTurn.executeKind = "execute_elite";
+      else if (["B2", "B3", "B4", "B5"].includes(state.battle?.battleNodeId || state.nodeId || ""))
+        meritTurn.executeKind = "execute_elite";
       else meritTurn.executeKind = "execute_normal";
       meritTurn.executeFinishBonus = !!clinchKill;
       meritTurn.hadPlayerHit = true;
@@ -11122,6 +12032,10 @@ function onPlayerAction(state, ui, action, opts = {}) {
     if (!tgt || tgt.fighter.hp <= 0) {
       details.push("→ 进攻失败：目标已倒下。");
     } else if (action === "heavy" && heavyQuickInterruptSuccess) {
+      if (ambushBladeForcesHeavyInterrupt(state)) {
+        details.push("→ 卞喜【伏刀快攻】触发：你的重击被打断！");
+        queueEnemyPassiveSkillFx(state, "伏刀快攻");
+      }
       const st0 = tgt.fighter.stagger | 0;
       const br0 = !!tgt.fighter.broken;
       const r = applyPlayerToEnemy(state, tgt, "attack", targetId);
@@ -11229,6 +12143,7 @@ function onPlayerAction(state, ui, action, opts = {}) {
       pushMeterFloatsAndAdvanceSnap(state, ui, meterFloatSnap);
       if (playerBrokenAtEnemyPhaseStart && (state.player.hp | 0) <= 0) break;
     }
+    flushEnemyPassiveSkillFxQueue(state, ui);
     // 先结算防御「未受伤 +1」与盾反成功自失衡，再结算技法「借力反震」（须与 blockSuccessCount 同阶相抵）
     // 盾反自失衡与「本回合是否受伤」解绑：对重击反制成功即产生架势压力，避免多敌时先反制打出破绽再被快攻摸到时吞掉 +1
     if (damageTakenThisTurn === 0 && action === "defend") {
@@ -11403,6 +12318,9 @@ function onPlayerAction(state, ui, action, opts = {}) {
       slot.fighter = replaced.fighter;
       slot.ai = replaced.ai;
       slot.archetype = replaced.archetype;
+      slot.canExecutePlayer = replaced.canExecutePlayer;
+      slot.canBlockHeavy = replaced.canBlockHeavy;
+      slot.enemySkill = replaced.enemySkill;
       slot.intent = /** @type {EnemyIntent} */ ("adjust");
       details.push(
         `→ {o}后备敌人加入：${slotReserveLabel[slot.id] || String(slot.id)}替换为${slot.fighter.name}。{/o}`,
@@ -11418,7 +12336,7 @@ function onPlayerAction(state, ui, action, opts = {}) {
     const ctx = state._meritTurnContext;
     const battleId = state.battle?.battleNodeId || ctx?.battleId || null;
     const isMeritBattle =
-      battleId === "B1" || battleId === "B2" || battleId === "E1" || battleId === "B3" || battleId === "BOSS";
+      battleId === "B1" || battleId === "B2" || battleId === "B3" || battleId === "B4" || battleId === "B5";
     if (ctx && isMeritBattle) {
       const aliveEnemies = state.enemies.filter((eo) => !eo.waitingToEnter && eo.fighter.hp > 0);
       const aliveEnemyCountEnd = aliveEnemies.length;
@@ -11650,7 +12568,66 @@ function boot() {
     });
   }
 
+  if (ui.growthOverlay) {
+    ui.growthOverlay.addEventListener(
+      "pointerdown",
+      (e) => {
+        if (
+          state.chapterId !== "chapter1" ||
+          state.phase !== "node" ||
+          state.homeView !== "game"
+        )
+          return;
+        const tw = state._prologueTypewriter;
+        if (!tw || tw.done) return;
+        const t = e.target;
+        if (t instanceof Element && t.closest("button")) return;
+        skipPrologueTypewriterToEnd(state);
+        e.preventDefault();
+        render(state, ui);
+      },
+      true,
+    );
+  }
+
+  if (ui.chapterEndEpilogue) {
+    ui.chapterEndEpilogue.addEventListener(
+      "pointerdown",
+      (e) => {
+        if (
+          state.chapterId !== "chapter1" ||
+          state.nodeId !== "S1" ||
+          !state._chapter1EpilogueActive ||
+          state.homeView !== "game"
+        )
+          return;
+        if (state._chapter1EpilogueAnimState === "complete") return;
+        const t = e.target;
+        if (t instanceof Element && t.closest("button")) return;
+        skipChapterEpilogueToEnd(state, ui);
+        state._chapter1EpilogueAnimState = "complete";
+        e.preventDefault();
+        render(state, ui);
+      },
+      true,
+    );
+  }
+  if (ui.btnChapterEndReplayMenu) {
+    ui.btnChapterEndReplayMenu.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      hardRestart("menu");
+    });
+  }
+  if (ui.btnChapterEndNextChapter) {
+    ui.btnChapterEndNextChapter.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      hardRestart("menu");
+    });
+  }
+
   function hardRestart(view = "menu") {
+    cancelChapterEpilogueTimers(state);
+    resetChapterEpilogueDom(ui);
     cancelResolutionAnimation(ui);
     resetOnlineLeaderboardCache();
     if (state._winKillRevealTimer) {
@@ -11665,14 +12642,16 @@ function boot() {
     state = mkInitialState();
     state.homeView = view;
     const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
-    const startNodeId = chapter.startNodeId || "B1";
-    const startNode = chapter.nodes[startNodeId] || chapter.nodes.B1;
+    const startNodeId = chapter.startNodeId || "STORY_OPEN";
+    const startNode = chapter.nodes[startNodeId] || chapter.nodes[chapter.startNodeId];
+    // 从主菜单直开：若首节点即开战，须先标记已读说明，避免在线榜首帧竞态；序章叙事节点则保留 intro，便于 B1 阵前榜。
+    if (view === "game") {
+      state._introLeftHeroSession = Date.now();
+      state.introDismissed = !!(startNode && (startNode.type === "B" || startNode.type === "E"));
+    }
     gotoNode(state, ui, state.chapterId, startNodeId);
-    // 开局从外哨直接接战：序章节点视为已跳过
-    markRoadmapNodeDone(state, "N0");
-    markRoadmapNodeDone(state, "N1");
-    if (view === "game" && startNode) {
-      state.introDismissed = true;
+    markRoadmapNodeDone(state, "STORY_OPEN");
+    if (view === "game" && startNode && (startNode.type === "B" || startNode.type === "E")) {
       try {
         startBattleFromNode(state, startNode);
       } catch (e) {
@@ -11684,21 +12663,12 @@ function boot() {
   }
 
   if (ui.btnHomeStart) {
-    ui.btnHomeStart.addEventListener("click", () => {
+    ui.btnHomeStart.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
       hardRestart("game");
     });
   }
-  if (ui.btnHomeLeaderboard) {
-    ui.btnHomeLeaderboard.addEventListener("click", () => {
-      hardRestart("leaderboard");
-    });
-  }
-  if (ui.btnHomeWarehouse) {
-    ui.btnHomeWarehouse.addEventListener("click", () => {
-      window.alert("卡牌仓库功能暂未开放，等待后续任务书。");
-    });
-  }
-
   if (ui.btnRestart) {
     ui.btnRestart.addEventListener("click", () => {
       const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
@@ -11715,8 +12685,7 @@ function boot() {
         return;
       }
       state.chapterRoadmapCleared = {};
-      markRoadmapNodeDone(state, "N0");
-      markRoadmapNodeDone(state, "N1");
+      markRoadmapNodeDone(state, "STORY_OPEN");
       gotoNode(state, ui, chapter.id, chapter.startNodeId);
     });
   }
@@ -11728,18 +12697,40 @@ function boot() {
       const nextNode = nextId ? chapter.nodes[nextId] : null;
       if (nextNode && nextNode.type === "R") {
         markRoadmapNodeDone(state, state.nodeId);
-        state.winReady = false;
-        state.winGrowthEmbed = true;
-        state.winGrowthEmbedNodeId = nextId;
+        state.winReady = true;
+        state.winGrowthEmbed = false;
+        state.winGrowthEmbedNodeId = null;
+        state.winGrowthPendingAdvance = null;
+        state.winRewardPickNodeId = nextId;
+        state.winRewardSixVisible = true;
+        state.winRewardPicked = false;
+        state.winRewardPickedOption = null;
+        state.winRewardSelectedIndex = null;
+        state.winRewardSelectedOption = null;
+        state.winRewardReadyToContinue = false;
+        state.winRewardContinueNextId = null;
         render(state, ui);
         return;
       }
       state.winReady = false;
       state.winGrowthEmbed = false;
       state.winGrowthEmbedNodeId = null;
+      state.winRewardPickNodeId = null;
+      state.winRewardSixVisible = false;
+      state.winRewardPicked = false;
+      state.winRewardPickedOption = null;
+      state.winRewardSelectedIndex = null;
+      state.winRewardSelectedOption = null;
+      state.winRewardReadyToContinue = false;
+      state.winRewardContinueNextId = null;
       state.phase = "node";
       if (nextId) {
+        const fromNodeId = state.nodeId;
         markRoadmapNodeDone(state, state.nodeId);
+        if (fromNodeId === "B5" && nextId === "S1") {
+          state._chapter1EpilogueActive = true;
+          state._chapter1EpilogueAnimState = null;
+        }
         gotoNode(state, ui, chapter.id, nextId);
       } else {
         render(state, ui);
@@ -11846,7 +12837,7 @@ function boot() {
       state.pendingWinNextNodeId = null;
       state.phase = "node";
       // Boss 结算页输入昵称后：写入排行榜，并刷新展示
-      if (state.chapterId === "chapter1" && state.nodeId === "S1" && state.meritChapter?.records?.BOSS) {
+      if (state.chapterId === "chapter1" && state.nodeId === "S1" && state.meritChapter?.records?.B5) {
         ensureChapter1LeaderboardRecord(state);
       }
       if (nextId) {
@@ -11994,7 +12985,7 @@ function boot() {
       state.battleSnapshot = null;
       if (state.chapterId === "chapter1") {
         state.settleLog = state.settleLog || [];
-        state.settleLog.push("{g}结算回营：提前封卷，本章战功已记入英雄榜，战功评级与三国将魂已给出。{/g}");
+        state.settleLog.push("{g}结算回营：提前封卷，本章战功已记入英雄榜。{/g}");
         const pen = state._deathMeritPenaltyPending | 0;
         if (pen > 0) {
           const cur = state.runMeritScore ?? 0;
@@ -12006,11 +12997,10 @@ function boot() {
         }
         syncRunMeritToChapterFinal(state, ui);
         ensureChapter1EarlyCampLeaderboardRecord(state);
-        state.introDismissed = true;
-        gotoNode(state, ui, chapter.id, "S1");
+        // 玩家死亡后「结算回营」：不再进入 S1 武魂评价页，直接回主界面
+        hardRestart("menu");
       } else {
-        state.introDismissed = false;
-        gotoNode(state, ui, chapter.id, chapter.startNodeId);
+        hardRestart("menu");
       }
     });
   }
