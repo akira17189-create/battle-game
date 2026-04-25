@@ -7,26 +7,26 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&family=Zen+Antique+Soft&family=Noto+Serif+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./style.css?v=20260425-wh-order-row-fix" />
   </head>
   <body>
     <div class="app">
       <section id="homeScreen" class="home-screen" hidden aria-label="主菜单">
-        <!-- 舞台与 GIF 同源 1:1，按钮区用百分比/cqh 与立绘三键绑定（变量在 .home-screen__stage） -->
+        <!-- 舞台与 4:3 封面同源，透明按钮热区随图片缩放对齐 -->
         <div class="home-screen__stage">
           <picture class="home-screen__loop-wrap">
-            <source srcset="./ui-home-main-menu.gif" type="image/gif" />
-            <source srcset="./ui-home-main-menu.webp" type="image/webp" />
             <img
               class="home-screen__loop"
-              src="./ui-home-main-menu.jpg"
+              src="./ui-home-main-bg.png"
               alt=""
-              width="1254"
-              height="1254"
+              width="1024"
+              height="768"
               decoding="async"
               fetchpriority="high"
             />
           </picture>
+          <div class="home-screen__fx" aria-hidden="true"></div>
+          <div class="home-screen__depth" aria-hidden="true"></div>
           <div class="home-screen__content">
             <div class="home-screen__actions">
               <button id="btnHomeStart" class="btn btn-offense home-screen__btn" type="button">开始游戏</button>
@@ -38,7 +38,7 @@
       <header id="appTopbar" class="topbar">
         <div class="topbar-row topbar-row--main">
           <div class="title">
-            <div class="kicker">三国将魂传</div>
+                <div class="kicker">秦烈北行</div>
             <div id="pageTitle" class="h1">第一章·过五关斩六将</div>
           </div>
           <div class="topbar-roadmap-merit">
@@ -101,16 +101,6 @@
             <div class="panel-header panel-header--battle-stage">
               <div class="panel-title">阵前形势</div>
               <div class="panel-subtitle" id="turnInfo"></div>
-            </div>
-
-            <!-- 战功关：战斗中固定显示本战回合；胜利 ending 时兼作飞点读数 -->
-            <div id="endingMeritTicker" class="ending-merit-ticker" hidden aria-hidden="true">
-              <div class="ending-merit-ticker__row">
-                <span class="ending-merit-ticker__label">本战</span>
-                <span id="endingMeritFlyAnchor" class="ending-merit-ticker__val-wrap">
-                  <span id="endingMeritBattleTurn" class="ending-merit-ticker__val" aria-live="polite">—</span>
-                </span>
-              </div>
             </div>
 
             <!-- 第一章通关后：胜利条置于标题下，其下为内嵌结算（替代原全屏战功浮层） -->
@@ -342,6 +332,10 @@
               <span class="battle-vs-divider__line battle-vs-divider__line--enemy" aria-hidden="true"></span>
               <span id="battleMeritFlyAnchor" class="battle-vs-divider__fly-anchor">
                 <span id="battleVsTurnLabel" class="battle-vs-divider__vs">VS</span>
+                <span id="endingMeritFlyAnchor" class="battle-vs-divider__turn-limit-wrap" hidden>
+                  <span class="battle-vs-divider__turn-limit-label">本战</span>
+                  <span id="endingMeritBattleTurn" class="battle-vs-divider__turn-limit" aria-live="polite">—</span>
+                </span>
               </span>
               <span class="battle-vs-divider__line battle-vs-divider__line--player" aria-hidden="true"></span>
             </div>
@@ -498,6 +492,29 @@
       </div>
     </div>
 
+    <!-- 第一章通关黑幕终章（盖过顶栏与主界面） -->
+    <div
+      id="chapterEndEpilogue"
+      class="chapter-end-epilogue"
+      hidden
+      aria-hidden="true"
+      aria-label="第一章结尾"
+    >
+      <div class="chapter-end-epilogue__inner">
+        <h2 id="chapterEndEpilogueTitle" class="chapter-end-epilogue__title">第一章完</h2>
+        <div class="chapter-end-epilogue__lines" aria-live="polite">
+          <p class="chapter-end-epilogue__line" data-line="1">五关已过，六将皆斩。</p>
+          <p class="chapter-end-epilogue__line" data-line="2">秦烈踏过古道，身后血色渐沉。</p>
+          <p class="chapter-end-epilogue__line" data-line="3">信还在。</p>
+          <p class="chapter-end-epilogue__line chapter-end-epilogue__line--final" data-line="5">路，还没有走完。</p>
+        </div>
+        <div id="chapterEndEpilogueActions" class="chapter-end-epilogue__actions" hidden>
+          <button type="button" id="btnChapterEndReplayMenu" class="btn btn-offense">再玩一次</button>
+          <button type="button" id="btnChapterEndNextChapter" class="btn btn-secondary">进入第二章</button>
+        </div>
+      </div>
+    </div>
+
     <script src="./supabase-config.js"></script>
     <script src="./leaderboard-online.js"></script>
     <script src="./general_soul_lookup.js"></script>
@@ -505,6 +522,6 @@
     <script src="./general_soul_lore_105.js"></script>
     <script src="./general_soul_scoring.js"></script>
     <script src="./skill_cards_config.js"></script>
-    <script src="./main.js"></script>
+    <script src="./main.js?v=20260425-skip-earlycamp-s1"></script>
   </body>
 </html>
