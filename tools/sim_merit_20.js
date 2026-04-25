@@ -50,15 +50,15 @@ function computeChapterMeritNumeric(state) {
   const total_death_retry = Object.values(state.meritChapter?.retries || {}).reduce((a, x) => a + (x || 0), 0);
   if (total_death_retry === 0) chapterBonus += 100 * S;
 
-  const bossTurns = logs.filter((r) => r?.battleId === "BOSS");
+  const bossTurns = logs.filter((r) => r?.battleId === "B5");
   if (bossTurns.length) {
     const bossHadBroken = bossTurns.some((r) => (r.negativeEvents || []).some((e) => e.code === "self_broken"));
     const bossHadExecTaken = bossTurns.some((r) =>
       (r.negativeEvents || []).some((e) => e.code === "boss_execute_taken"),
     );
     const bossWinHpOk =
-      state.meritChapter?.records?.BOSS?.max_hp > 0 &&
-      state.meritChapter.records.BOSS.win_hp >= Math.floor(state.meritChapter.records.BOSS.max_hp * 0.5);
+      state.meritChapter?.records?.B5?.max_hp > 0 &&
+      state.meritChapter.records.B5.win_hp >= Math.floor(state.meritChapter.records.B5.max_hp * 0.5);
     if (bossWinHpOk && !bossHadBroken && !bossHadExecTaken) chapterBonus += 120 * S;
   }
 
@@ -115,9 +115,9 @@ function mulberry32(seed) {
 const BATTLES = [
   { id: "B1", limit: 10 },
   { id: "B2", limit: 10 },
-  { id: "E1", limit: 10 },
-  { id: "B3", limit: 15 },
-  { id: "BOSS", limit: 15 },
+  { id: "B3", limit: 10 },
+  { id: "B4", limit: 15 },
+  { id: "B5", limit: 15 },
 ];
 
 /** 单回合显示战功：偏右的长尾，与常见逐回合结算量级相近 */
@@ -142,13 +142,13 @@ function generateOneRun(rng) {
     for (let i = 0; i < turns; i++) {
       const pos = [];
       if (execTagged < 8 && rng() > 0.55) {
-        const kinds = b.id === "BOSS" ? ["execute_boss", "execute_elite", "execute_normal"] : ["execute_normal"];
+        const kinds = b.id === "B5" ? ["execute_boss", "execute_elite", "execute_normal"] : ["execute_normal"];
         pos.push({ code: kinds[Math.floor(rng() * kinds.length)], value: 1 });
         execTagged++;
       }
       const neg = [];
-      if (b.id === "BOSS" && rng() < 0.08) neg.push({ code: "self_broken", value: 1 });
-      if (b.id === "BOSS" && rng() < 0.03) neg.push({ code: "boss_execute_taken", value: 1 });
+      if (b.id === "B5" && rng() < 0.08) neg.push({ code: "self_broken", value: 1 });
+      if (b.id === "B5" && rng() < 0.03) neg.push({ code: "boss_execute_taken", value: 1 });
 
       const mom =
         rng() < 0.35 ? Math.min(5, 2 + Math.floor(rng() * 4)) : Math.floor(rng() * 3);
@@ -174,9 +174,9 @@ function generateOneRun(rng) {
   const state = {
     chapterMeritLog: logs,
     meritChapter: {
-      retries: { B1: 0, B2: 0, E1: 0, B3: 0, BOSS: 0 },
+      retries: { B1: 0, B2: 0, B3: 0, B4: 0, B5: 0 },
       records: {
-        BOSS: {
+        B5: {
           max_hp: 100,
           win_hp: rng() < 0.15 ? 30 : 60,
         },

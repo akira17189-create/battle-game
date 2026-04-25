@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>第一章·边寨首功</title>
+    <title>第一章·过五关斩六将</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&family=Zen+Antique+Soft&family=Noto+Serif+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
@@ -12,24 +12,34 @@
   <body>
     <div class="app">
       <section id="homeScreen" class="home-screen" hidden aria-label="主菜单">
-        <div class="home-screen__backdrop" aria-hidden="true"></div>
-        <div class="home-screen__content">
-          <div class="home-screen__actions">
-            <button id="btnHomeStart" class="btn btn-offense home-screen__btn" type="button">开始游戏</button>
-            <button id="btnHomeWarehouse" class="btn btn-secondary home-screen__btn" type="button">卡牌仓库</button>
-            <button id="btnHomeLeaderboard" class="btn btn-secondary home-screen__btn" type="button">天下排行榜</button>
+        <!-- 舞台与 GIF 同源 1:1，按钮区用百分比/cqh 与立绘三键绑定（变量在 .home-screen__stage） -->
+        <div class="home-screen__stage">
+          <picture class="home-screen__loop-wrap">
+            <source srcset="./ui-home-main-menu.gif" type="image/gif" />
+            <source srcset="./ui-home-main-menu.webp" type="image/webp" />
+            <img
+              class="home-screen__loop"
+              src="./ui-home-main-menu.jpg"
+              alt=""
+              width="1254"
+              height="1254"
+              decoding="async"
+              fetchpriority="high"
+            />
+          </picture>
+          <div class="home-screen__content">
+            <div class="home-screen__actions">
+              <button id="btnHomeStart" class="btn btn-offense home-screen__btn" type="button">开始游戏</button>
+            </div>
           </div>
-          <p class="home-screen__desc">
-            此乃三国乱世中的文字战阵。敌将各有意图，你须在“快攻、重击、防御、盾反、调息”之间择机而动，破其架势，乘隙处决，方可夺胜。
-          </p>
         </div>
       </section>
 
       <header id="appTopbar" class="topbar">
         <div class="topbar-row topbar-row--main">
           <div class="title">
-            <div class="kicker">乱世试锋录</div>
-            <div id="pageTitle" class="h1">第一章·边寨首功</div>
+            <div class="kicker">三国将魂传</div>
+            <div id="pageTitle" class="h1">第一章·过五关斩六将</div>
           </div>
           <div class="topbar-roadmap-merit">
             <nav id="chapterRoadmap" class="chapter-roadmap" aria-label="战斗进度"></nav>
@@ -70,20 +80,12 @@
             <div id="battleLog" class="scrollbox" aria-live="polite"></div>
           </section>
 
-          <section id="settlePanelSection" class="panel panel--settle-split panel--war-report">
+          <section id="settlePanelSection" class="panel panel--left-arsenal mini-panel--arsenal">
             <div class="panel-header">
-              <div id="settleLogPanelTitle" class="panel-title">战后军报</div>
-              <div id="settleLogPanelSubtitle" class="panel-subtitle">功过赏罚</div>
+              <div class="panel-title">战法卷</div>
+              <div class="panel-subtitle">已得战法</div>
             </div>
-            <div class="settle-split">
-              <div id="settleLog" class="scrollbox settle-log-half"></div>
-              <div class="settle-rank-half">
-                <div class="settle-rank-head">
-                  <div class="settle-rank-title">天下英雄榜</div>
-                </div>
-                <div id="settleRank" class="scrollbox settle-rank-list"></div>
-              </div>
-            </div>
+            <div id="warehouseCards" class="warehouse-cards warehouse-cards--only"></div>
           </section>
         </section>
 
@@ -232,6 +234,7 @@
               <div class="growth-overlay-inner">
                 <div class="growth-title" id="nodeTitle"></div>
                 <div class="growth-sub" id="nodeSubtitle"></div>
+                <div id="nodeNarrativeBody" class="growth-narrative-body" hidden></div>
                 <div id="nodeOptions" class="node-options"></div>
               </div>
             </div>
@@ -434,6 +437,7 @@
                     <button id="btnWinClaim" class="btn win-claim" type="button" hidden>录入英雄榜</button>
                   </div>
                 </div>
+                <div id="winRewardSixPick" class="win-reward-six-pick" hidden aria-live="polite"></div>
                 <div id="winGrowthEmbed" class="win-growth-embed battle-win-inline-growth" hidden>
                   <div class="win-growth-title" id="winGrowthTitle"></div>
                   <div class="win-growth-sub" id="winGrowthSubtitle"></div>
@@ -456,9 +460,12 @@
 
             <div id="dividerBeforeBelowActions" class="panel-divider"></div>
             <div id="belowActionsWrap" class="below-actions">
-              <section class="mini-panel mini-panel--arsenal">
-                <div class="mini-title">战法卷</div>
-                <div id="warehouseCards" class="warehouse-cards warehouse-cards--only"></div>
+              <section class="mini-panel mini-panel--war-report panel--war-report">
+                <div class="mini-title mini-title--war-report">
+                  <div id="settleLogPanelTitle" class="panel-title">战后军报</div>
+                  <div id="settleLogPanelSubtitle" class="panel-subtitle">功过赏罚</div>
+                </div>
+                <div id="settleLog" class="scrollbox mini settle-log-panel"></div>
               </section>
               <section id="tipsPanel" class="mini-panel mini-panel--tips">
                 <div class="mini-title mini-title--tips-head">
