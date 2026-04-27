@@ -180,6 +180,18 @@ function isAttrCardId(id) {
   return !!ATTR_CARDS.find((x) => x && x.id === id);
 }
 
+/** 成长领奖与 ATTR_CARDS 对齐：优先解析 attr_ 前缀，避免仅有卡面/ id 时丢失 _stat 导致属性未入账 */
+function resolveAttrCardFromGrowthOpt(opt) {
+  if (!opt || !ATTR_CARDS.length) return null;
+  if (opt.id && String(opt.id).startsWith("attr_")) {
+    const rawId = String(opt.id).slice("attr_".length);
+    const byId = ATTR_CARDS.find((x) => x && x.id === rawId);
+    if (byId) return byId;
+  }
+  if (opt._stat) return ATTR_CARDS.find((x) => x && x._stat === opt._stat) || null;
+  return null;
+}
+
 function mixedDraftPool(state) {
   // 技法卡（perk）+ 属性卡（A_ATK 等）混抽；属性卡遵循“一局只拿一次”的去重（attrDraftPool）
   const tech = skillDraftPool(state);
@@ -4637,25 +4649,23 @@ function resolveEnemyAgainstPlayer(
       out.notes.push(`你对${e.name}盾反被破（对快攻）：被抢先命中。`);
       const base = e.strikeBase || ns(2);
       let dmg = base;
-      let stg = ENEMY_STRIKE_QUICK_STAGGER_TO_PLAYER + ENEMY_BLOCK_FAIL_EXTRA_STAGGER;
-      let defendStaggerReduced = 0;
-      if (defending) {
-        const beforeStg = stg;
-        const extraMit = state.player?.defendMitigationBonus || 0;
-    dmg = Math.max(0, dmg - ns(1 + extraMit));
-    if ((state._restDefendBonusCharges || 0) > 0) {
-      dmg = Math.max(0, dmg - ns(1));
-      state._restDefendBonusCharges = 0;
-      out.notes.push(`凝神守气：调息余韵仍在，本次承伤额外 -${ns(1)}。`);
-    }
-    // T21：破绽状态下使用防御时，额外减伤 +1（仅减伤害，不减失衡）
-    if (state.perks?.includes("perk_broken_defend_bonus") && p.broken && dmg > 0) {
-      dmg = Math.max(0, dmg - ns(1));
-      out.notes.push(`破绽强守：破绽中防御额外减伤 -${ns(1)}。`);
-    }
-        stg = Math.max(0, stg - 1);
-        defendStaggerReduced = beforeStg - stg;
-        out.notes.push(`防御：本回合受到伤害 -${ns(1 + extraMit)}，受到失衡 -1。`);
+      const stg = ENEMY_STRIKE_QUICK_STAGGER_TO_PLAYER + ENEMY_BLOCK_FAIL_EXTRA_STAGGER;
+      // 盾反时 playerAction 为 block，defending 恒为 false；减伤不得写在 if(defending) 内（原为死代码）。
+      // 「坚守」等与防御额外档挂钩的减伤在盾反被破时仍应生效（仅额外档，不含防御本档 -ns(1)）。
+      const extraMit = state.player?.defendMitigationBonus || 0;
+      if (extraMit > 0) {
+        const beforeDmg = dmg;
+        dmg = Math.max(0, dmg - ns(extraMit));
+        if (beforeDmg > dmg) out.notes.push(`守备加护：盾反被破仍减免 ${beforeDmg - dmg} 伤害（坚守等额外减伤）。`);
+      }
+      if ((state._restDefendBonusCharges || 0) > 0) {
+        dmg = Math.max(0, dmg - ns(1));
+        state._restDefendBonusCharges = 0;
+        out.notes.push(`凝神守气：调息余韵仍在，本次承伤额外 -${ns(1)}。`);
+      }
+      if (state.perks?.includes("perk_broken_defend_bonus") && p.broken && dmg > 0) {
+        dmg = Math.max(0, dmg - ns(1));
+        out.notes.push(`破绽强守：破绽中额外减伤 -${ns(1)}。`);
       }
       // 护势已取消：不再触发“护势为 0 额外失衡”
       out.pDmg = applyDamage(p, dmg);
@@ -5777,8 +5787,12 @@ function previewRawBlockVsQuickPunishment(state, enemyObj) {
   if (enemyObj.waitingToEnter || e.hp <= 0 || p.hp <= 0) return { raw: 0, stg: 0 };
   if (e.broken) return { raw: 0, stg: 0 };
   const base = e.strikeBase || ns(2);
-  const dmg = base;
+  let dmg = base;
   const stg = ENEMY_STRIKE_QUICK_STAGGER_TO_PLAYER + ENEMY_BLOCK_FAIL_EXTRA_STAGGER;
+  const extraMit = state.player?.defendMitigationBonus || 0;
+  if (extraMit > 0) dmg = Math.max(0, dmg - ns(extraMit));
+  if ((state._restDefendBonusCharges || 0) > 0) dmg = Math.max(0, dmg - ns(1));
+  if (state.perks?.includes("perk_broken_defend_bonus") && p.broken && dmg > 0) dmg = Math.max(0, dmg - ns(1));
   return { raw: dmg, stg };
 }
 
@@ -11152,7 +11166,7 @@ function finish(state, ui, outcome) {
     );
   }
   state.settleLog.push("奖励：无。");
-  state.settleLog.push("可点击「再战此阵」立即再战，或「结算回营」提前封卷（战功入榜、评级与将魂照常结算）。");
+  state.settleLog.push("可点击「再战此阵」立即再战，或「结算回营」返回主界面（战功入榜、评级与将魂照常结算）。");
 }
 
 /** 与 style 中调息动画时长一致 */
@@ -11265,27 +11279,30 @@ function triggerDeathBlowFx(ui) {
 /** 成长选项：仅写入奖励（技法/属性/战利品），不含换图导航。重复领取装备时返回 "abort"。 */
 function applyGrowthRewards(state, node, opt) {
   if (opt.perk) {
-    if (!state.perks.includes(opt.perk)) state.perks.push(opt.perk);
-    state.settleLog.push(`成长：获得【${opt.title}】。`);
-    if (opt.perk === "perk_executeheal") {
-      // 与调息 HP+20 同标尺：executeHealBonus 为直接传入 applyHeal 的存量；ns(2)=20。勿用 ns(20)（会变成 +200）
-      state.player.executeHealBonus = (state.player.executeHealBonus || 0) + ns(2);
-      state.settleLog.push("血战余生生效：处决回血 +20。");
+    const perkAlreadyOwned = state.perks.includes(opt.perk);
+    if (!perkAlreadyOwned) state.perks.push(opt.perk);
+    if (!perkAlreadyOwned) {
+      state.settleLog.push(`成长：获得【${opt.title}】。`);
+      if (opt.perk === "perk_executeheal") {
+        // 与调息 HP+20 同标尺：executeHealBonus 为直接传入 applyHeal 的存量；ns(2)=20。勿用 ns(20)（会变成 +200）
+        state.player.executeHealBonus = (state.player.executeHealBonus || 0) + ns(2);
+        state.settleLog.push("血战余生生效：处决回血 +20。");
+      }
+    } else {
+      state.settleLog.push(`成长：【${opt.title}】已拥有，同类技法效果不叠加。`);
     }
     const offer = state.draftOffers?.[node.id];
     if (Array.isArray(offer) && offer.length) state.skillDeckRemaining = removeMany(state.skillDeckRemaining, offer);
     else state.skillDeckRemaining = removeMany(state.skillDeckRemaining, [opt.perk]);
   }
-  if (opt._stat) {
-    applyStatGrowth(state, opt._stat);
-    state.settleLog.push(`成长：${opt.title}。`);
+  const attrCard = resolveAttrCardFromGrowthOpt(opt);
+  if (attrCard && attrCard._stat) {
+    applyStatGrowth(state, attrCard._stat);
+    state.settleLog.push(`成长：${opt.title || `属性：${attrCard.title}`}。`);
     state._attrGrowthLog = state._attrGrowthLog || [];
-    const ac = ATTR_CARDS.find((x) => x._stat === opt._stat);
-    if (ac) {
-      state._attrGrowthLog.push({ title: ac.title, desc: ac.desc, frontArt: ac.frontArt || "" });
-      state._pickedAttrCardIds = state._pickedAttrCardIds || {};
-      state._pickedAttrCardIds[ac.id] = true;
-    }
+    state._attrGrowthLog.push({ title: attrCard.title, desc: attrCard.desc, frontArt: attrCard.frontArt || "" });
+    state._pickedAttrCardIds = state._pickedAttrCardIds || {};
+    state._pickedAttrCardIds[attrCard.id] = true;
   }
   if (opt._equipAll) {
     const loot = ensureR3Loot(state);
@@ -13022,7 +13039,7 @@ function boot() {
       state.battleSnapshot = null;
       if (state.chapterId === "chapter1") {
         state.settleLog = state.settleLog || [];
-        state.settleLog.push("{g}结算回营：提前封卷，本章战功已记入英雄榜。{/g}");
+        state.settleLog.push("{g}结算回营：本章战功已记入英雄榜，已返回主界面。{/g}");
         const pen = state._deathMeritPenaltyPending | 0;
         if (pen > 0) {
           const cur = state.runMeritScore ?? 0;
