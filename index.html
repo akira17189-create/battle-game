@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&family=Zen+Antique+Soft&family=Noto+Serif+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./style.css?v=20260425-wh-order-row-fix" />
+    <link rel="stylesheet" href="./style.css?v=20260427-home-start-fx-h-10" />
   </head>
   <body>
     <div class="app">
@@ -28,7 +28,9 @@
           <div class="home-screen__fx" aria-hidden="true"></div>
           <div class="home-screen__depth" aria-hidden="true"></div>
           <div class="home-screen__content">
+            <div class="home-screen__logo-fx" aria-hidden="true"></div>
             <div class="home-screen__actions">
+              <span class="home-screen__start-fx" aria-hidden="true"></span>
               <button id="btnHomeStart" class="btn btn-offense home-screen__btn" type="button">开始游戏</button>
             </div>
           </div>
@@ -240,7 +242,7 @@
                   <img src="./ui-stage-vs-crest.png" alt="" />
                 </div>
             <div id="enemyRowWrap" class="enemy-row">
-              <div id="enemyCardA" class="fighter-card enemy-card" role="button" tabindex="0" aria-label="选择目标：守卫刀兵甲">
+              <div id="enemyCardA" class="fighter-card enemy-card" role="button" tabindex="0" aria-label="选择目标：敌方单位">
                 <div id="enemyRestFxOverlayA" class="rest-fx-overlay" aria-hidden="true"></div>
                 <div id="enemyCardFxLayerA" class="card-fx-layer" aria-hidden="true"></div>
                 <div id="enemyCardFxTokenA" class="card-fx-token" aria-hidden="true"></div>
@@ -268,7 +270,7 @@
                 </div>
               </div>
 
-              <div id="enemyCardB" class="fighter-card enemy-card" role="button" tabindex="0" aria-label="选择目标：守卫刀兵乙">
+              <div id="enemyCardB" class="fighter-card enemy-card" role="button" tabindex="0" aria-label="选择目标：敌方单位">
                 <div id="enemyRestFxOverlayB" class="rest-fx-overlay" aria-hidden="true"></div>
                 <div id="enemyCardFxLayerB" class="card-fx-layer" aria-hidden="true"></div>
                 <div id="enemyCardFxTokenB" class="card-fx-token" aria-hidden="true"></div>
@@ -299,7 +301,7 @@
                 </div>
               </div>
 
-              <div id="enemyCardC" class="fighter-card enemy-card" hidden role="button" tabindex="0" aria-label="选择目标：敌人丙">
+              <div id="enemyCardC" class="fighter-card enemy-card" hidden role="button" tabindex="0" aria-label="选择目标：敌方单位">
                 <div id="enemyRestFxOverlayC" class="rest-fx-overlay" aria-hidden="true"></div>
                 <div id="enemyCardFxLayerC" class="card-fx-layer" aria-hidden="true"></div>
                 <div id="enemyCardFxTokenC" class="card-fx-token" aria-hidden="true"></div>
@@ -522,6 +524,6 @@
     <script src="./general_soul_lore_105.js"></script>
     <script src="./general_soul_scoring.js"></script>
     <script src="./skill_cards_config.js"></script>
-    <script src="./main.js?v=20260425-skip-earlycamp-s1"></script>
+    <script src="./main.js?v=20260427-enemy-labels"></script>
   </body>
 </html>

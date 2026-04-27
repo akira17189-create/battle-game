@@ -267,6 +267,27 @@ function applyStatGrowth(state, kind) {
   }
 }
 
+/**
+ * 按「已选属性卡 + 已领取装备」重算防御额外减伤基数（每 1 点 = 结算里 +1 基础减伤档，再 ×10 为 HP）。
+ * 与战法卷中「坚守」、亮银胸甲等展示对齐，避免进度与战斗结算脱轨。
+ */
+function syncDefendMitigationBonusFromProgress(state) {
+  const p = state?.player;
+  if (!p || !ATTR_CARDS.length) return;
+  let n = 0;
+  const picked = state._pickedAttrCardIds || {};
+  for (const card of ATTR_CARDS) {
+    if (card && card._stat === "def" && picked[card.id]) n += 1;
+  }
+  const loot = state.lootR3;
+  if (loot?.drops) {
+    for (const d of loot.drops) {
+      if (loot.taken?.[d.id] && d.eff?.defendMit) n += Number(d.eff.defendMit) || 0;
+    }
+  }
+  p.defendMitigationBonus = n;
+}
+
 function ensureR3Loot(state) {
   // 《设计表》v0.1：精英必掉 1 张装备卡；20% 概率额外掉 1 张“另一类”装备卡；若额外掉落触发，两张都必须拿
   if (state.lootR3) return state.lootR3;
@@ -4754,8 +4775,7 @@ function formatLineForTurn(state, playerAction, targetId, intents, details) {
     execute: "处决",
     rest: "调息",
   };
-  const tMap = { A: "甲", B: "乙", C: "丙" };
-  const targetLabel = targetId ? tMap[targetId] : "—";
+  const targetLabel = targetId ? enemySlotLabelForPlayer(state, targetId) : "—";
   const intentLabel = (eo, raw) => {
     if (!eo) return "—";
     if (eo.waitingToEnter) return "未上场";
@@ -4764,7 +4784,7 @@ function formatLineForTurn(state, playerAction, targetId, intents, details) {
     return intentNameForEnemy(eo, raw);
   };
   const intentBits = state.enemies
-    .map((eo) => `${tMap[eo.id] || eo.id}=${intentLabel(eo, intents[eo.id])}`)
+    .map((eo) => `${enemySlotLabelForPlayer(state, eo.id)}=${intentLabel(eo, intents[eo.id])}`)
     .join(" ");
   parts.push(
     `回合 ${formatBattleTurnNumber(state.globalTurn)}｜你：${aMap[playerAction]}${targetId ? `（目标：${targetLabel}）` : ""}｜意图：${intentBits}`,
@@ -7399,12 +7419,12 @@ function finalizeBattleTurnAfterResolutionSegments(state, ui, bundle, turnCtx, o
   state._attackInterruptedHeavyTargetId = null;
 
   if (state.battle && Array.isArray(state.battle.reserve) && state.battle.reserve.length) {
-    const slotReserveLabel = { A: "甲位", B: "乙位", C: "丙位" };
     for (const slot of state.enemies) {
       if (slot.waitingToEnter) continue;
       if (slot.fighter.hp > 0) continue;
       const next = state.battle.reserve.shift();
       if (!next) break;
+      const prevName = enemySlotLabelForPlayer(state, slot.id);
       const replaced = mkEnemyFromDef(next, slot.id);
       slot.fighter = replaced.fighter;
       slot.ai = replaced.ai;
@@ -7413,9 +7433,8 @@ function finalizeBattleTurnAfterResolutionSegments(state, ui, bundle, turnCtx, o
       slot.canBlockHeavy = replaced.canBlockHeavy;
       slot.enemySkill = replaced.enemySkill;
       slot.intent = /** @type {EnemyIntent} */ ("adjust");
-      details.push(
-        `→ {o}后备敌人加入：${slotReserveLabel[slot.id] || String(slot.id)}替换为${slot.fighter.name}。{/o}`,
-      );
+      const incoming = getEnemyDisplayName(slot.fighter.name);
+      details.push(`→ {o}后备敌人加入：${prevName}倒下后，${incoming}接战。{/o}`);
     }
   }
 
@@ -7683,9 +7702,7 @@ function initBattleTurnContextForResolving(state, ui, action, bundle = null) {
     hitsOnStaggeredEnemy: 0,
   };
 
-  const tgtObj = state.enemies.find((x) => x.id === state.targetId);
-  const fallbackEnemyName = { A: "敌人甲", B: "敌人乙", C: "敌人丙" };
-  const targetName = tgtObj?.fighter?.name || fallbackEnemyName[state.targetId] || "敌人";
+  const targetName = enemySlotLabelForPlayer(state, state.targetId);
   const actionFlavor = {
     attack: `快刀直取${targetName}破绽。`,
     heavy: `沉肩重击，压垮${targetName}架势。`,
@@ -7751,9 +7768,7 @@ function initBattleTurnContextForResolving(state, ui, action, bundle = null) {
 }
 
 function previewActionDescText(state, action) {
-  const tgtObj = state.enemies.find((x) => x.id === state.targetId);
-  const fallbackEnemyName = { A: "敌人甲", B: "敌人乙", C: "敌人丙" };
-  const targetName = tgtObj?.fighter?.name || fallbackEnemyName[state.targetId] || "敌人";
+  const targetName = enemySlotLabelForPlayer(state, state.targetId);
   const actionFlavor = {
     attack: `快刀直取${targetName}破绽。`,
     heavy: `沉肩重击，压垮${targetName}架势。`,
@@ -8435,6 +8450,15 @@ function getEnemyDisplayName(name) {
   return v === "边寨渠帅" ? "管亥" : v;
 }
 
+/** 玩家可见的敌阵称谓：优先当前将魂/配置姓名（含 getEnemyDisplayName 映射）；名为「—」或空时回退甲乙丙。 */
+function enemySlotLabelForPlayer(state, enemyId) {
+  const eo = state?.enemies?.find((e) => e.id === enemyId);
+  const dn = getEnemyDisplayName(eo?.fighter?.name || "");
+  if (dn && dn !== "—") return dn;
+  const slot = { A: "甲", B: "乙", C: "丙" }[enemyId];
+  return slot || String(enemyId);
+}
+
 function getEnemyAvatarAsset(name, archetype) {
   const displayName = getEnemyDisplayName(name);
   const fromTable = ENEMY_AVATAR_BY_NAME[displayName];
@@ -8815,7 +8839,7 @@ function buildAdviceAndHint(state) {
   let hintExecuteOn = null;
 
   const heavyEnemies = acting.filter((eo) => eo.intent === "heavy");
-  const labelOf = (id) => ({ A: "甲", B: "乙", C: "丙" }[id] || id);
+  const labelOf = (id) => enemySlotLabelForPlayer(state, id);
   const stgLeftOf = (eo) => Math.max(0, eo.fighter.staggerThreshold - eo.fighter.stagger);
   const sortByCloserToBroken = (a, b) => stgLeftOf(a) - stgLeftOf(b);
 
@@ -10169,14 +10193,28 @@ function render(state, ui) {
     ui.enemyCardC.classList.toggle("enemy-card--broken", eC.hp > 0 && !!eC.broken);
   }
 
+  if (ui.enemyCardA) {
+    ui.enemyCardA.setAttribute("aria-label", `选择目标：${enemySlotLabelForPlayer(state, "A")}`);
+  }
+  if (ui.enemyCardB) {
+    const bLabel = enemySlotLabelForPlayer(state, "B");
+    ui.enemyCardB.setAttribute(
+      "aria-label",
+      eoBFight.waitingToEnter ? `未上场：${bLabel}` : `选择目标：${bLabel}`,
+    );
+  }
+  if (ui.enemyCardC && eoCFight) {
+    ui.enemyCardC.setAttribute("aria-label", `选择目标：${enemySlotLabelForPlayer(state, "C")}`);
+  }
+
   // enemy intent in card
-  const deadIntentText = (eo, fallbackName) => {
-    const name = getEnemyDisplayName(eo?.fighter?.name || "") || fallbackName;
+  const deadIntentLineHtml = (eo) => {
+    const name = getEnemyDisplayName(eo?.fighter?.name || "") || enemySlotLabelForPlayer(state, eo.id);
     return `意图：${escapeHtml(name)}已倒下`;
   };
   ui.intentAInCard.innerHTML =
     eoAFight.fighter.hp <= 0 && !revealA
-      ? `${deadIntentText(eoAFight, "敌人甲")}${enemySkillIconHtml(state, eoAFight)}`
+      ? `${deadIntentLineHtml(eoAFight)}${enemySkillIconHtml(state, eoAFight)}`
       : `意图：${
           eoAFight.fighter.broken
             ? "破绽"
@@ -10185,7 +10223,7 @@ function render(state, ui) {
   ui.intentBInCard.innerHTML = eoBFight.waitingToEnter
     ? "意图：未上场"
     : eoBFight.fighter.hp <= 0 && !state._winKillRevealEnemyIds?.includes("B")
-      ? `${deadIntentText(eoBFight, "敌人乙")}${enemySkillIconHtml(state, eoBFight)}`
+      ? `${deadIntentLineHtml(eoBFight)}${enemySkillIconHtml(state, eoBFight)}`
       : `意图：${
           eoBFight.fighter.broken
             ? "破绽"
@@ -10195,7 +10233,7 @@ function render(state, ui) {
     const eC = eoCFight.fighter;
     ui.intentCInCard.innerHTML =
       eC.hp <= 0 && !state._winKillRevealEnemyIds?.includes("C")
-        ? `${deadIntentText(eoCFight, "敌人丙")}${enemySkillIconHtml(state, eoCFight)}`
+        ? `${deadIntentLineHtml(eoCFight)}${enemySkillIconHtml(state, eoCFight)}`
         : `意图：${
             eC.broken
               ? "破绽"
@@ -10544,6 +10582,7 @@ function startBattleFromNode(state, node) {
     state.pendingRetryBattleNodeId = null;
     state.player.restCooldownLeft = 0;
   }
+  syncDefendMitigationBonusFromProgress(state);
 
   const wave0 = battle.waves[0];
   state.battle = {
@@ -11279,6 +11318,7 @@ function applyGrowthRewards(state, node, opt) {
     if (d.eff?.heavyStg) state.player.heavyStgBonus = (state.player.heavyStgBonus || 0) + d.eff.heavyStg;
     state.settleLog.push(`{o}战利品：获得【${d.title}】（${d.desc}）。{/o}`);
   }
+  syncDefendMitigationBonusFromProgress(state);
   return undefined;
 }
 
@@ -11907,9 +11947,7 @@ function onPlayerAction(state, ui, action, opts = {}) {
   };
 
   // 一句“游戏化”行动描述
-  const tgtObj = state.enemies.find((x) => x.id === state.targetId);
-  const fallbackEnemyName = { A: "敌人甲", B: "敌人乙", C: "敌人丙" };
-  const targetName = tgtObj?.fighter?.name || fallbackEnemyName[state.targetId] || "敌人";
+  const targetName = enemySlotLabelForPlayer(state, state.targetId);
   const actionFlavor = {
     attack: `快刀直取${targetName}破绽。`,
     heavy: `沉肩重击，压垮${targetName}架势。`,
@@ -12308,12 +12346,12 @@ function onPlayerAction(state, ui, action, opts = {}) {
 
   // 补位：若有后备敌人，填充倒下的槽位（用于“守点战”）
   if (state.battle && Array.isArray(state.battle.reserve) && state.battle.reserve.length) {
-    const slotReserveLabel = { A: "甲位", B: "乙位", C: "丙位" };
     for (const slot of state.enemies) {
       if (slot.waitingToEnter) continue;
       if (slot.fighter.hp > 0) continue;
       const next = state.battle.reserve.shift();
       if (!next) break;
+      const prevName = enemySlotLabelForPlayer(state, slot.id);
       const replaced = mkEnemyFromDef(next, slot.id);
       slot.fighter = replaced.fighter;
       slot.ai = replaced.ai;
@@ -12322,9 +12360,8 @@ function onPlayerAction(state, ui, action, opts = {}) {
       slot.canBlockHeavy = replaced.canBlockHeavy;
       slot.enemySkill = replaced.enemySkill;
       slot.intent = /** @type {EnemyIntent} */ ("adjust");
-      details.push(
-        `→ {o}后备敌人加入：${slotReserveLabel[slot.id] || String(slot.id)}替换为${slot.fighter.name}。{/o}`,
-      );
+      const incoming = getEnemyDisplayName(slot.fighter.name);
+      details.push(`→ {o}后备敌人加入：${prevName}倒下后，${incoming}接战。{/o}`);
     }
   }
 

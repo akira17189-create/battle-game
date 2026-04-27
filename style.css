@@ -893,7 +893,11 @@ body.app-prologue-open .topbar-roadmap-merit .chapter-roadmap{
   .home-screen__fx::before,
   .home-screen__fx::after,
   .home-screen__depth::before,
-  .home-screen__depth::after{
+  .home-screen__depth::after,
+  .home-screen__start-fx,
+  .home-screen__start-fx::before,
+  .home-screen__start-fx::after,
+  .home-screen__logo-fx::after{
     animation: none !important;
   }
   .home-screen__loop{
@@ -911,6 +915,24 @@ body.app-prologue-open .topbar-roadmap-merit .chapter-roadmap{
   .home-screen__depth::after{
     opacity: .36;
   }
+  .home-screen:has(.home-screen__loop) .home-screen__start-fx{
+    opacity: .88;
+    transform: none;
+    box-shadow:
+      0 0 20px rgba(255, 155, 75, .26),
+      0 0 44px rgba(195, 68, 45, .16),
+      inset 0 0 22px rgba(255, 205, 130, .08);
+  }
+  .home-screen:has(.home-screen__loop) .home-screen__start-fx::before{
+    opacity: .75;
+    transform: none;
+  }
+  .home-screen:has(.home-screen__loop) .home-screen__start-fx::after{
+    opacity: 0;
+  }
+  .home-screen:has(.home-screen__loop) .home-screen__logo-fx::after{
+    opacity: 0;
+  }
 }
 .home-screen[hidden]{
   display: none !important;
@@ -926,6 +948,66 @@ body.app-prologue-open .topbar-roadmap-merit .chapter-roadmap{
   box-sizing: border-box;
   pointer-events: none;
 }
+/* 封面图标题区（如「秦烈北行」）：仅周期扫光，与舞台同比例 */
+.home-screen__logo-fx{
+  display: none;
+}
+.home-screen:has(.home-screen__loop) .home-screen__logo-fx{
+  display: block;
+  position: absolute;
+  left: 50%;
+  top: calc(7.5cqh + 50px);
+  transform: translateX(calc(-50% + 10px));
+  width: 52cqw;
+  height: 16cqh;
+  pointer-events: none;
+  z-index: 0;
+  /* 羽化遮罩：避免 overflow 硬裁切露出矩形底板；扫光仅在该区域内可见 */
+  -webkit-mask-image: radial-gradient(
+    ellipse 94% 90% at 50% 50%,
+    #000 38%,
+    rgba(0, 0, 0, .55) 58%,
+    transparent 82%
+  );
+  mask-image: radial-gradient(
+    ellipse 94% 90% at 50% 50%,
+    #000 38%,
+    rgba(0, 0, 0, .55) 58%,
+    transparent 82%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+.home-screen:has(.home-screen__loop) .home-screen__logo-fx::after{
+  content: "";
+  position: absolute;
+  top: -30%;
+  left: -35%;
+  width: 42%;
+  height: 160%;
+  background: linear-gradient(
+    108deg,
+    transparent 0%,
+    transparent 30%,
+    rgba(255, 252, 240, .07) 42%,
+    rgba(255, 236, 200, .30) 50%,
+    rgba(255, 252, 240, .07) 58%,
+    transparent 70%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
+  filter: blur(.9px);
+  mix-blend-mode: screen;
+  animation: homeLogoShineSweep 5.5s ease-in-out infinite;
+}
+@keyframes homeLogoShineSweep{
+  0%{ transform: skewX(-20deg) translateX(-130%); opacity: 0; }
+  10%{ opacity: .9; }
+  38%{ transform: skewX(-20deg) translateX(260%); opacity: .75; }
+  48%, 100%{ transform: skewX(-20deg) translateX(260%); opacity: 0; }
+}
 .home-screen__actions{
   pointer-events: auto;
 }
@@ -933,7 +1015,9 @@ body.app-prologue-open .topbar-roadmap-merit .chapter-roadmap{
   position: absolute;
   left: 50%;
   top: var(--home-menu-btns-top);
-  transform: translateX(-50%);
+  z-index: 1;
+  /* 相对居中再偏移：右 15px、下 30px；按钮与 .home-screen__start-fx 同容器，一并移动 */
+  transform: translate(calc(-50% + 15px), 30px);
   width: var(--home-menu-btns-w);
   margin: 0;
   padding: 0;
@@ -942,6 +1026,97 @@ body.app-prologue-open .topbar-roadmap-merit .chapter-roadmap{
   align-items: stretch;
   gap: var(--home-menu-btn-gap);
   box-sizing: border-box;
+}
+/* 「开始游戏」热区：脉冲光晕 + 扫光（叠在透明按钮下层，不挡点击） */
+.home-screen__start-fx{
+  display: none;
+}
+.home-screen:has(.home-screen__loop) .home-screen__actions{
+  isolation: isolate;
+}
+.home-screen:has(.home-screen__loop) .home-screen__start-fx{
+  display: block;
+  position: absolute;
+  left: 35px;
+  right: 35px;
+  top: 5px;
+  height: calc(var(--home-menu-btn-h) - 10px);
+  border-radius: 18px;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+  box-shadow:
+    0 0 22px rgba(255, 160, 80, .28),
+    0 0 48px rgba(200, 72, 48, .18),
+    inset 0 0 24px rgba(255, 210, 140, .08);
+  animation: homeStartGlowPulse 2.8s ease-in-out infinite;
+}
+.home-screen:has(.home-screen__loop) .home-screen__start-fx::before{
+  content: "";
+  position: absolute;
+  inset: -35%;
+  background:
+    radial-gradient(55% 70% at 50% 50%, rgba(255, 200, 120, .22), transparent 62%),
+    radial-gradient(40% 50% at 30% 40%, rgba(255, 120, 60, .12), transparent 55%);
+  opacity: .85;
+  animation: homeStartInnerGlow 3.4s ease-in-out infinite;
+}
+.home-screen:has(.home-screen__loop) .home-screen__start-fx::after{
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: -40%;
+  width: 45%;
+  height: 140%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 248, 220, .06) 42%,
+    rgba(255, 235, 190, .22) 50%,
+    rgba(255, 248, 220, .06) 58%,
+    transparent 100%
+  );
+  transform: skewX(-18deg);
+  animation: homeStartShineSweep 4.2s ease-in-out infinite;
+}
+.home-screen:has(.home-screen__loop) .home-screen__btn{
+  position: relative;
+  z-index: 1;
+}
+@keyframes homeStartGlowPulse{
+  0%, 100%{
+    opacity: .92;
+    box-shadow:
+      0 0 18px rgba(255, 150, 70, .22),
+      0 0 40px rgba(190, 64, 44, .14),
+      inset 0 0 20px rgba(255, 200, 120, .06);
+    transform: scale(1);
+  }
+  50%{
+    opacity: 1;
+    box-shadow:
+      0 0 30px rgba(255, 180, 100, .38),
+      0 0 64px rgba(210, 80, 50, .24),
+      inset 0 0 28px rgba(255, 220, 160, .11);
+    transform: scale(1.02);
+  }
+}
+@keyframes homeStartInnerGlow{
+  0%, 100%{ opacity: .7; transform: scale(1) translate(0, 0); }
+  50%{ opacity: 1; transform: scale(1.06) translate(2%, -1%); }
+}
+@keyframes homeStartShineSweep{
+  0%{ transform: skewX(-18deg) translateX(-120%); opacity: 0; }
+  8%{ opacity: 1; }
+  35%{ transform: skewX(-18deg) translateX(280%); opacity: .85; }
+  45%, 100%{ transform: skewX(-18deg) translateX(280%); opacity: 0; }
+}
+.home-screen:has(.home-screen__loop) .home-screen__actions:hover .home-screen__start-fx{
+  animation-duration: 1.9s;
+  filter: brightness(1.12);
+}
+.home-screen:has(.home-screen__loop) .home-screen__actions:hover .home-screen__start-fx::after{
+  animation-duration: 2.4s;
 }
 /* 主菜单按钮：与战斗界面相同的金属内框（八角饰线 + --ui-frame-*），上覆面板柔光 */
 .home-screen .home-screen__btn{
