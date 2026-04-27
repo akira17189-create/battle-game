@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&family=Zen+Antique+Soft&family=Noto+Serif+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./style.css?v=20260427-sandbox-card-preview" />
+    <link rel="stylesheet" href="./style.css?v=20260427-b1-guide-font" />
   </head>
   <body>
     <div class="app">
@@ -244,6 +244,10 @@
                 <div class="battle-stage-vs-crest" aria-hidden="true">
                   <img src="./ui-stage-vs-crest.png" alt="" />
                 </div>
+                <div id="b1ForcedGuideLayer" class="b1-forced-guide-layer" hidden aria-hidden="true">
+                  <div id="b1ForcedGuideBanner" class="b1-forced-guide-floating" role="status"></div>
+                </div>
+                <div id="b1ForcedGuideArrow" class="b1-forced-guide-arrow" hidden aria-hidden="true"></div>
             <div id="enemyRowWrap" class="enemy-row">
               <div id="enemyCardA" class="fighter-card enemy-card" role="button" tabindex="0" aria-label="选择目标：敌方单位">
                 <div id="enemyRestFxOverlayA" class="rest-fx-overlay" aria-hidden="true"></div>
@@ -375,7 +379,7 @@
                 <div id="pFlags" class="flags"></div>
                 <div id="playerCardFlavor" class="player-card-flavor">—</div>
               </div>
-              <section class="mini-panel mini-panel--commands skill-icons-panel" aria-label="招式">
+              <section id="skillIconsPanel" class="mini-panel mini-panel--commands skill-icons-panel" aria-label="招式">
                 <div class="mini-title">招式</div>
                 <div class="skill-icons">
                   <div class="skill-icons-row">
@@ -470,7 +474,7 @@
                 <div class="mini-title mini-title--tips-head">
                   <span>军前提要</span>
                   <label class="beginner-mode-toggle">
-                    <input type="checkbox" id="beginnerModeToggle" />
+                    <input type="checkbox" id="beginnerModeToggle" checked />
                     <span>初学指引</span>
                   </label>
                 </div>
@@ -534,7 +538,7 @@
         <h2 class="skill-test-title">技能沙盒（本地测试）</h2>
         <p class="skill-test-hint">
           不计入战功榜进度。每次打开本面板会<strong>清空技法勾选</strong>（避免上一场残留在战法卷里）；属性勾选会保留。若只测四张属性，请勿勾选技法。
-          点击列表中某张<strong>技法或属性</strong>名称可预览卡面图。若主菜单无「技能沙盒」按钮，可在地址后加 <code>?skilltest=1</code> 并刷新。
+          点击列表中某张<strong>技法或属性</strong>名称可预览卡面图。当前发行配置已关闭沙盒；本地开发时可在 <code>main.js</code> 将 <code>SKILL_SANDBOX_ENABLED</code> 设为 <code>true</code>，或用 <code>?skilltest=1</code>（仅在该开关开启时有效）。
         </p>
         <div class="skill-test-field">
           <label class="skill-test-label" for="skillTestPreset">敌方预设</label>
@@ -581,6 +585,6 @@
     <script src="./general_soul_lore_105.js"></script>
     <script src="./general_soul_scoring.js"></script>
     <script src="./skill_cards_config.js?v=20260427-cardart-png-rename"></script>
-    <script src="./main.js?v=20260427-execute-heal-sync"></script>
+    <script src="./main.js?v=20260427-b1-guide-fixedpos"></script>
   </body>
 </html>

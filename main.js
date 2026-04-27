@@ -197,8 +197,12 @@ function isAttrCardId(id) {
   return !!ATTR_CARDS.find((x) => x && x.id === id);
 }
 
+/** 设为 false 时关闭沙盒：主菜单无入口，`?skilltest=1` / `?dev=1` 亦不开启。开发本地测卡时再改回 true。 */
+const SKILL_SANDBOX_ENABLED = false;
+
 /** 本地「技能沙盒」：localhost / 本机 IP / file；亦可 ?skilltest=1 强制开启（便于非标准主机名） */
 function isSkillTestBuildAvailable() {
+  if (!SKILL_SANDBOX_ENABLED) return false;
   if (typeof location === "undefined") return false;
   try {
     const q = new URLSearchParams(location.search || "");
@@ -3982,6 +3986,7 @@ function resetChapter1NewGame(state) {
   state.tips = [];
   state.tutorialSeen = {};
   state.tipsHighlightDismissed = false;
+  delete state._b1ForcedGuide;
   state.introDismissed = false;
   state.firstQuickAttackBonusPending = false;
   state._mainBehaviorHistory = [];
@@ -7995,8 +8000,7 @@ function finalizeBattleTurnAfterResolutionSegments(state, ui, bundle, turnCtx, o
  * 多段对拼：初始化与 onPlayerAction 相同的上下文（已消耗 state._turnRng）。
  */
 function initBattleTurnContextForResolving(state, ui, action, bundle = null) {
-  clearB1HintTimer();
-  clearB1ActionHintHighlight(ui);
+  invalidateBeginnerIdleHint(ui);
   if (state.phase === BOSS_EXEC_PLAYER_DRAMA_PHASE) return null;
   if (state.phase !== "fight" && state.phase !== "resolving") return null;
   if (state.endingArmed) return null;
@@ -8293,6 +8297,12 @@ function commitTurnResolutionBundlePerSegment(state, bundle, ui) {
 
 function queuePlayerAction(state, ui, action) {
   if (state.battleBuffs) state.battleBuffs.restEvadeActive = false;
+  const viol = b1ForcedGuideViolationMessage(state, action);
+  if (viol) {
+    state.battleLog.push(viol);
+    render(state, ui);
+    return;
+  }
   // 处决保持旧逻辑：不走 resolving 预结算动画层
   if (action === "execute") {
     onPlayerAction(state, ui, action);
@@ -9290,13 +9300,193 @@ function buildAdviceAndHint(state) {
   return { lines, hintBar, hintExecuteOn };
 }
 
-/** 本地存储：新手模式（按键闲置高亮）；缺省为开启 */
-const BEGINNER_MODE_LS_KEY = "game_beginnerMode";
+/** B1「初战强指引」：每页面会话仅首次非重试开战启用；刷新页面后重置。 */
+let b1StrongGuideSessionConsumed = false;
+
+function b1AnyEnemyBrokenAlive(state) {
+  return state.enemies.some((eo) => !eo.waitingToEnter && eo.fighter.hp > 0 && eo.fighter.broken);
+}
+
+function b1ForcedGuideLocksActions(state) {
+  if (!readBeginnerModeFromStorage()) return false;
+  return !!(
+    state._b1ForcedGuide &&
+    state.battle?.battleNodeId === "B1" &&
+    state.phase === "fight" &&
+    !state.player.broken
+  );
+}
+
+function b1ForcedGuideViolationMessage(state, action) {
+  if (!b1ForcedGuideLocksActions(state)) return null;
+  const phase = state._b1ForcedGuide.phase;
+  if (phase === "block" && action !== "block") {
+    return "{o}初战指引：韩福本回合为「重击」意图——请先点「盾反」，把重刀弹回并推高其失衡。{/o}";
+  }
+  if (phase === "strike" && action !== "attack") {
+    return "{o}初战指引：请用「快攻」压住同一目标的失衡，直至其露出破绽。{/o}";
+  }
+  if (phase === "execute" && action !== "execute") {
+    return "{o}初战指引：目标已破绽——请点卡片上的「处决」收束。{/o}";
+  }
+  return null;
+}
+
+/** @param {"block"|"strike"|"execute"} phase */
+function b1ForcedGuideBannerCopy(phase) {
+  if (phase === "strike") {
+    return {
+      title: "指引：请点「快攻」",
+      body: "盾反之后，用快攻连续施压，把失衡打满才能逼出破绽。",
+    };
+  }
+  if (phase === "execute") {
+    return {
+      title: "指引：请点「处决」",
+      body: "破绽是决胜窗口；处决可一击击杀，别让对手缓过气。",
+    };
+  }
+  return {
+    title: "指引：请点「盾反」",
+    body: "对方本回合蓄重击；盾反专克重击，成功可减免伤害并反击失衡。招式说明可悬停约半秒查看。",
+  };
+}
+
+function applyB1ForcedGuideProgress(state, action, executed, targetId) {
+  const g = state._b1ForcedGuide;
+  if (!g || state.battle?.battleNodeId !== "B1") return;
+  if (!readBeginnerModeFromStorage()) {
+    delete state._b1ForcedGuide;
+    return;
+  }
+  if (state.player.broken) {
+    delete state._b1ForcedGuide;
+    return;
+  }
+  if (g.phase === "block" && action === "block") {
+    g.phase = "strike";
+  }
+  if (g.phase === "strike" && b1AnyEnemyBrokenAlive(state)) {
+    g.phase = "execute";
+  }
+  if (g.phase === "execute" && action === "execute" && targetId && executed[targetId]) {
+    delete state._b1ForcedGuide;
+  }
+}
+
+/** 强指引当前应对准的可视按钮（用于浮层箭头） */
+function b1ForcedGuideTargetButton(ui, state) {
+  if (!b1ForcedGuideLocksActions(state)) return null;
+  const ph = state._b1ForcedGuide.phase;
+  if (ph === "block") return ui.actBlock;
+  if (ph === "strike") return ui.actAttack;
+  if (ph === "execute") {
+    if (ui.actExecuteA && !ui.actExecuteA.disabled && ui.enemyExecuteWrapA && !ui.enemyExecuteWrapA.hidden) return ui.actExecuteA;
+    if (ui.actExecuteB && !ui.actExecuteB.disabled && ui.enemyExecuteWrapB && !ui.enemyExecuteWrapB.hidden) return ui.actExecuteB;
+    if (ui.actExecuteC && !ui.actExecuteC.disabled && ui.enemyExecuteWrapC && !ui.enemyExecuteWrapC.hidden) return ui.actExecuteC;
+    return ui.actExecuteA || ui.actExecuteB || ui.actExecuteC;
+  }
+  return null;
+}
+
+/** 盾反/快攻：把指引框锚在「招式」面板旁（相对 combat stage 的绝对像素，避免整舞台百分比跑偏） */
+function syncB1ForcedGuideFloatingLayout(state, ui) {
+  const banner = ui.b1ForcedGuideBanner;
+  const layer = ui.b1ForcedGuideLayer;
+  const panel = ui.skillIconsPanel;
+  function clearBannerPosition() {
+    if (!banner) return;
+    banner.style.top = "";
+    banner.style.left = "";
+    banner.style.right = "";
+    banner.style.bottom = "";
+    banner.style.transform = "";
+    banner.style.position = "";
+    banner.style.zIndex = "";
+  }
+  if (!banner || !layer) return;
+  if (!b1ForcedGuideLocksActions(state) || layer.hidden) {
+    clearBannerPosition();
+    return;
+  }
+  const phase = state._b1ForcedGuide.phase;
+  if (phase === "execute") {
+    clearBannerPosition();
+    return;
+  }
+  if (!panel) {
+    clearBannerPosition();
+    return;
+  }
+  const pr = panel.getBoundingClientRect();
+  if (pr.width <= 0 || pr.height <= 0) {
+    clearBannerPosition();
+    return;
+  }
+  /** 视口固定定位：不依赖 #b1ForcedGuideLayer 的盒高（仅含绝对子元素时 layer 在部分布局下高度为 0，会导致指引贴左上角） */
+  const gap = 12;
+  const bh = Math.max(banner.offsetHeight, 72);
+  const bw = Math.max(banner.offsetWidth, 140);
+  let x = pr.right + gap;
+  let y = pr.top + (pr.height - bh) / 2;
+  if (x + bw > window.innerWidth - 10) {
+    x = pr.left - bw - gap;
+  }
+  x = Math.max(8, Math.min(x, window.innerWidth - bw - 8));
+  y = Math.max(8, Math.min(y, window.innerHeight - bh - 8));
+  banner.style.position = "fixed";
+  banner.style.zIndex = "60";
+  banner.style.top = `${Math.round(y)}px`;
+  banner.style.left = `${Math.round(x)}px`;
+  banner.style.right = "auto";
+  banner.style.bottom = "auto";
+  banner.style.transform = "none";
+}
+
+function syncB1ForcedGuideArrowLayout(state, ui) {
+  const arrow = ui.b1ForcedGuideArrow;
+  if (!arrow) return;
+  if (!b1ForcedGuideLocksActions(state)) {
+    arrow.hidden = true;
+    arrow.classList.remove("b1-forced-guide-arrow--reverse");
+    arrow.removeAttribute("style");
+    return;
+  }
+  const el = b1ForcedGuideTargetButton(ui, state);
+  if (!el || el.hidden || el.disabled) {
+    arrow.hidden = true;
+    return;
+  }
+  const r = el.getBoundingClientRect();
+  if (r.width <= 0 || r.height <= 0) {
+    arrow.hidden = true;
+    return;
+  }
+  const ay = r.top + r.height / 2;
+  const tip = 17;
+  const gap = 8;
+  arrow.classList.remove("b1-forced-guide-arrow--reverse");
+  let left = Math.round(r.left - gap - tip);
+  if (left < 10) {
+    arrow.classList.add("b1-forced-guide-arrow--reverse");
+    left = Math.round(r.right + gap);
+  }
+  arrow.style.top = `${Math.round(ay - 10)}px`;
+  arrow.style.left = `${left}px`;
+  arrow.hidden = false;
+}
+
+/** 本地存储：初学指引（闲置高亮建议招式）。v2 新键：未写入时默认开启，避免旧键 game_beginnerMode 长期为「关」导致看起来像 bug。 */
+const BEGINNER_MODE_LS_KEY = "game_beginnerGuide_v2";
 /** 新手模式：无操作后延迟再高亮建议键（仅按键，不含新手提示框） */
 const BEGINNER_HINT_IDLE_MS = 1500;
 
-/** 新手模式：闲置后高亮建议键（与 buildAdviceAndHint 一致） */
+/** 初学指引：闲置后高亮建议键（与 buildAdviceAndHint 一致） */
 let b1HintTimerId = /** @type {ReturnType<typeof setTimeout>|null} */ (null);
+/** 已安排延迟触发的建议签名（避免 render 连帧反复 clearTimeout 导致永远不闪） */
+let b1IdleHintPendingSig = /** @type {string|null} */ (null);
+/** 当前已套上高亮的建议签名 */
+let b1IdleHintAppliedSig = /** @type {string|null} */ (null);
 
 function readBeginnerModeFromStorage() {
   const v = localStorage.getItem(BEGINNER_MODE_LS_KEY);
@@ -9309,11 +9499,25 @@ function isBeginnerModeEnabled(ui) {
   return readBeginnerModeFromStorage();
 }
 
-function clearB1HintTimer() {
+function resetBeginnerIdleHintScheduling() {
   if (b1HintTimerId !== null) {
     clearTimeout(b1HintTimerId);
     b1HintTimerId = null;
   }
+  b1IdleHintPendingSig = null;
+  b1IdleHintAppliedSig = null;
+}
+
+/** 玩家出手 / 进入对撞层：取消闲置高亮计时并清闪烁 */
+function invalidateBeginnerIdleHint(ui) {
+  resetBeginnerIdleHintScheduling();
+  clearB1ActionHintHighlight(ui);
+}
+
+function hintIdleSignature(state) {
+  const h = state.actionHint || { bar: [], executeOn: null };
+  const bar = Array.isArray(h.bar) ? h.bar.join(",") : "";
+  return `${bar}|${h.executeOn ?? ""}`;
 }
 
 function clearB1ActionHintHighlight(ui) {
@@ -9360,17 +9564,57 @@ function applyBeginnerIdleHighlights(state, ui) {
 }
 
 function scheduleB1ActionHint(state, ui) {
-  clearB1HintTimer();
-  clearB1ActionHintHighlight(ui);
-  if (state.phase !== "fight") return;
-  if (!isBeginnerModeEnabled(ui)) return;
+  if (state.phase !== "fight") {
+    invalidateBeginnerIdleHint(ui);
+    return;
+  }
+  if (b1ForcedGuideLocksActions(state)) {
+    resetBeginnerIdleHintScheduling();
+    clearB1ActionHintHighlight(ui);
+    const phase = state._b1ForcedGuide.phase;
+    if (phase === "block" && ui.actBlock && !ui.actBlock.disabled) ui.actBlock.classList.add("btn-hint-blink");
+    else if (phase === "strike" && ui.actAttack && !ui.actAttack.disabled) ui.actAttack.classList.add("btn-hint-blink");
+    else if (phase === "execute") {
+      if (ui.actExecuteA && !ui.actExecuteA.disabled) ui.actExecuteA.classList.add("btn-hint-blink");
+      if (ui.actExecuteB && !ui.actExecuteB.disabled) ui.actExecuteB.classList.add("btn-hint-blink");
+      if (ui.actExecuteC && !ui.actExecuteC.disabled) ui.actExecuteC.classList.add("btn-hint-blink");
+    }
+    return;
+  }
+  if (!isBeginnerModeEnabled(ui)) {
+    invalidateBeginnerIdleHint(ui);
+    return;
+  }
   const anyEnemyAlive = state.enemies.some((x) => !x.waitingToEnter && x.fighter.hp > 0);
-  if (!anyEnemyAlive || state.player.hp <= 0) return;
+  if (!anyEnemyAlive || state.player.hp <= 0) {
+    invalidateBeginnerIdleHint(ui);
+    return;
+  }
+  if (state.tipsHighlightDismissed) {
+    invalidateBeginnerIdleHint(ui);
+    return;
+  }
+
+  const sig = hintIdleSignature(state);
+  if (sig === b1IdleHintAppliedSig) return;
+  if (b1HintTimerId !== null && sig === b1IdleHintPendingSig) return;
+
+  if (b1HintTimerId !== null) {
+    clearTimeout(b1HintTimerId);
+    b1HintTimerId = null;
+  }
+  clearB1ActionHintHighlight(ui);
+  b1IdleHintPendingSig = sig;
 
   b1HintTimerId = window.setTimeout(() => {
     b1HintTimerId = null;
+    b1IdleHintPendingSig = null;
     if (state.phase !== "fight") return;
+    if (!isBeginnerModeEnabled(ui)) return;
+    if (state.tipsHighlightDismissed) return;
+    if (hintIdleSignature(state) !== sig) return;
     applyBeginnerIdleHighlights(state, ui);
+    b1IdleHintAppliedSig = sig;
   }, BEGINNER_HINT_IDLE_MS);
 }
 
@@ -9549,6 +9793,7 @@ function dom() {
     playerName: $("playerName"),
     playerLevel: $("playerLevel"),
     playerCardFlavor: $("playerCardFlavor"),
+    skillIconsPanel: $("skillIconsPanel"),
     pHpBarWrap: $("pHpBarWrap"),
     pStaggerBarWrap: $("pStaggerBarWrap"),
     battleLog: $("battleLog"),
@@ -9628,6 +9873,9 @@ function dom() {
     actHintDefend: $("actHintDefend"),
     actHintBlock: $("actHintBlock"),
     actHintRest: $("actHintRest"),
+    b1ForcedGuideLayer: $("b1ForcedGuideLayer"),
+    b1ForcedGuideBanner: $("b1ForcedGuideBanner"),
+    b1ForcedGuideArrow: $("b1ForcedGuideArrow"),
   };
 }
 
@@ -10779,6 +11027,72 @@ function render(state, ui) {
   if (ui.actExecuteC) ui.actExecuteC.disabled = !canExecuteOnC;
   ui.actRest.disabled = !canAct || restCd > 0 || execOnlyPend;
 
+  if (b1ForcedGuideLocksActions(state)) {
+    const ph = state._b1ForcedGuide.phase;
+    if (ph === "block") {
+      ui.actAttack.disabled = true;
+      ui.actHeavy.disabled = true;
+      ui.actDefend.disabled = true;
+      ui.actRest.disabled = true;
+      ui.actExecuteA.disabled = true;
+      ui.actExecuteB.disabled = true;
+      if (ui.actExecuteC) ui.actExecuteC.disabled = true;
+      ui.actBlock.disabled = !canAct || execOnlyPend;
+    } else if (ph === "strike") {
+      ui.actHeavy.disabled = true;
+      ui.actDefend.disabled = true;
+      ui.actBlock.disabled = true;
+      ui.actRest.disabled = true;
+      ui.actExecuteA.disabled = true;
+      ui.actExecuteB.disabled = true;
+      if (ui.actExecuteC) ui.actExecuteC.disabled = true;
+      ui.actAttack.disabled = !canAct || playerBroken || execOnlyPend;
+    } else if (ph === "execute") {
+      ui.actAttack.disabled = true;
+      ui.actHeavy.disabled = true;
+      ui.actDefend.disabled = true;
+      ui.actBlock.disabled = true;
+      ui.actRest.disabled = true;
+    }
+  }
+
+  if (ui.b1ForcedGuideLayer && ui.b1ForcedGuideBanner) {
+    if (b1ForcedGuideLocksActions(state)) {
+      const phase = state._b1ForcedGuide.phase;
+      const copy = b1ForcedGuideBannerCopy(phase);
+      ui.b1ForcedGuideLayer.hidden = false;
+      ui.b1ForcedGuideLayer.setAttribute("aria-hidden", "false");
+      ui.b1ForcedGuideBanner.classList.remove(
+        "b1-forced-guide-floating--execute",
+        "b1-forced-guide-floating--commands",
+      );
+      ui.b1ForcedGuideBanner.classList.add(
+        phase === "execute" ? "b1-forced-guide-floating--execute" : "b1-forced-guide-floating--commands",
+      );
+      ui.b1ForcedGuideBanner.innerHTML = `<span class="b1-forced-guide-banner__title">${escapeHtml(copy.title)}</span><span class="b1-forced-guide-banner__body">${escapeHtml(copy.body)}</span>`;
+    } else {
+      ui.b1ForcedGuideLayer.hidden = true;
+      ui.b1ForcedGuideLayer.setAttribute("aria-hidden", "true");
+      ui.b1ForcedGuideBanner.innerHTML = "";
+      ui.b1ForcedGuideBanner.classList.remove(
+        "b1-forced-guide-floating--execute",
+        "b1-forced-guide-floating--commands",
+      );
+      ui.b1ForcedGuideBanner.style.top = "";
+      ui.b1ForcedGuideBanner.style.left = "";
+      ui.b1ForcedGuideBanner.style.right = "";
+      ui.b1ForcedGuideBanner.style.bottom = "";
+      ui.b1ForcedGuideBanner.style.transform = "";
+      ui.b1ForcedGuideBanner.style.position = "";
+      ui.b1ForcedGuideBanner.style.zIndex = "";
+      if (ui.b1ForcedGuideArrow) {
+        ui.b1ForcedGuideArrow.hidden = true;
+        ui.b1ForcedGuideArrow.classList.remove("b1-forced-guide-arrow--reverse");
+        ui.b1ForcedGuideArrow.removeAttribute("style");
+      }
+    }
+  }
+
   if (inFight) {
     const hints = buildActionButtonEffectHints(state);
     if (ui.actHintAttack) ui.actHintAttack.innerHTML = hints.attack;
@@ -10802,6 +11116,19 @@ function render(state, ui) {
   }
 
   scheduleB1ActionHint(state, ui);
+  if (typeof requestAnimationFrame !== "undefined") {
+    requestAnimationFrame(() => {
+      syncB1ForcedGuideFloatingLayout(state, ui);
+      syncB1ForcedGuideArrowLayout(state, ui);
+      requestAnimationFrame(() => {
+        syncB1ForcedGuideFloatingLayout(state, ui);
+        syncB1ForcedGuideArrowLayout(state, ui);
+      });
+    });
+  } else {
+    syncB1ForcedGuideFloatingLayout(state, ui);
+    syncB1ForcedGuideArrowLayout(state, ui);
+  }
 }
 
 function resetPrologueTypewriter(state) {
@@ -11148,9 +11475,17 @@ function startBattleFromNode(state, node) {
     state._chapterMeritLogLenAtBattleEnter = null;
   }
 
+  if (node.id === "B1" && !isRetry && readBeginnerModeFromStorage() && !b1StrongGuideSessionConsumed) {
+    state._b1ForcedGuide = { phase: "block" };
+    b1StrongGuideSessionConsumed = true;
+  } else {
+    delete state._b1ForcedGuide;
+  }
+
   refreshIntents(state);
   refreshTips(state);
   state.tipsHighlightDismissed = false;
+  resetBeginnerIdleHintScheduling();
 
   if (node.id === "B1") {
     state.battleEntranceB1Pending = true;
@@ -12297,8 +12632,7 @@ function animateCardToWarehouse(cardEl, ui, onDone) {
 }
 
 function onPlayerAction(state, ui, action, opts = {}) {
-  clearB1HintTimer();
-  clearB1ActionHintHighlight(ui);
+  invalidateBeginnerIdleHint(ui);
   if (state.phase === BOSS_EXEC_PLAYER_DRAMA_PHASE) return;
   if (state.phase !== "fight") return;
   if (state.endingArmed) return;
@@ -13010,6 +13344,8 @@ function onPlayerAction(state, ui, action, opts = {}) {
     refreshIntents(state);
     refreshTips(state);
   }
+
+  applyB1ForcedGuideProgress(state, action, executed, targetId);
 
   emitBattleMeterFloats();
 

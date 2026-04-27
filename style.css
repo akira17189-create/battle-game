@@ -1039,14 +1039,16 @@ body.app-prologue-open .topbar-roadmap-merit .chapter-roadmap{
 .home-screen:has(.home-screen__loop) .home-screen__actions{
   isolation: isolate;
 }
+/* 与「开始游戏」按钮中央字板对齐（避开左右金饰），用百分比随 .home-screen__actions 宽度缩放 */
 .home-screen:has(.home-screen__loop) .home-screen__start-fx{
   display: block;
   position: absolute;
-  left: 35px;
-  right: 35px;
-  top: 5px;
-  height: calc(var(--home-menu-btn-h) - 10px);
-  border-radius: 18px;
+  left: 11%;
+  right: 11%;
+  top: 8%;
+  bottom: 8%;
+  height: auto;
+  border-radius: 14px;
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
@@ -5002,6 +5004,93 @@ body.app-prologue-open .topbar-roadmap-merit .chapter-roadmap{
   color:var(--muted);
   font-weight:700;
 }
+
+/* B1 初战强指引：战场中央浮窗 + 目标键旁箭头 */
+.battle-combat-stage > .b1-forced-guide-layer{
+  grid-column:1;
+  grid-row:1 / -1;
+  justify-self:stretch;
+  align-self:stretch;
+  width:100%;
+  min-height:0;
+  position:relative;
+  z-index:10;
+  pointer-events:none;
+}
+.b1-forced-guide-layer[hidden]{
+  display:none !important;
+}
+.b1-forced-guide-floating{
+  position:absolute;
+  max-width:min(300px,86vw);
+  padding:14px 16px;
+  background:linear-gradient(180deg,rgba(28,22,38,.92),rgba(12,9,18,.9));
+  border:1px solid rgba(232,201,122,.28);
+  border-radius:12px;
+  box-shadow:0 12px 36px rgba(0,0,0,.45);
+  font-size:14px;
+  line-height:1.55;
+  color:rgba(232,220,200,.94);
+  pointer-events:none;
+}
+/* 处决阶段：战场中上偏右（原默认位） */
+.b1-forced-guide-floating--execute{
+  top:38%;
+  left:58%;
+  transform:translate(-50%,-50%);
+}
+/* 盾反 / 快攻：具体 top/left 由 main.js 按 #skillIconsPanel 锚定；此处只约束宽度 */
+.b1-forced-guide-floating--commands{
+  max-width:min(280px,min(48vw,calc(100% - 24px)));
+}
+.b1-forced-guide-banner__title{
+  display:block;
+  font-size:17px;
+  font-weight:700;
+  margin-bottom:8px;
+  color:var(--accent,#c9a227);
+  letter-spacing:.02em;
+  line-height:1.45;
+}
+.b1-forced-guide-banner__body{
+  display:block;
+  font-size:15px;
+  line-height:1.55;
+  color:var(--muted);
+}
+.battle-combat-stage > .b1-forced-guide-arrow{
+  grid-column:1;
+  grid-row:1 / -1;
+  justify-self:start;
+  align-self:start;
+  width:0;
+  height:0;
+  overflow:visible;
+  z-index:11;
+  pointer-events:none;
+}
+.b1-forced-guide-arrow[hidden]{
+  display:none !important;
+}
+.b1-forced-guide-arrow{
+  position:fixed;
+  width:0;
+  height:0;
+  border-top:10px solid transparent;
+  border-bottom:10px solid transparent;
+  border-left:17px solid var(--accent,#c9a227);
+  filter:drop-shadow(0 0 10px rgba(201,162,39,.65));
+  animation:b1-forced-guide-arrow-pulse 1.1s ease-in-out infinite;
+  transform-origin:center center;
+}
+.b1-forced-guide-arrow.b1-forced-guide-arrow--reverse{
+  border-left:0 solid transparent;
+  border-right:17px solid var(--accent,#c9a227);
+}
+@keyframes b1-forced-guide-arrow-pulse{
+  0%,100%{ opacity:.82; transform:scale(1); }
+  50%{ opacity:1; transform:scale(1.06); }
+}
 .mini-title--war-report{
   display: flex;
   align-items: baseline;
@@ -7060,6 +7149,11 @@ body.app-prologue-open .topbar-roadmap-merit .chapter-roadmap{
   .btn-hint-blink{
     animation: none;
     outline-width: 3px;
+  }
+  .skill-icons-panel .skill-icon.btn-hint-blink{
+    animation: none !important;
+    outline-width: 3px;
+    outline-color: rgba(250, 204, 21, .85);
   }
   .panel-hint-blink{
     animation: none;
@@ -10143,7 +10237,8 @@ body.ending-slowmo #playerCard .meters{
       inset 0 -12px 20px rgba(0,0,0,.36),
       0 2px 0 rgba(22,12,9,.86),
       0 7px 14px rgba(0,0,0,.28),
-      0 0 10px rgba(var(--skill-glow), .08);
+      0 0 10px rgba(var(--skill-glow), .08),
+      0 0 0 0 rgba(250,204,21,0);
   }
   50%{
     box-shadow:
@@ -10152,14 +10247,18 @@ body.ending-slowmo #playerCard .meters{
       inset 0 -12px 20px rgba(0,0,0,.30),
       0 3px 0 rgba(22,12,9,.86),
       0 9px 16px rgba(0,0,0,.32),
-      0 0 16px rgba(var(--skill-glow), .18);
+      0 0 16px rgba(var(--skill-glow), .18),
+      0 0 14px 3px rgba(250,204,21,.5);
   }
 }
 
 .skill-icons-panel .skill-icon.btn-hint-blink{
-  outline: none;
+  z-index: 2;
+  /* 金色外轮廓 + skillBtnHintPulse 内层脉动（勿叠 hintBtnBlink，避免 box-shadow 动画互抢） */
+  outline: 2px solid rgba(250, 204, 21, .7);
+  outline-offset: 2px;
   animation: skillBtnHintPulse 1.1s ease-in-out infinite;
-  border-color: rgba(var(--skill-rim), .72);
+  border-color: rgba(var(--skill-rim), .85);
   box-shadow:
     inset 0 1px 0 rgba(255,244,210,.16),
     inset 0 0 0 1px rgba(var(--skill-rim), .14),
