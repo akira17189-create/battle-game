@@ -100,7 +100,7 @@
         id: "T17",
         perk: "perk_defend_relief",
         title: "定步卸力",
-        desc: "防御成功承受攻击后，自己失衡 -1。",
+        desc: "防御或盾反架势下本回合承伤后，自己失衡 -1。",
         primary: "defense",
         extraTags: ["防御", "卸势"],
         frontArt: "./cards/front/T17.png",

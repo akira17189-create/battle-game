@@ -165,9 +165,26 @@ function skillDraftPool(state) {
   return [...new Set((state.skillDeckRemaining || []).filter((x) => x && !owned.has(x)))];
 }
 
+/** 已领取属性卡 id（战法卷 _attrGrowthLog 与 _pickedAttrCardIds 合并，避免展示与面板数值脱轨） */
+function mergedAttrPickedIds(state) {
+  const picked = { ...(state._pickedAttrCardIds || {}) };
+  for (const e of state._attrGrowthLog || []) {
+    if (!e) continue;
+    if (e.id) {
+      picked[e.id] = true;
+      continue;
+    }
+    if (e.title && ATTR_CARDS.length) {
+      const c = ATTR_CARDS.find((x) => x && x.title === e.title);
+      if (c) picked[c.id] = true;
+    }
+  }
+  return picked;
+}
+
 /** 属性卡池：已选过的属性卡不再进入后续成长选项 */
 function attrDraftPool(state) {
-  const taken = state._pickedAttrCardIds || {};
+  const taken = mergedAttrPickedIds(state);
   return ATTR_CARDS.map((c) => c.id).filter((id) => !taken[id]);
 }
 
@@ -287,7 +304,7 @@ function syncDefendMitigationBonusFromProgress(state) {
   const p = state?.player;
   if (!p || !ATTR_CARDS.length) return;
   let n = 0;
-  const picked = state._pickedAttrCardIds || {};
+  const picked = mergedAttrPickedIds(state);
   for (const card of ATTR_CARDS) {
     if (card && card._stat === "def" && picked[card.id]) n += 1;
   }
@@ -298,6 +315,42 @@ function syncDefendMitigationBonusFromProgress(state) {
     }
   }
   p.defendMitigationBonus = n;
+}
+
+/**
+ * 按「已选属性卡 + 已领取装备」重算 Max HP、失衡上限（与战法卷铁骨/稳势/装备 HP 展示对齐）。
+ * 若进度已记录但 hpMax/staggerThreshold 未跟上（例如领奖路径异常），此处会补差并补当前 HP。
+ */
+function syncPlayerHpMaxAndStaggerFromProgress(state) {
+  const p = state?.player;
+  if (!p || !ATTR_CARDS.length) return;
+  const baseHpMax = ns(6);
+  const baseStg = 4;
+  let hpExtra = 0;
+  let stgExtra = 0;
+  const picked = mergedAttrPickedIds(state);
+  for (const card of ATTR_CARDS) {
+    if (!card || !picked[card.id]) continue;
+    if (card._stat === "hp") hpExtra += ns(2);
+    else if (card._stat === "stg") stgExtra += 1;
+  }
+  const loot = state.lootR3;
+  if (loot?.drops) {
+    for (const d of loot.drops) {
+      if (!loot.taken?.[d.id]) continue;
+      if (d.eff?.hp) hpExtra += Number(d.eff.hp) || 0;
+      if (d.eff?.stg) stgExtra += Number(d.eff.stg) || 0;
+    }
+  }
+  const newMax = baseHpMax + hpExtra;
+  const oldMax = p.hpMax;
+  p.hpMax = newMax;
+  if (newMax > oldMax) p.hp = Math.min(p.hp + (newMax - oldMax), p.hpMax);
+  else p.hp = Math.min(p.hp, p.hpMax);
+
+  const newTh = baseStg + stgExtra;
+  p.staggerThreshold = newTh;
+  if (p.stagger > p.staggerThreshold) p.stagger = p.staggerThreshold;
 }
 
 function ensureR3Loot(state) {
@@ -4877,7 +4930,7 @@ function buildActionButtonEffectHints(state) {
   if (p.includes("perk_broken_defend_bonus"))
     defendLines.push(hintBonusTier(`破绽强守：破绽中防御额外减伤 -${ns(1)}`, 0));
   let dHi = 0;
-  if (p.includes("perk_defend_relief")) defendLines.push(hintBonusTier("定步卸力：防御成功承伤后，自身失衡 -1", dHi++));
+  if (p.includes("perk_defend_relief")) defendLines.push(hintBonusTier("定步卸力：守势下本回合承伤后，自身失衡 -1", dHi++));
   if (p.includes("perk_lowhp_defend_heal"))
     defendLines.push(hintBonusTier(`危桥守命：低血且防御成功时 HP+${ns(1)}`, dHi++));
   const defend = wrapLead(defendLines.join("<br>"));
@@ -4892,6 +4945,7 @@ function buildActionButtonEffectHints(state) {
     "敌非重击（防御/盾反/调息）：盾反挥空",
   ];
   if (p.includes("perk_blockrelief")) blockLines.push(hintBonusTier("借力反震：盾反成功几次，失衡减几次", 0));
+  if (p.includes("perk_defend_relief")) blockLines.push(hintBonusTier("定步卸力：盾反本回合承伤后，自身失衡 -1", 0));
   if (p.includes("perk_block_heal")) blockLines.push(hintBonusTier(`盾后回气：盾反成功后 HP+${ns(1)}`, 0));
   blockLines.push("对重击盾反成功：自己失衡+1（可叠加；与本回合是否被其他来源打伤无关）");
   const block = wrapLead(blockLines.join("<br>"));
@@ -4969,6 +5023,7 @@ function getActionEnhancementSources(state) {
   if (p.includes("perk_defend_relief")) add(defend, "defend_relief");
   if (p.includes("perk_lowhp_defend_heal")) add(defend, "lowhp_defend_heal");
   const block = [];
+  if (p.includes("perk_defend_relief")) add(block, "defend_relief");
   if (p.includes("perk_guardshock")) add(block, "guardshock");
   if (p.includes("perk_blockrelief")) add(block, "blockrelief");
   if (p.includes("perk_block_heal")) add(block, "block_heal");
@@ -7309,20 +7364,27 @@ function finalizeBattleTurnAfterResolutionSegments(state, ui, bundle, turnCtx, o
     applyBlockReliefPerkAfterEnemyPhase(state, details, blockSuccessCount, ui, turnCtx.meterFloatSnap);
 
     // ===== 第二批技法卡：敌方阶段后触发（T17-T22） =====
-    // T17：防御成功承受攻击后，自己失衡 -1
+    // T17：防御或盾反架势下本回合承伤后，自己失衡 -1（与「坚守」一致：盾反被快攻破也算承伤）
     if (state.perks?.includes("perk_defend_relief")) {
-      if (action === "defend" && !meritTurn.defendFailedThisTurn && damageTakenThisTurn > 0) {
+      const defensiveStance = action === "defend" || action === "block";
+      if (defensiveStance && !meritTurn.defendFailedThisTurn && damageTakenThisTurn > 0) {
         const before = state.player.stagger;
         changeStagger(state.player, -1);
         const reduced = before - state.player.stagger;
-        if (reduced > 0) details.push("→ 定步卸力：防御成功承受攻击后，你的失衡 -1。");
+        if (reduced > 0) {
+          details.push("→ 定步卸力：守势下承伤后，你的失衡 -1。");
+          pushMeterFloatsAndAdvanceSnap(state, ui, turnCtx.meterFloatSnap);
+        }
       }
     }
     // T18：盾反成功后恢复生命
     if (state.perks?.includes("perk_block_heal")) {
       if (action === "block" && anyBlockSuccess) {
         const healed = applyHeal(state.player, ns(1));
-        if (healed > 0) details.push(`→ 盾后回气：盾反成功，{g}HP+${healed}{/g}。`);
+        if (healed > 0) {
+          details.push(`→ 盾后回气：盾反成功，{g}HP+${healed}{/g}。`);
+          pushMeterFloatsAndAdvanceSnap(state, ui, turnCtx.meterFloatSnap);
+        }
       }
     }
     // T19：调息成功（未受伤）额外失衡 -1
@@ -7331,7 +7393,10 @@ function finalizeBattleTurnAfterResolutionSegments(state, ui, bundle, turnCtx, o
         const before = state.player.stagger;
         changeStagger(state.player, -1);
         const reduced = before - state.player.stagger;
-        if (reduced > 0) details.push("→ 静息归元：调息成功，额外失衡 -1。");
+        if (reduced > 0) {
+          details.push("→ 静息归元：调息成功，额外失衡 -1。");
+          pushMeterFloatsAndAdvanceSnap(state, ui, turnCtx.meterFloatSnap);
+        }
       }
     }
     // T20：HP<30% 且防御成功后恢复生命
@@ -7340,7 +7405,10 @@ function finalizeBattleTurnAfterResolutionSegments(state, ui, bundle, turnCtx, o
       const lowHp = hpAtEnemyPhaseStart > 0 && state.player.hpMax > 0 && hpAtEnemyPhaseStart / state.player.hpMax < 0.3;
       if (lowHp && action === "defend" && damageTakenThisTurn === 0 && !meritTurn.defendFailedThisTurn) {
         const healed = applyHeal(state.player, ns(1));
-        if (healed > 0) details.push(`→ 危桥守命：低血防御成功，{g}HP+${healed}{/g}。`);
+        if (healed > 0) {
+          details.push(`→ 危桥守命：低血防御成功，{g}HP+${healed}{/g}。`);
+          pushMeterFloatsAndAdvanceSnap(state, ui, turnCtx.meterFloatSnap);
+        }
       }
     }
     // T22：本回合未受伤 → 下回合第一次快攻额外伤害
@@ -10597,6 +10665,7 @@ function startBattleFromNode(state, node) {
     state.player.restCooldownLeft = 0;
   }
   syncDefendMitigationBonusFromProgress(state);
+  syncPlayerHpMaxAndStaggerFromProgress(state);
 
   const wave0 = battle.waves[0];
   state.battle = {
@@ -11278,7 +11347,8 @@ function triggerDeathBlowFx(ui) {
 
 /** 成长选项：仅写入奖励（技法/属性/战利品），不含换图导航。重复领取装备时返回 "abort"。 */
 function applyGrowthRewards(state, node, opt) {
-  if (opt.perk) {
+  // 属性卡 id 为 attr_*，不得走入技法 perk 分支（否则会污染 perks / 技法池移除逻辑）
+  if (opt.perk && !String(opt.id || "").startsWith("attr_")) {
     const perkAlreadyOwned = state.perks.includes(opt.perk);
     if (!perkAlreadyOwned) state.perks.push(opt.perk);
     if (!perkAlreadyOwned) {
@@ -11297,10 +11367,15 @@ function applyGrowthRewards(state, node, opt) {
   }
   const attrCard = resolveAttrCardFromGrowthOpt(opt);
   if (attrCard && attrCard._stat) {
-    applyStatGrowth(state, attrCard._stat);
+    if (attrCard._stat === "atk") applyStatGrowth(state, "atk");
     state.settleLog.push(`成长：${opt.title || `属性：${attrCard.title}`}。`);
     state._attrGrowthLog = state._attrGrowthLog || [];
-    state._attrGrowthLog.push({ title: attrCard.title, desc: attrCard.desc, frontArt: attrCard.frontArt || "" });
+    state._attrGrowthLog.push({
+      id: attrCard.id,
+      title: attrCard.title,
+      desc: attrCard.desc,
+      frontArt: attrCard.frontArt || "",
+    });
     state._pickedAttrCardIds = state._pickedAttrCardIds || {};
     state._pickedAttrCardIds[attrCard.id] = true;
   }
@@ -11336,6 +11411,7 @@ function applyGrowthRewards(state, node, opt) {
     state.settleLog.push(`{o}战利品：获得【${d.title}】（${d.desc}）。{/o}`);
   }
   syncDefendMitigationBonusFromProgress(state);
+  syncPlayerHpMaxAndStaggerFromProgress(state);
   return undefined;
 }
 
@@ -12222,14 +12298,17 @@ function onPlayerAction(state, ui, action, opts = {}) {
     applyBlockReliefPerkAfterEnemyPhase(state, details, blockSuccessCount, ui, meterFloatSnap);
 
     // ===== 第二批技法卡：敌方阶段后触发（T17-T22） =====
-    // T17：防御成功承受攻击后，自己失衡 -1
+    // T17：防御或盾反架势下本回合承伤后，自己失衡 -1
     if (state.perks?.includes("perk_defend_relief")) {
-      if (action === "defend" && !meritTurn.defendFailedThisTurn && damageTakenThisTurn > 0) {
+      const defensiveStance = action === "defend" || action === "block";
+      if (defensiveStance && !meritTurn.defendFailedThisTurn && damageTakenThisTurn > 0) {
         const before = state.player.stagger;
         changeStagger(state.player, -1);
         const reduced = before - state.player.stagger;
-        if (reduced > 0) details.push("→ 定步卸力：防御成功承受攻击后，你的失衡 -1。");
-        pushMeterFloatsAndAdvanceSnap(state, ui, meterFloatSnap);
+        if (reduced > 0) {
+          details.push("→ 定步卸力：守势下承伤后，你的失衡 -1。");
+          pushMeterFloatsAndAdvanceSnap(state, ui, meterFloatSnap);
+        }
       }
     }
     // T18：盾反成功后恢复生命
