@@ -5215,7 +5215,7 @@ function buildActionButtonEffectHints(state) {
   if (p.includes("perk_broken_defend_bonus"))
     defendLines.push(hintBonusTier(`破绽强守：破绽中防御额外减伤 -${ns(1)}`, 0));
   let dHi = 0;
-  if (p.includes("perk_defend_relief")) defendLines.push(hintBonusTier("定步卸力：守势下本回合承伤后，自身失衡 -1", dHi++));
+  if (p.includes("perk_defend_relief")) defendLines.push(hintBonusTier("定步卸力：防御本回合承伤后，自身失衡 -1", dHi++));
   if (p.includes("perk_lowhp_defend_heal"))
     defendLines.push(hintBonusTier(`危桥守命：低血且防御成功时 HP+${ns(1)}`, dHi++));
   const defend = wrapLead(defendLines.join("<br>"));
@@ -5230,7 +5230,6 @@ function buildActionButtonEffectHints(state) {
     "敌非重击（防御/盾反/调息）：盾反挥空",
   ];
   if (p.includes("perk_blockrelief")) blockLines.push(hintBonusTier("借力反震：盾反成功几次，失衡减几次", 0));
-  if (p.includes("perk_defend_relief")) blockLines.push(hintBonusTier("定步卸力：盾反本回合承伤后，自身失衡 -1", 0));
   if (p.includes("perk_block_heal")) blockLines.push(hintBonusTier(`盾后回气：盾反成功后 HP+${ns(1)}`, 0));
   blockLines.push("对重击盾反成功：自己失衡+1（可叠加；与本回合是否被其他来源打伤无关）");
   const block = wrapLead(blockLines.join("<br>"));
@@ -5269,7 +5268,7 @@ const LABEL_EXECUTE_ON_CARD = "失衡已满！上前处决！";
 
 /**
  * 各按键的强化来源列表（用于 +1/+2… 后缀与悬浮说明；同键多条来源即叠层）
- * @returns {{ attack: string[], heavy: string[], defend: string[], block: string[], rest: string[], execute: string[] }}
+ * @returns {{ attack: string[], heavy: string[], defend: string[], block: string[], rest: string[] }}
  */
 function getActionEnhancementSources(state) {
   const p = state.perks || [];
@@ -5292,7 +5291,6 @@ function getActionEnhancementSources(state) {
   if (p.includes("perk_armorbreak")) add(heavy, "armorbreak");
   if (p.includes("perk_heavybreakdef")) add(heavy, "heavybreakdef");
   if (br) add(heavy, "breakline");
-  if ((state.player?.heavyStgBonus || 0) > 0) add(heavy, "equip_heavystg");
   if ((state.player?.atkBonus || 0) > 0) {
     add(attack, "atkstat");
     add(heavy, "atkstat");
@@ -5308,7 +5306,6 @@ function getActionEnhancementSources(state) {
   if (p.includes("perk_defend_relief")) add(defend, "defend_relief");
   if (p.includes("perk_lowhp_defend_heal")) add(defend, "lowhp_defend_heal");
   const block = [];
-  if (p.includes("perk_defend_relief")) add(block, "defend_relief");
   if (p.includes("perk_guardshock")) add(block, "guardshock");
   if (p.includes("perk_blockrelief")) add(block, "blockrelief");
   if (p.includes("perk_block_heal")) add(block, "block_heal");
@@ -5316,9 +5313,7 @@ function getActionEnhancementSources(state) {
   if ((state.player?.executeHealBonus || 0) > 0) add(rest, "executeheal");
   if (p.includes("perk_rest_evade")) add(rest, "rest_evade");
   if (p.includes("perk_rest_extra_stagger_down")) add(rest, "rest_extra_stagger_down");
-  const execute = [];
-  if ((state.player?.executeHealBonus || 0) > 0) add(execute, "executeheal");
-  return { attack, heavy, defend, block, rest, execute };
+  return { attack, heavy, defend, block, rest };
 }
 
 function intentCategoryClass(intent) {
@@ -7649,15 +7644,14 @@ function finalizeBattleTurnAfterResolutionSegments(state, ui, bundle, turnCtx, o
     applyBlockReliefPerkAfterEnemyPhase(state, details, blockSuccessCount, ui, turnCtx.meterFloatSnap);
 
     // ===== 第二批技法卡：敌方阶段后触发（T17-T22） =====
-    // T17：防御或盾反架势下本回合承伤后，自己失衡 -1（与「坚守」一致：盾反被快攻破也算承伤）
+    // T17：仅防御架势下本回合承伤后，自己失衡 -1（盾反不适用）
     if (state.perks?.includes("perk_defend_relief")) {
-      const defensiveStance = action === "defend" || action === "block";
-      if (defensiveStance && !meritTurn.defendFailedThisTurn && damageTakenThisTurn > 0) {
+      if (action === "defend" && !meritTurn.defendFailedThisTurn && damageTakenThisTurn > 0) {
         const before = state.player.stagger;
         changeStagger(state.player, -1);
         const reduced = before - state.player.stagger;
         if (reduced > 0) {
-          details.push("→ 定步卸力：守势下承伤后，你的失衡 -1。");
+          details.push("→ 定步卸力：防御承伤后，你的失衡 -1。");
           pushMeterFloatsAndAdvanceSnap(state, ui, turnCtx.meterFloatSnap);
         }
       }
@@ -9306,8 +9300,7 @@ let b1StrongGuideSessionConsumed = false;
 /** B1 孟坦上场后「推荐招式高亮」提示：每页面会话仅首次出现；刷新后重置。 */
 let b1MengtanReserveHintSessionConsumed = false;
 
-const B1_MENGTAN_RESERVE_HINT_TITLE = "指引：孟坦已上场";
-const B1_MENGTAN_RESERVE_HINT_BODY = "推荐招式会默认高亮，可供参考。";
+const B1_MENGTAN_RESERVE_HINT_TEXT = "指引：推荐招式会持续高亮。";
 
 function b1MengtanReserveHintShowing(state) {
   return !!(
@@ -11000,9 +10993,9 @@ function render(state, ui) {
   const restCd = state.player.restCooldownLeft || 0;
   const restBtnLabel = restCd > 0 ? `调息（${restCd}）` : "调息";
   applyCombatBtnEnhance(ui.actRest, restBtnLabel, enhSources.rest);
-  applyCombatBtnEnhance(ui.actExecuteA, LABEL_EXECUTE_ON_CARD, enhSources.execute);
-  applyCombatBtnEnhance(ui.actExecuteB, LABEL_EXECUTE_ON_CARD, enhSources.execute);
-  applyCombatBtnEnhance(ui.actExecuteC, LABEL_EXECUTE_ON_CARD, enhSources.execute);
+  applyCombatBtnEnhance(ui.actExecuteA, LABEL_EXECUTE_ON_CARD, []);
+  applyCombatBtnEnhance(ui.actExecuteB, LABEL_EXECUTE_ON_CARD, []);
+  applyCombatBtnEnhance(ui.actExecuteC, LABEL_EXECUTE_ON_CARD, []);
   ui.actAttack.disabled = !canAct || playerBroken || execOnlyPend;
   ui.actHeavy.disabled = !canAct || playerBroken || execOnlyPend;
   ui.actDefend.disabled = !canAct || execOnlyPend;
@@ -11097,7 +11090,7 @@ function render(state, ui) {
       ui.b1ForcedGuideLayer.setAttribute("aria-hidden", "false");
       ui.b1ForcedGuideBanner.classList.remove("b1-forced-guide-floating--execute");
       ui.b1ForcedGuideBanner.classList.add("b1-forced-guide-floating--commands");
-      ui.b1ForcedGuideBanner.innerHTML = `<span class="b1-forced-guide-banner__title">${escapeHtml(B1_MENGTAN_RESERVE_HINT_TITLE)}</span><span class="b1-forced-guide-banner__body">${escapeHtml(B1_MENGTAN_RESERVE_HINT_BODY)}</span>`;
+      ui.b1ForcedGuideBanner.innerHTML = `<span class="b1-forced-guide-banner__title b1-forced-guide-banner__title--solo">${escapeHtml(B1_MENGTAN_RESERVE_HINT_TEXT)}</span>`;
       if (ui.b1ForcedGuideArrow) {
         ui.b1ForcedGuideArrow.hidden = true;
         ui.b1ForcedGuideArrow.classList.remove("b1-forced-guide-arrow--reverse");
@@ -13019,15 +13012,14 @@ function onPlayerAction(state, ui, action, opts = {}) {
     applyBlockReliefPerkAfterEnemyPhase(state, details, blockSuccessCount, ui, meterFloatSnap);
 
     // ===== 第二批技法卡：敌方阶段后触发（T17-T22） =====
-    // T17：防御或盾反架势下本回合承伤后，自己失衡 -1
+    // T17：仅防御架势下本回合承伤后，自己失衡 -1（盾反不适用）
     if (state.perks?.includes("perk_defend_relief")) {
-      const defensiveStance = action === "defend" || action === "block";
-      if (defensiveStance && !meritTurn.defendFailedThisTurn && damageTakenThisTurn > 0) {
+      if (action === "defend" && !meritTurn.defendFailedThisTurn && damageTakenThisTurn > 0) {
         const before = state.player.stagger;
         changeStagger(state.player, -1);
         const reduced = before - state.player.stagger;
         if (reduced > 0) {
-          details.push("→ 定步卸力：守势下承伤后，你的失衡 -1。");
+          details.push("→ 定步卸力：防御承伤后，你的失衡 -1。");
           pushMeterFloatsAndAdvanceSnap(state, ui, meterFloatSnap);
         }
       }

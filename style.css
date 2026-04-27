@@ -5058,6 +5058,9 @@ body.app-prologue-open .topbar-roadmap-merit .chapter-roadmap{
   line-height:1.55;
   color:var(--muted);
 }
+.b1-forced-guide-banner__title--solo{
+  margin-bottom:0;
+}
 .battle-combat-stage > .b1-forced-guide-arrow{
   grid-column:1;
   grid-row:1 / -1;
