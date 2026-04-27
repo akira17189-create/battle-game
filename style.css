@@ -941,6 +941,45 @@ body.app-prologue-open .topbar-roadmap-merit .chapter-roadmap{
 #appMain[hidden]{
   display: none !important;
 }
+/* 主菜单封面未就绪：全幅遮罩 + 轻量加载动画（由 main.js 在 decode 完成后关闭） */
+.home-screen-load-overlay{
+  position: absolute;
+  inset: 0;
+  z-index: 24;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  pointer-events: auto;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(12, 10, 18, 0.92), rgba(5, 5, 10, 0.97));
+  color: rgba(236, 220, 188, 0.92);
+  font-family: var(--font-ui, "Shippori Mincho", "Noto Serif JP", serif);
+  letter-spacing: 0.08em;
+  transition: opacity 0.28s ease;
+}
+.home-screen-load-overlay[hidden]{
+  display: none !important;
+  pointer-events: none;
+}
+.home-screen-load-overlay__spinner{
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(212, 175, 90, 0.22);
+  border-top-color: rgba(245, 214, 140, 0.85);
+  animation: homeLoadSpin 0.75s linear infinite;
+}
+.home-screen-load-overlay__text{
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+}
+@keyframes homeLoadSpin{
+  to{ transform: rotate(360deg); }
+}
 .home-screen__content{
   position: absolute;
   inset: 0;

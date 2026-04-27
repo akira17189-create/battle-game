@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>第一章·过五关斩六将</title>
+    <link rel="preload" as="image" href="./ui-home-main-bg.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&family=Zen+Antique+Soft&family=Noto+Serif+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
@@ -11,7 +12,7 @@
   </head>
   <body>
     <div class="app">
-      <section id="homeScreen" class="home-screen" hidden aria-label="主菜单">
+      <section id="homeScreen" class="home-screen" aria-label="主菜单">
         <!-- 舞台与 4:3 封面同源，透明按钮热区随图片缩放对齐 -->
         <div class="home-screen__stage">
           <picture class="home-screen__loop-wrap">
@@ -38,9 +39,18 @@
             </div>
           </div>
         </div>
+        <div
+          id="homeScreenLoadOverlay"
+          class="home-screen-load-overlay"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div class="home-screen-load-overlay__spinner" aria-hidden="true"></div>
+          <p class="home-screen-load-overlay__text">载入中…</p>
+        </div>
       </section>
 
-      <header id="appTopbar" class="topbar">
+      <header id="appTopbar" class="topbar" hidden>
         <div class="topbar-row topbar-row--main">
           <div class="title">
                 <div class="kicker">秦烈北行</div>
@@ -61,7 +71,7 @@
 
       <!-- 标题栏下方的“推进/成长模块”已取消；成长按钮改放在战斗信息内 -->
 
-      <main id="appMain" class="main">
+      <main id="appMain" class="main" hidden>
         <section class="left-col" id="leftCol">
           <section class="panel panel--chronicle">
             <div class="panel-header panel-header--intro-hero-actions">

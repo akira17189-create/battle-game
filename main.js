@@ -9680,12 +9680,43 @@ function setCombatBodyVisibility(ui, visible) {
   if (ui.belowActionsWrap) ui.belowActionsWrap.hidden = hide;
 }
 
+/** 主菜单首屏：等封面图 load/error 或超时后再关闭遮罩，避免慢网下空壳可操作 */
+async function runHomeScreenFirstLoadGate(ui) {
+  const overlay = ui.homeScreenLoadOverlay;
+  const home = ui.homeScreen;
+  const loop = home?.querySelector(".home-screen__loop");
+  if (!overlay || !home) return;
+
+  const imgReady = loop instanceof HTMLImageElement && loop.complete && loop.naturalWidth > 0;
+  if (imgReady) {
+    overlay.hidden = true;
+    overlay.setAttribute("aria-busy", "false");
+    return;
+  }
+
+  overlay.hidden = false;
+  overlay.setAttribute("aria-busy", "true");
+  const waitImg =
+    loop instanceof HTMLImageElement
+      ? new Promise((resolve) => {
+          const done = () => resolve(undefined);
+          loop.addEventListener("load", done, { once: true });
+          loop.addEventListener("error", done, { once: true });
+        })
+      : Promise.resolve(undefined);
+
+  await Promise.race([waitImg, sleepMs(8000)]);
+  overlay.hidden = true;
+  overlay.setAttribute("aria-busy", "false");
+}
+
 function dom() {
   const $ = (id) => document.getElementById(id);
   return {
     appTopbar: $("appTopbar"),
     appMain: $("appMain"),
     homeScreen: $("homeScreen"),
+    homeScreenLoadOverlay: $("homeScreenLoadOverlay"),
     btnHomeStart: $("btnHomeStart"),
     btnSkillTest: $("btnSkillTest"),
     skillTestOverlay: $("skillTestOverlay"),
@@ -14090,6 +14121,7 @@ function boot() {
 
   // 初始进入章节
   hardRestart("menu");
+  void runHomeScreenFirstLoadGate(ui);
   try {
     const q = new URLSearchParams(typeof location !== "undefined" ? location.search || "" : "");
     if (isSkillTestBuildAvailable() && q.get("skilltest") === "1") openSkillTestOverlay(ui);
