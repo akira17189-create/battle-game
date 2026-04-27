@@ -9306,7 +9306,17 @@ let b1StrongGuideSessionConsumed = false;
 /** B1 孟坦上场后「推荐招式高亮」提示：每页面会话仅首次出现；刷新后重置。 */
 let b1MengtanReserveHintSessionConsumed = false;
 
-const B1_MENGTAN_RESERVE_HINT_TEXT = "孟坦已上场：推荐招式会默认高亮，可供参考。";
+const B1_MENGTAN_RESERVE_HINT_TITLE = "指引：孟坦已上场";
+const B1_MENGTAN_RESERVE_HINT_BODY = "推荐招式会默认高亮，可供参考。";
+
+function b1MengtanReserveHintShowing(state) {
+  return !!(
+    state._b1MengtanEnterHintActive &&
+    state.battle?.battleNodeId === "B1" &&
+    readBeginnerModeFromStorage() &&
+    (state.phase === "fight" || state.phase === "resolving")
+  );
+}
 
 function b1AnyEnemyBrokenAlive(state) {
   return state.enemies.some((eo) => !eo.waitingToEnter && eo.fighter.hp > 0 && eo.fighter.broken);
@@ -9394,7 +9404,7 @@ function b1ForcedGuideTargetButton(ui, state) {
   return null;
 }
 
-/** 盾反/快攻：把指引框锚在「招式」面板旁（相对 combat stage 的绝对像素，避免整舞台百分比跑偏） */
+/** 盾反/快攻 / 孟坦提示：把指引框用 fixed 锚在「招式」面板旁（与 layer 盒高无关） */
 function syncB1ForcedGuideFloatingLayout(state, ui) {
   const banner = ui.b1ForcedGuideBanner;
   const layer = ui.b1ForcedGuideLayer;
@@ -9410,12 +9420,18 @@ function syncB1ForcedGuideFloatingLayout(state, ui) {
     banner.style.zIndex = "";
   }
   if (!banner || !layer) return;
-  if (!b1ForcedGuideLocksActions(state) || layer.hidden) {
+  if (layer.hidden) {
     clearBannerPosition();
     return;
   }
-  const phase = state._b1ForcedGuide.phase;
-  if (phase === "execute") {
+  const forced = b1ForcedGuideLocksActions(state);
+  const mengtan = b1MengtanReserveHintShowing(state);
+  const forcedNearSkills = forced && state._b1ForcedGuide.phase !== "execute";
+  if (forced && state._b1ForcedGuide.phase === "execute") {
+    clearBannerPosition();
+    return;
+  }
+  if (!forcedNearSkills && !mengtan) {
     clearBannerPosition();
     return;
   }
@@ -9428,7 +9444,6 @@ function syncB1ForcedGuideFloatingLayout(state, ui) {
     clearBannerPosition();
     return;
   }
-  /** 视口固定定位：不依赖 #b1ForcedGuideLayer 的盒高（仅含绝对子元素时 layer 在部分布局下高度为 0，会导致指引贴左上角） */
   const gap = 12;
   const bh = Math.max(banner.offsetHeight, 72);
   const bw = Math.max(banner.offsetWidth, 140);
@@ -9881,7 +9896,6 @@ function dom() {
     b1ForcedGuideLayer: $("b1ForcedGuideLayer"),
     b1ForcedGuideBanner: $("b1ForcedGuideBanner"),
     b1ForcedGuideArrow: $("b1ForcedGuideArrow"),
-    b1MengtanEnterHint: $("b1MengtanEnterHint"),
   };
 }
 
@@ -11062,6 +11076,8 @@ function render(state, ui) {
     }
   }
 
+  const showMengtanHint = b1MengtanReserveHintShowing(state);
+
   if (ui.b1ForcedGuideLayer && ui.b1ForcedGuideBanner) {
     if (b1ForcedGuideLocksActions(state)) {
       const phase = state._b1ForcedGuide.phase;
@@ -11076,6 +11092,17 @@ function render(state, ui) {
         phase === "execute" ? "b1-forced-guide-floating--execute" : "b1-forced-guide-floating--commands",
       );
       ui.b1ForcedGuideBanner.innerHTML = `<span class="b1-forced-guide-banner__title">${escapeHtml(copy.title)}</span><span class="b1-forced-guide-banner__body">${escapeHtml(copy.body)}</span>`;
+    } else if (showMengtanHint) {
+      ui.b1ForcedGuideLayer.hidden = false;
+      ui.b1ForcedGuideLayer.setAttribute("aria-hidden", "false");
+      ui.b1ForcedGuideBanner.classList.remove("b1-forced-guide-floating--execute");
+      ui.b1ForcedGuideBanner.classList.add("b1-forced-guide-floating--commands");
+      ui.b1ForcedGuideBanner.innerHTML = `<span class="b1-forced-guide-banner__title">${escapeHtml(B1_MENGTAN_RESERVE_HINT_TITLE)}</span><span class="b1-forced-guide-banner__body">${escapeHtml(B1_MENGTAN_RESERVE_HINT_BODY)}</span>`;
+      if (ui.b1ForcedGuideArrow) {
+        ui.b1ForcedGuideArrow.hidden = true;
+        ui.b1ForcedGuideArrow.classList.remove("b1-forced-guide-arrow--reverse");
+        ui.b1ForcedGuideArrow.removeAttribute("style");
+      }
     } else {
       ui.b1ForcedGuideLayer.hidden = true;
       ui.b1ForcedGuideLayer.setAttribute("aria-hidden", "true");
@@ -11096,23 +11123,6 @@ function render(state, ui) {
         ui.b1ForcedGuideArrow.classList.remove("b1-forced-guide-arrow--reverse");
         ui.b1ForcedGuideArrow.removeAttribute("style");
       }
-    }
-  }
-
-  if (ui.b1MengtanEnterHint) {
-    const showMengtanHint =
-      !!state._b1MengtanEnterHintActive &&
-      state.battle?.battleNodeId === "B1" &&
-      readBeginnerModeFromStorage() &&
-      (state.phase === "fight" || state.phase === "resolving");
-    if (showMengtanHint) {
-      ui.b1MengtanEnterHint.hidden = false;
-      ui.b1MengtanEnterHint.setAttribute("aria-hidden", "false");
-      ui.b1MengtanEnterHint.textContent = B1_MENGTAN_RESERVE_HINT_TEXT;
-    } else {
-      ui.b1MengtanEnterHint.hidden = true;
-      ui.b1MengtanEnterHint.setAttribute("aria-hidden", "true");
-      ui.b1MengtanEnterHint.textContent = "";
     }
   }
 
