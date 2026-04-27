@@ -3987,6 +3987,7 @@ function resetChapter1NewGame(state) {
   state.tutorialSeen = {};
   state.tipsHighlightDismissed = false;
   delete state._b1ForcedGuide;
+  delete state._b1MengtanEnterHintActive;
   state.introDismissed = false;
   state.firstQuickAttackBonusPending = false;
   state._mainBehaviorHistory = [];
@@ -9302,6 +9303,10 @@ function buildAdviceAndHint(state) {
 
 /** B1「初战强指引」：每页面会话仅首次非重试开战启用；刷新页面后重置。 */
 let b1StrongGuideSessionConsumed = false;
+/** B1 孟坦上场后「推荐招式高亮」提示：每页面会话仅首次出现；刷新后重置。 */
+let b1MengtanReserveHintSessionConsumed = false;
+
+const B1_MENGTAN_RESERVE_HINT_TEXT = "孟坦已上场：推荐招式会默认高亮，可供参考。";
 
 function b1AnyEnemyBrokenAlive(state) {
   return state.enemies.some((eo) => !eo.waitingToEnter && eo.fighter.hp > 0 && eo.fighter.broken);
@@ -9876,6 +9881,7 @@ function dom() {
     b1ForcedGuideLayer: $("b1ForcedGuideLayer"),
     b1ForcedGuideBanner: $("b1ForcedGuideBanner"),
     b1ForcedGuideArrow: $("b1ForcedGuideArrow"),
+    b1MengtanEnterHint: $("b1MengtanEnterHint"),
   };
 }
 
@@ -11093,6 +11099,23 @@ function render(state, ui) {
     }
   }
 
+  if (ui.b1MengtanEnterHint) {
+    const showMengtanHint =
+      !!state._b1MengtanEnterHintActive &&
+      state.battle?.battleNodeId === "B1" &&
+      readBeginnerModeFromStorage() &&
+      (state.phase === "fight" || state.phase === "resolving");
+    if (showMengtanHint) {
+      ui.b1MengtanEnterHint.hidden = false;
+      ui.b1MengtanEnterHint.setAttribute("aria-hidden", "false");
+      ui.b1MengtanEnterHint.textContent = B1_MENGTAN_RESERVE_HINT_TEXT;
+    } else {
+      ui.b1MengtanEnterHint.hidden = true;
+      ui.b1MengtanEnterHint.setAttribute("aria-hidden", "true");
+      ui.b1MengtanEnterHint.textContent = "";
+    }
+  }
+
   if (inFight) {
     const hints = buildActionButtonEffectHints(state);
     if (ui.actHintAttack) ui.actHintAttack.innerHTML = hints.attack;
@@ -11275,6 +11298,14 @@ function deploySequentialSecondIfNeeded(state, details) {
     details.push(`→ {o}${eoB.fighter.name}上前接战，堵住你的侧翼！{/o}`);
   }
   state.battleLog.push(`{o}${eoB.fighter.name}已上场。{/o}`);
+  if (
+    state.battle?.battleNodeId === "B1" &&
+    readBeginnerModeFromStorage() &&
+    !b1MengtanReserveHintSessionConsumed
+  ) {
+    state._b1MengtanEnterHintActive = true;
+    b1MengtanReserveHintSessionConsumed = true;
+  }
   refreshIntents(state);
 }
 
@@ -11349,6 +11380,7 @@ function startBattleFromNode(state, node) {
     sequentialTwoSlots: !!wave0.sequentialTwoSlots,
   };
   state.phase = "fight";
+  delete state._b1MengtanEnterHintActive;
   state._anchorSettleRankToLive = true;
   state.endingLoseArmed = false;
   state._endingDeathDone = false;
