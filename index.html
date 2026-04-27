@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&family=Zen+Antique+Soft&family=Noto+Serif+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./style.css?v=20260427-home-start-fx-h-10" />
+    <link rel="stylesheet" href="./style.css?v=20260427-sandbox-card-preview" />
   </head>
   <body>
     <div class="app">
@@ -32,6 +32,9 @@
             <div class="home-screen__actions">
               <span class="home-screen__start-fx" aria-hidden="true"></span>
               <button id="btnHomeStart" class="btn btn-offense home-screen__btn" type="button">开始游戏</button>
+              <button id="btnSkillTest" class="btn btn-secondary home-screen__btn skill-test-entry" type="button" hidden>
+                技能沙盒
+              </button>
             </div>
           </div>
         </div>
@@ -517,13 +520,67 @@
       </div>
     </div>
 
+    <!-- 本地开发：localhost / file / 127.0.0.1 下由脚本显示入口 -->
+    <div
+      id="skillTestOverlay"
+      class="skill-test-overlay"
+      hidden
+      aria-hidden="true"
+      aria-label="技能沙盒"
+    >
+      <div class="skill-test-panel">
+        <div class="skill-test-panel-inner">
+          <div class="skill-test-panel-main">
+        <h2 class="skill-test-title">技能沙盒（本地测试）</h2>
+        <p class="skill-test-hint">
+          不计入战功榜进度。每次打开本面板会<strong>清空技法勾选</strong>（避免上一场残留在战法卷里）；属性勾选会保留。若只测四张属性，请勿勾选技法。
+          点击列表中某张<strong>技法或属性</strong>名称可预览卡面图。若主菜单无「技能沙盒」按钮，可在地址后加 <code>?skilltest=1</code> 并刷新。
+        </p>
+        <div class="skill-test-field">
+          <label class="skill-test-label" for="skillTestPreset">敌方预设</label>
+          <select id="skillTestPreset" class="skill-test-select">
+            <option value="dummy1">单敌·高防木桩</option>
+            <option value="dummy2">双敌·木桩</option>
+            <option value="b1seq">双将截关（先后上场，同 B1）</option>
+            <option value="b3">荥阳（王植 + 纵火兵）</option>
+          </select>
+        </div>
+        <div class="skill-test-field">
+          <div class="skill-test-label">技法（可多选）</div>
+          <div id="skillTestTechGrid" class="skill-test-grid"></div>
+        </div>
+        <div class="skill-test-field">
+          <div class="skill-test-label">属性卡（可多选）</div>
+          <div id="skillTestAttrGrid" class="skill-test-grid"></div>
+        </div>
+        <div class="skill-test-actions">
+          <button type="button" id="btnSkillTestStart" class="btn btn-offense">开始测试战斗</button>
+          <button type="button" id="btnSkillTestClose" class="btn btn-secondary">关闭</button>
+        </div>
+          </div>
+          <aside
+            id="skillTestCardPreview"
+            class="skill-test-card-preview"
+            hidden
+            aria-label="卡面预览"
+          >
+            <div class="skill-test-card-preview-kicker">卡面预览</div>
+            <div class="skill-test-card-preview-frame">
+              <img id="skillTestCardPreviewImg" class="skill-test-card-preview-img" alt="" decoding="async" hidden />
+            </div>
+            <div id="skillTestCardPreviewCaption" class="skill-test-card-preview-caption"></div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
     <script src="./supabase-config.js"></script>
     <script src="./leaderboard-online.js"></script>
     <script src="./general_soul_lookup.js"></script>
     <script src="./general_soul_comment.js"></script>
     <script src="./general_soul_lore_105.js"></script>
     <script src="./general_soul_scoring.js"></script>
-    <script src="./skill_cards_config.js"></script>
-    <script src="./main.js?v=20260427-attr-sync-merge-log"></script>
+    <script src="./skill_cards_config.js?v=20260427-cardart-png-rename"></script>
+    <script src="./main.js?v=20260427-execute-heal-sync"></script>
   </body>
 </html>

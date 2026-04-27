@@ -135,7 +135,7 @@
     ];
   }
 
-  /** 第一章：4 张属性卡（R2 三选一；R4 混入 1 张） */
+  /** 第一章：4 张属性卡 */
   const ATTR_CARDS = [
     { id: "A_ATK", title: "猛进", desc: "ATK +10", _stat: "atk", frontArt: "./cards/front/A_ATK.png" },
     { id: "A_DEF", title: "坚守", desc: "防御时额外减伤 +10", _stat: "def", frontArt: "./cards/front/A_DEF.png" },

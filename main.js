@@ -197,6 +197,95 @@ function isAttrCardId(id) {
   return !!ATTR_CARDS.find((x) => x && x.id === id);
 }
 
+/** 本地「技能沙盒」：localhost / 本机 IP / file；亦可 ?skilltest=1 强制开启（便于非标准主机名） */
+function isSkillTestBuildAvailable() {
+  if (typeof location === "undefined") return false;
+  try {
+    const q = new URLSearchParams(location.search || "");
+    if (q.get("skilltest") === "1" || q.get("dev") === "1") return true;
+  } catch {
+    // ignore
+  }
+  const h = String(location.hostname || "");
+  if (h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h === "::1") return true;
+  if (location.protocol === "file:") return true;
+  return false;
+}
+
+function ensureSkillTestForm(ui) {
+  const tech = ui.skillTestTechGrid;
+  const attrs = ui.skillTestAttrGrid;
+  if (!tech || !attrs || tech.dataset.built === "1") return;
+  tech.dataset.built = "1";
+  for (const c of SKILL_CARDS) {
+    const label = document.createElement("label");
+    label.className = "skill-test-check";
+    const id = `st-tech-${c.perk}`;
+    label.innerHTML = `<input type="checkbox" id="${escapeHtml(id)}" value="${escapeHtml(String(c.perk))}" /> <span>${escapeHtml(c.title)}</span>`;
+    tech.appendChild(label);
+  }
+  attrs.classList.add("skill-test-grid--attrs-only");
+  for (const a of ATTR_CARDS) {
+    const label = document.createElement("label");
+    label.className = "skill-test-check";
+    const id = `st-attr-${a.id}`;
+    label.innerHTML = `<input type="checkbox" id="${escapeHtml(id)}" value="${escapeHtml(String(a.id))}" /> <span>${escapeHtml(a.title)}</span>`;
+    attrs.appendChild(label);
+  }
+}
+
+/** 技法勾选会留在 DOM 上；每次打开沙盒清空，避免上一场未勾的「幽灵」技法进战法卷 */
+function clearSkillTestTechCheckboxSelections(ui) {
+  ui.skillTestTechGrid?.querySelectorAll(":scope > label.skill-test-check > input[type=checkbox]").forEach((el) => {
+    if (el instanceof HTMLInputElement) el.checked = false;
+  });
+}
+
+/** 只统计技法格内、且 value 为合法 perk 的勾选（避免 query 扫到无关 checkbox） */
+function collectSandboxCheckedPerks(ui) {
+  const root = ui.skillTestTechGrid;
+  if (!root || !SKILL_CARDS.length) return [];
+  const ok = new Set(SKILL_CARDS.map((c) => c.perk).filter(Boolean));
+  const out = [];
+  root.querySelectorAll(":scope > label.skill-test-check > input[type=checkbox]").forEach((el) => {
+    if (!(el instanceof HTMLInputElement) || !el.checked) return;
+    const v = String(el.value || "").trim();
+    if (ok.has(v)) out.push(v);
+  });
+  return out;
+}
+
+/** 只统计属性格内、且 value 为合法属性卡 id 的勾选 */
+function collectSandboxCheckedAttrIds(ui) {
+  const root = ui.skillTestAttrGrid;
+  if (!root || !ATTR_CARDS.length) return [];
+  const ok = new Set(ATTR_CARDS.map((a) => a.id).filter(Boolean));
+  const out = [];
+  root.querySelectorAll(":scope > label.skill-test-check > input[type=checkbox]").forEach((el) => {
+    if (!(el instanceof HTMLInputElement) || !el.checked) return;
+    const v = String(el.value || "").trim();
+    if (ok.has(v)) out.push(v);
+  });
+  return out;
+}
+
+function openSkillTestOverlay(ui) {
+  ensureSkillTestForm(ui);
+  clearSkillTestTechCheckboxSelections(ui);
+  if (ui.skillTestOverlay) {
+    ui.skillTestOverlay.hidden = false;
+    ui.skillTestOverlay.setAttribute("aria-hidden", "false");
+  }
+}
+
+function closeSkillTestOverlay(ui) {
+  hideSkillTestCardPreview(ui);
+  if (ui.skillTestOverlay) {
+    ui.skillTestOverlay.hidden = true;
+    ui.skillTestOverlay.setAttribute("aria-hidden", "true");
+  }
+}
+
 /** 成长领奖与 ATTR_CARDS 对齐：优先解析 attr_ 前缀，避免仅有卡面/ id 时丢失 _stat 导致属性未入账 */
 function resolveAttrCardFromGrowthOpt(opt) {
   if (!opt || !ATTR_CARDS.length) return null;
@@ -353,6 +442,16 @@ function syncPlayerHpMaxAndStaggerFromProgress(state) {
   if (p.stagger > p.staggerThreshold) p.stagger = p.staggerThreshold;
 }
 
+/**
+ * 血战余生等：处决回血量记在 player.executeHealBonus，须与 state.perks 一致。
+ * 技能沙盒会重置玩家数值但不回填本字段；开战时同步可避免「有 perk 但回血为 0」。
+ */
+function syncExecuteHealBonusFromPerks(state) {
+  const p = state?.player;
+  if (!p) return;
+  p.executeHealBonus = state.perks?.includes("perk_executeheal") ? ns(2) : 0;
+}
+
 function ensureR3Loot(state) {
   // 《设计表》v0.1：精英必掉 1 张装备卡；20% 概率额外掉 1 张“另一类”装备卡；若额外掉落触发，两张都必须拿
   if (state.lootR3) return state.lootR3;
@@ -419,7 +518,7 @@ function escapeHtml(s) {
 }
 
 /** 换卡面时 bump 一次，避免 file:// 下 PNG 被浏览器强缓存 */
-const CARD_ART_VER = "20260425-cardart-d";
+const CARD_ART_VER = "20260427-cardart-png-rename";
 
 function cardArtUrl(url) {
   const u = String(url || "").trim();
@@ -442,6 +541,52 @@ function growthOptionFrontArt(opt) {
     raw = ac?.frontArt ? String(ac.frontArt) : "";
   }
   return cardArtUrl(raw);
+}
+
+/** 沙盒内：点击技法/属性行时展示卡面 PNG（与战法卷同源 cardArtUrl） */
+function showSkillTestCardPreview(ui, title, frontArtRaw) {
+  const wrap = ui.skillTestCardPreview;
+  const img = ui.skillTestCardPreviewImg;
+  const cap = ui.skillTestCardPreviewCaption;
+  if (!wrap || !img || !cap) return;
+  const src = cardArtUrl(frontArtRaw);
+  if (src) {
+    img.src = src;
+    img.hidden = false;
+    img.alt = title || "卡面";
+  } else {
+    img.removeAttribute("src");
+    img.hidden = true;
+    img.alt = "";
+  }
+  cap.textContent = title || "—";
+  wrap.hidden = false;
+}
+
+function hideSkillTestCardPreview(ui) {
+  if (ui.skillTestCardPreview) ui.skillTestCardPreview.hidden = true;
+  if (ui.skillTestCardPreviewImg) {
+    ui.skillTestCardPreviewImg.removeAttribute("src");
+    ui.skillTestCardPreviewImg.hidden = true;
+  }
+  if (ui.skillTestCardPreviewCaption) ui.skillTestCardPreviewCaption.textContent = "";
+}
+
+function bindSkillTestCardPreviewClicks(ui) {
+  const bind = (grid, resolveCard) => {
+    if (!grid || grid.dataset.skillTestPreviewBound === "1") return;
+    grid.dataset.skillTestPreviewBound = "1";
+    grid.addEventListener("click", (ev) => {
+      const lab = ev.target.closest("label.skill-test-check");
+      if (!lab || !grid.contains(lab)) return;
+      const inp = lab.querySelector("input[type=checkbox]");
+      if (!inp) return;
+      const card = resolveCard(String(inp.value || "").trim());
+      if (card) showSkillTestCardPreview(ui, card.title, card.frontArt || "");
+    });
+  };
+  bind(ui.skillTestTechGrid, (v) => SKILL_CARDS.find((c) => c && c.perk === v));
+  bind(ui.skillTestAttrGrid, (v) => ATTR_CARDS.find((c) => c && c.id === v));
 }
 
 /** 叙事黑屏：节点 body 按空行分段为段落 */
@@ -875,6 +1020,34 @@ const CHAPTERS = {
         objective: "",
         options: [{ id: "hook", title: "结束并查看结果", desc: "进入结束页。", next: "HOOK" }],
       },
+      SKILL_TEST: {
+        id: "SKILL_TEST",
+        type: /** @type {NodeType} */ ("B"),
+        title: "技能沙盒",
+        subtitle: "本地测试",
+        body: "",
+        objective: "验证技法与属性（不计战功）。",
+        battle: {
+          waves: [
+            {
+              name: "沙盒",
+              slots: [
+                {
+                  name: "木人",
+                  archetype: "mob",
+                  hp: ns(8),
+                  staggerThreshold: 5,
+                  atk: ns(2),
+                  ai: { quick: 12, heavy: 12, defend: 42, adjust: 34 },
+                },
+              ],
+              reserve: [],
+            },
+          ],
+          onWinNext: null,
+          reward: { merit: 0 },
+        },
+      },
       HOOK: {
         id: "HOOK",
         type: /** @type {NodeType} */ ("N"),
@@ -886,6 +1059,108 @@ const CHAPTERS = {
       },
     },
   },
+};
+
+/** 技能沙盒战场预设（JSON 深拷贝后开战，避免污染静态表） */
+const SKILL_TEST_PRESET_WAVES = {
+  dummy1: [
+    {
+      name: "沙盒",
+      slots: [
+        {
+          name: "木人",
+          archetype: "mob",
+          hp: ns(10),
+          staggerThreshold: 6,
+          atk: ns(2),
+          ai: { quick: 12, heavy: 12, defend: 42, adjust: 34 },
+        },
+      ],
+      reserve: [],
+    },
+  ],
+  dummy2: [
+    {
+      name: "沙盒",
+      slots: [
+        {
+          name: "木人甲",
+          archetype: "mob",
+          hp: ns(8),
+          staggerThreshold: 5,
+          atk: ns(2),
+          ai: { quick: 22, heavy: 18, defend: 28, adjust: 32 },
+        },
+        {
+          name: "木人乙",
+          archetype: "spear",
+          hp: ns(8),
+          staggerThreshold: 5,
+          atk: ns(2),
+          ai: { quick: 22, heavy: 18, defend: 28, adjust: 32 },
+        },
+      ],
+      reserve: [],
+    },
+  ],
+  b1seq: [
+    {
+      name: "洛阳",
+      sequentialTwoSlots: true,
+      slots: [
+        {
+          name: "韩福",
+          archetype: "saber",
+          hp: ns(5),
+          staggerThreshold: 3,
+          atk: ns(2),
+          ai: { quick: 30, heavy: 25, defend: 25, adjust: 20 },
+        },
+        {
+          name: "孟坦",
+          archetype: "spear",
+          hp: ns(5),
+          staggerThreshold: 4,
+          atk: ns(2),
+          ai: { quick: 15, heavy: 55, defend: 15, adjust: 15 },
+        },
+      ],
+      reserve: [],
+    },
+  ],
+  b3: [
+    {
+      name: "荥阳城",
+      slots: [
+        {
+          name: "王植",
+          archetype: "saber",
+          hp: ns(6),
+          staggerThreshold: 5,
+          atk: ns(2),
+          enemySkill: {
+            id: "fire_encirclement",
+            type: "passive",
+            name: "火阵固守",
+            shortName: "火守",
+            icon: "火",
+            triggerText: "被动常驻。",
+            effectText: "王植防御时，额外减伤 +10。",
+          },
+          ai: { quick: 32, heavy: 24, defend: 22, adjust: 22 },
+        },
+        {
+          name: "纵火兵",
+          archetype: "spear",
+          hp: ns(4),
+          staggerThreshold: 3,
+          atk: ns(2),
+          ai: { quick: 52, heavy: 18, defend: 12, adjust: 18 },
+        },
+      ],
+      reserve: [],
+    },
+  ],
 };
 
 /** 第一章战功：单战配置与章节聚合（过五关 B1–B5） */
@@ -3726,6 +4001,10 @@ function resetChapter1NewGame(state) {
   state.winRewardSelectedOption = null;
   state.winRewardReadyToContinue = false;
   state.winRewardContinueNextId = null;
+  state._skillTestActive = false;
+  state._skillTestWaveOverride = null;
+  state._skillTestLoadoutPerks = null;
+  state._skillTestLoadoutAttrIds = null;
   resetPrologueTypewriter(state);
 }
 
@@ -8185,6 +8464,13 @@ function mkInitialState() {
     chapterRoadmapCleared: /** @type {Record<string, boolean>} */ ({}),
     tutorialSeen: /** @type {Record<string, boolean>} */ ({}),
     tipsHighlightDismissed: false,
+    /** 本地技能沙盒：战斗中为 true，返回主菜单时清除 */
+    _skillTestActive: false,
+    /** 沙盒开战前写入，startBattleFromNode 消费后置 null */
+    _skillTestWaveOverride: /** @type {any[] | null} */ (null),
+    /** 沙盒本场战法卷展示快照（与运行时 perks 解耦，避免卷面与表单不一致） */
+    _skillTestLoadoutPerks: /** @type {string[] | null} */ (null),
+    _skillTestLoadoutAttrIds: /** @type {string[] | null} */ (null),
     /** 开场说明：仅首次开局的战前显示；点击「开始战斗」后隐藏 */
     introDismissed: false,
     /** 主界面左侧英雄榜：用于取消过期的异步填充 */
@@ -9144,6 +9430,16 @@ function dom() {
     appMain: $("appMain"),
     homeScreen: $("homeScreen"),
     btnHomeStart: $("btnHomeStart"),
+    btnSkillTest: $("btnSkillTest"),
+    skillTestOverlay: $("skillTestOverlay"),
+    skillTestTechGrid: $("skillTestTechGrid"),
+    skillTestAttrGrid: $("skillTestAttrGrid"),
+    skillTestPreset: $("skillTestPreset"),
+    btnSkillTestStart: $("btnSkillTestStart"),
+    btnSkillTestClose: $("btnSkillTestClose"),
+    skillTestCardPreview: $("skillTestCardPreview"),
+    skillTestCardPreviewImg: $("skillTestCardPreviewImg"),
+    skillTestCardPreviewCaption: $("skillTestCardPreviewCaption"),
     leftCol: $("leftCol"),
     settlePanelSection: $("settlePanelSection"),
     pageTitle: $("pageTitle"),
@@ -9363,11 +9659,60 @@ function renderWarehouseCardHtml(tag, title, desc, cls = "", extrasLine = "", fr
   return `<div class="wh-card${c}${artCls}">${art}<div class="wh-card-kicker">${escapeHtml(tag || "卡牌")}</div>${ex}<div class="wh-card-title">${escapeHtml(title)}</div><div class="wh-card-desc">${escapeHtml(desc)}</div></div>`;
 }
 
+/** 战法卷中的属性卡：与 mergedAttrPickedIds / 战斗加成同源，按 ATTR_CARDS 顺序；补齐「已领 id 但日志缺条」的展示 */
+function warehouseAttrEntriesForScroll(state) {
+  if (!ATTR_CARDS.length) return [];
+  const picked = mergedAttrPickedIds(state);
+  const logById = new Map();
+  for (const g of state._attrGrowthLog || []) {
+    if (!g) continue;
+    let id = g.id;
+    if (!id && g.title) {
+      const c = ATTR_CARDS.find((x) => x && x.title === g.title);
+      if (c) id = c.id;
+    }
+    if (id) logById.set(id, g);
+  }
+  const out = [];
+  for (const card of ATTR_CARDS) {
+    if (!card || !picked[card.id]) continue;
+    const g = logById.get(card.id);
+    out.push({
+      title: g?.title ?? card.title,
+      desc: g?.desc ?? card.desc,
+      frontArt: g?.frontArt || card.frontArt || "",
+    });
+  }
+  return out;
+}
+
 function renderWarehouseCards(state) {
   const cards = [];
-  const tech = (state.perks || []).map((perk) => perkCardById(perk));
+  const useSandboxLoadout =
+    state._skillTestActive &&
+    state._skillTestLoadoutPerks != null &&
+    state._skillTestLoadoutAttrIds != null;
 
-  for (const c of tech) {
+  let attrRows;
+  if (useSandboxLoadout) {
+    attrRows = state._skillTestLoadoutAttrIds
+      .map((id) => ATTR_CARDS.find((c) => c && c.id === id))
+      .filter(Boolean)
+      .map((card) => ({
+        title: card.title,
+        desc: card.desc,
+        frontArt: card.frontArt || "",
+      }));
+  } else {
+    attrRows = warehouseAttrEntriesForScroll(state);
+  }
+  for (const row of attrRows) {
+    cards.push(renderWarehouseCardHtml("属性", row.title, row.desc, "attr", "", row.frontArt || ""));
+  }
+
+  const techPerks = useSandboxLoadout ? state._skillTestLoadoutPerks || [] : state.perks || [];
+  for (const perk of techPerks) {
+    const c = perkCardById(perk);
     const p = c?.primary || "tech";
     const tagText = techPrimaryLabel(p);
     cards.push(
@@ -9382,11 +9727,6 @@ function renderWarehouseCards(state) {
     for (const d of taken) {
       cards.push(renderWarehouseCardHtml("装备", d.title, d.desc, "equip"));
     }
-  }
-  // 属性成长卡
-  const attrGrowths = state._attrGrowthLog || [];
-  for (const g of attrGrowths) {
-    cards.push(renderWarehouseCardHtml("属性", g.title, g.desc, "attr", "", g.frontArt || ""));
   }
   if (!cards.length) {
     return `<div class="wh-empty">暂无卡片</div>`;
@@ -9425,6 +9765,7 @@ function render(state, ui) {
   if (ui.homeScreen) ui.homeScreen.hidden = !showHomeMenu;
   if (ui.appTopbar) ui.appTopbar.hidden = showHomeMenu;
   if (ui.appMain) ui.appMain.hidden = showHomeMenu;
+  if (ui.btnSkillTest) ui.btnSkillTest.hidden = !isSkillTestBuildAvailable();
   ui.appMain?.classList.toggle("main--leaderboard", showHomeLeaderboard);
   /* 主菜单时节点仍是 STORY_OPEN，勿启动序章打字机 / 全屏叙事层，避免与「开始游戏」首点竞态 */
   if (showHomeMenu && state._prologueTypewriter) resetPrologueTypewriter(state);
@@ -10638,7 +10979,11 @@ function startBattleFromNode(state, node) {
   // 兜底：若上一场胜利 ending 提前打断，可能遗留 _endingHealAnimating=true 导致 HP/失衡文案不刷新
   state._endingHealAnimating = false;
 
-  const battle = node.battle;
+  let battle = node.battle;
+  if (node.id === "SKILL_TEST" && state._skillTestWaveOverride && state._skillTestWaveOverride.length) {
+    battle = { ...node.battle, waves: state._skillTestWaveOverride };
+    state._skillTestWaveOverride = null;
+  }
   if (!battle || !battle.waves || !battle.waves.length) {
     state.phase = "node";
     state.settleLog.push("{r}错误：战斗节点缺少 battle 配置。{/r}");
@@ -10666,6 +11011,7 @@ function startBattleFromNode(state, node) {
   }
   syncDefendMitigationBonusFromProgress(state);
   syncPlayerHpMaxAndStaggerFromProgress(state);
+  syncExecuteHealBonusFromPerks(state);
 
   const wave0 = battle.waves[0];
   state.battle = {
@@ -11354,8 +11700,7 @@ function applyGrowthRewards(state, node, opt) {
     if (!perkAlreadyOwned) {
       state.settleLog.push(`成长：获得【${opt.title}】。`);
       if (opt.perk === "perk_executeheal") {
-        // 与调息 HP+20 同标尺：executeHealBonus 为直接传入 applyHeal 的存量；ns(2)=20。勿用 ns(20)（会变成 +200）
-        state.player.executeHealBonus = (state.player.executeHealBonus || 0) + ns(2);
+        syncExecuteHealBonusFromPerks(state);
         state.settleLog.push("血战余生生效：处决回血 +20。");
       }
     } else {
@@ -12687,6 +13032,74 @@ function onPlayerAction(state, ui, action, opts = {}) {
   render(state, ui);
 }
 
+function resetPlayerForSkillTestSandbox(state) {
+  const p = state.player;
+  const fresh = mkFighter({ name: FIXED_PLAYER_NAME, hp: ns(6), stagger: 0, staggerThreshold: 4, level: 1 });
+  p.hp = fresh.hp;
+  p.hpMax = fresh.hpMax;
+  p.stagger = fresh.stagger;
+  p.staggerThreshold = fresh.staggerThreshold;
+  p.broken = false;
+  p.brokenTurnsLeft = 0;
+  p.level = fresh.level;
+  p.strikeBase = fresh.strikeBase;
+  p.atkBonus = 0;
+  p.defendMitigationBonus = 0;
+  p.heavyStgBonus = 0;
+  p.executeHealBonus = 0;
+  p.restCooldownLeft = 0;
+}
+
+function beginSkillTestSandbox(state, ui) {
+  const presetKey = ui.skillTestPreset?.value || "dummy1";
+  const wavesTpl = SKILL_TEST_PRESET_WAVES[presetKey] || SKILL_TEST_PRESET_WAVES.dummy1;
+  const perks = collectSandboxCheckedPerks(ui);
+  const attrIds = collectSandboxCheckedAttrIds(ui);
+
+  state.merit = 0;
+  state.runMeritScore = 0;
+  state.lootR3 = null;
+  state.orangeLoot = null;
+  state.support = null;
+  state.perks = perks;
+  state.skillDeckRemaining = [...new Set(SKILL_CARDS.map((c) => c.perk).filter((p) => !state.perks.includes(p)))];
+  state.draftOffers = {};
+  state._pickedAttrCardIds = {};
+  state._attrGrowthLog = [];
+  for (const id of attrIds) {
+    const c = ATTR_CARDS.find((x) => x && x.id === id);
+    if (!c) continue;
+    state._pickedAttrCardIds[c.id] = true;
+    state._attrGrowthLog.push({ id: c.id, title: c.title, desc: c.desc, frontArt: c.frontArt || "" });
+  }
+
+  resetPlayerForSkillTestSandbox(state);
+  syncDefendMitigationBonusFromProgress(state);
+  syncPlayerHpMaxAndStaggerFromProgress(state);
+
+  state._skillTestWaveOverride = JSON.parse(JSON.stringify(wavesTpl));
+  state._skillTestActive = true;
+  state._skillTestLoadoutPerks = perks.slice();
+  state._skillTestLoadoutAttrIds = ATTR_CARDS.filter((c) => c && state._pickedAttrCardIds[c.id]).map((c) => c.id);
+
+  state.homeView = "game";
+  state.introDismissed = true;
+  state.chapterId = "chapter1";
+  state.nodeId = "SKILL_TEST";
+  state.chapterRoadmapCleared = {};
+  cancelChapterEpilogueTimers(state);
+  resetChapterEpilogueDom(ui);
+  clearBattleEntranceB1(state, ui);
+  cancelResolutionAnimation(ui);
+
+  closeSkillTestOverlay(ui);
+
+  const chapter = CHAPTERS.chapter1;
+  const node = chapter.nodes.SKILL_TEST;
+  startBattleFromNode(state, node);
+  render(state, ui);
+}
+
 function boot() {
   const ui = dom();
   let state = mkInitialState();
@@ -12700,6 +13113,30 @@ function boot() {
       render(state, ui);
     });
   }
+
+  if (ui.btnSkillTest) {
+    ui.btnSkillTest.hidden = !isSkillTestBuildAvailable();
+    ui.btnSkillTest.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (!isSkillTestBuildAvailable()) return;
+      openSkillTestOverlay(ui);
+    });
+  }
+  if (ui.btnSkillTestStart) {
+    ui.btnSkillTestStart.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      if (!isSkillTestBuildAvailable()) return;
+      beginSkillTestSandbox(state, ui);
+    });
+  }
+  if (ui.btnSkillTestClose) {
+    ui.btnSkillTestClose.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      closeSkillTestOverlay(ui);
+    });
+  }
+  bindSkillTestCardPreviewClicks(ui);
 
   if (ui.growthOverlay) {
     ui.growthOverlay.addEventListener(
@@ -12824,6 +13261,20 @@ function boot() {
   }
   if (ui.btnWinContinue) {
     ui.btnWinContinue.addEventListener("click", () => {
+      if (state._skillTestActive) {
+        state._skillTestActive = false;
+        state._skillTestLoadoutPerks = null;
+        state._skillTestLoadoutAttrIds = null;
+        state.winReady = false;
+        state.phase = "node";
+        state.battle = null;
+        state.pendingRetryBattleNodeId = null;
+        state.battleSnapshot = null;
+        state.homeView = "menu";
+        if (isSkillTestBuildAvailable()) openSkillTestOverlay(ui);
+        render(state, ui);
+        return;
+      }
       const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
       const nextId = state.pendingWinNextNodeId;
       state.pendingWinNextNodeId = null;
@@ -13113,6 +13564,20 @@ function boot() {
     ui.btnLoseBackToMain.addEventListener("click", () => {
       const chapter = CHAPTERS[state.chapterId] || CHAPTERS.chapter1;
       if (state.phase !== "lose") return;
+      if (state._skillTestActive) {
+        state._skillTestActive = false;
+        state._skillTestLoadoutPerks = null;
+        state._skillTestLoadoutAttrIds = null;
+        cancelResolutionAnimation(ui);
+        state.pendingRetryBattleNodeId = null;
+        state.battleSnapshot = null;
+        state.phase = "node";
+        state.battle = null;
+        state.homeView = "menu";
+        if (isSkillTestBuildAvailable()) openSkillTestOverlay(ui);
+        render(state, ui);
+        return;
+      }
       cancelResolutionAnimation(ui);
       state.pendingRetryBattleNodeId = null;
       state.battleSnapshot = null;
@@ -13255,6 +13720,12 @@ function boot() {
 
   // 初始进入章节
   hardRestart("menu");
+  try {
+    const q = new URLSearchParams(typeof location !== "undefined" ? location.search || "" : "");
+    if (isSkillTestBuildAvailable() && q.get("skilltest") === "1") openSkillTestOverlay(ui);
+  } catch {
+    // ignore
+  }
 }
 
 boot();

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>卡面资源对照 · 可预览</title>
+  <style>
+    :root {
+      --bg: #0f1218;
+      --card: #1a1f2a;
+      --border: #2a3344;
+      --text: #e8ecf4;
+      --muted: #8b95a8;
+      --accent: #6b9bd1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 1.25rem 1.5rem 3rem;
+    }
+    h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.35rem; }
+    .sub {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+    .sub code { color: var(--accent); background: var(--card); padding: 0.1em 0.35em; border-radius: 4px; }
+    h2 { font-size: 1.05rem; margin: 2rem 0 0.75rem; color: #c5d0e0; }
+    table {
+      width: 100%;
+      max-width: 52rem;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      background: var(--card);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    th, td { text-align: left; padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { background: #222833; color: #aab6c8; font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+      max-width: 72rem;
+    }
+    .tile {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .tile img {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      object-fit: cover;
+      display: block;
+      background: #0a0c10;
+    }
+    .tile .meta { padding: 0.65rem 0.75rem 0.85rem; }
+    .tile .file { font-weight: 600; color: var(--accent); font-size: 0.88rem; word-break: break-all; }
+    .tile .bind { font-size: 0.82rem; color: var(--muted); margin-top: 0.35rem; }
+    .tile .bind strong { color: #c8d4e6; font-weight: 500; }
+    .warn { color: #e0b060; font-size: 0.8rem; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>卡面 PNG 与游戏内绑定</h1>
+  <p class="sub">
+    数据来自 <code>skill_cards_config.js</code> 的 <code>frontArt</code>。在资源目录打开本页：
+    <code>card_art_catalog.html</code>（与 <code>index.html</code> 同级）。
+  </p>
+
+  <h2>一、按文件名预览（图上即该文件内容）</h2>
+  <div class="grid" id="by-file"></div>
+
+  <h2>二、按卡牌查用了哪个文件</h2>
+  <table id="by-card">
+    <thead><tr><th>类型</th><th>ID</th><th>卡名</th><th>frontArt 文件</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <script src="./skill_cards_config.js"></script>
+  <script>
+    (function () {
+      const ns = function (n) { return n; };
+      const skills = globalThis.SkillCardsConfig.buildSkillCards(ns);
+      const attrs = globalThis.SkillCardsConfig.ATTR_CARDS;
+
+      const FRONT_FILES = [
+        "A_ATK.png", "A_DEF.png", "A_HP.png", "A_STG.png",
+        "T01.png", "T02.png", "T03.png", "T04.png", "T06.png", "T09.png", "T10.png",
+        "T14.png", "T15.png", "T17.png", "T18.png", "T19.png", "T23.png",
+      ].sort(function (a, b) {
+        var ga = a[0] === "A" ? 0 : 1;
+        var gb = b[0] === "A" ? 0 : 1;
+        if (ga !== gb) return ga - gb;
+        return a.localeCompare(b, undefined, { numeric: true });
+      });
+
+      function normPath(p) {
+        return String(p || "").replace(/^\.\//, "");
+      }
+
+      var byFile = new Map();
+      function note(file, line) {
+        var key = normPath(file);
+        if (!key) return;
+        if (!byFile.has(key)) byFile.set(key, []);
+        byFile.get(key).push(line);
+      }
+
+      skills.forEach(function (c) {
+        note(c.frontArt, c.id + " " + c.title + "（技法）");
+      });
+      attrs.forEach(function (c) {
+        note(c.frontArt, c.id + " " + c.title + "（属性）");
+      });
+
+      var grid = document.getElementById("by-file");
+      FRONT_FILES.forEach(function (png) {
+        var rel = "cards/front/" + png;
+        var uses = byFile.get(rel) || [];
+        var tile = document.createElement("div");
+        tile.className = "tile";
+        var img = document.createElement("img");
+        img.src = rel;
+        img.alt = png;
+        img.loading = "lazy";
+        var meta = document.createElement("div");
+        meta.className = "meta";
+        var fileEl = document.createElement("div");
+        fileEl.className = "file";
+        fileEl.textContent = png;
+        var bind = document.createElement("div");
+        bind.className = "bind";
+        if (uses.length) {
+          bind.innerHTML = "<strong>配置绑定</strong><br/>" + uses.join("<br/>");
+        } else {
+          bind.innerHTML = "<strong>配置绑定</strong><br/>（未引用）";
+        }
+        if (/^A_/.test(png) && uses.some(function (u) { return u.indexOf("技法") !== -1; })) {
+          var w = document.createElement("div");
+          w.className = "warn";
+          w.textContent = "提示：A_ 文件名本义是属性，当前也被技法卡用作立绘。";
+          meta.appendChild(w);
+        }
+        if (/^T\d/.test(png) && uses.some(function (u) { return u.indexOf("属性") !== -1; })) {
+          var w2 = document.createElement("div");
+          w2.className = "warn";
+          w2.textContent = "提示：T 文件名本义是技法，当前也被属性卡用作立绘。";
+          meta.appendChild(w2);
+        }
+        meta.insertBefore(bind, meta.firstChild);
+        meta.insertBefore(fileEl, bind);
+        tile.appendChild(img);
+        tile.appendChild(meta);
+        grid.appendChild(tile);
+      });
+
+      var tbody = document.querySelector("#by-card tbody");
+      function row(type, id, title, art) {
+        var tr = document.createElement("tr");
+        var base = normPath(art).replace(/^cards\/front\//, "");
+        tr.innerHTML =
+          "<td>" + type + "</td><td>" + id + "</td><td>" + title + "</td><td><code>" + base + "</code></td>";
+        tbody.appendChild(tr);
+      }
+      skills.forEach(function (c) {
+        row("技法", c.id, c.title, c.frontArt);
+      });
+      attrs.forEach(function (c) {
+        row("属性", c.id, c.title, c.frontArt);
+      });
+    })();
+  </script>
+</body>
+</html>
